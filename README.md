@@ -14,28 +14,28 @@
 ---
 
 ## 🔬 Research Goal
-To detect and mitigate GNSS spoofing attacks on civilian aviation tracking systems (ADS-B) using a distributed sensor grid and a **Hybrid AI Model Zoo**. [cite_start]This project moves beyond simple thresholding to a multi-layered defense strategy capable of identifying sophisticated trajectory modification attacks[cite: 8].
+To detect and mitigate GNSS spoofing attacks on civilian aviation tracking systems (ADS-B) using a distributed sensor grid and a **Hybrid AI Model Zoo**. This project moves beyond simple thresholding to a multi-layered defense strategy capable of identifying sophisticated trajectory modification attacks.
 
 ## 🧠 The "Model Zoo": 12-Architecture Ensemble
 The detection engine utilizes a comparative ensemble of 12 distinct methods, layered by computational complexity and abstraction level:
 
 ### Tier 1: Edge Baselines (Explainable AI)
-* **1. [cite_start]Random Forest (RF):** "Sanity Check" filtering based on physical feature extraction (RSSI vs. Distance consistency)[cite: 22, 24].
-* **2. [cite_start]XGBoost / LightGBM:** High-speed, Treelite-compiled inference optimized for the Raspberry Pi edge[cite: 22, 69].
-* **3. [cite_start]Reinforcement Learning (RL):** Single-agent active sensor tuning (Gain/Threshold optimization) to maximize Signal-to-Noise Ratio[cite: 87, 89].
-* **4. [cite_start]Multi-Agent RL (MARL):** Decentralized coordination allowing sensor nodes to cooperatively optimize grid-wide coverage[cite: 129, 131].
+* **1. Random Forest (RF):** "Sanity Check" filtering based on physical feature extraction (RSSI vs. Distance consistency).
+* **2. XGBoost / LightGBM:** High-speed, Treelite-compiled inference optimized for the Raspberry Pi edge.
+* **3. Reinforcement Learning (RL):** Single-agent active sensor tuning (Gain/Threshold optimization) to maximize Signal-to-Noise Ratio.
+* **4. Multi-Agent RL (MARL):** Decentralized coordination allowing sensor nodes to cooperatively optimize grid-wide coverage.
 
 ### Tier 2: Spatial & Temporal Deep Learning
-* **5. [cite_start]Graph Neural Networks (GNN):** Modeling the sensor grid as a geometric graph to detect spatial anomalies (e.g., signal seen by Node A but physically impossible to be missed by Node B)[cite: 143, 144].
-* **6. [cite_start]Graph Attention Networks (GAT):** Dynamic weighting of sensor reliability, allowing the grid to "ignore" noisy or jammed nodes[cite: 174, 175].
-* **7. [cite_start]Transformers (FlightBERT++):** Long-range trajectory forecasting using self-attention to detect subtle "meandering" drift[cite: 178, 180, 182].
-* [cite_start]**8. xLSTM:** Extended Long Short-Term Memory networks for recurrent anomaly detection with improved memory retention[cite: 33, 34].
-* **9. [cite_start]Liquid Neural Networks (LNN):** Time-continuous neural networks designed for adaptive signal processing on irregular time-series data[cite: 11, 241].
+* **5. Graph Neural Networks (GNN):** Modeling the sensor grid as a geometric graph to detect spatial anomalies (e.g., signal seen by Node A but physically impossible to be missed by Node B).
+* **6. Graph Attention Networks (GAT):** Dynamic weighting of sensor reliability, allowing the grid to "ignore" noisy or jammed nodes.
+* **7. Transformers (FlightBERT++):** Long-range trajectory forecasting using self-attention to detect subtle "meandering" drift.
+* **8. xLSTM:** Extended Long Short-Term Memory networks for recurrent anomaly detection with improved memory retention.
+* **9. Liquid Neural Networks (LNN):** Time-continuous neural networks designed for adaptive signal processing on irregular time-series data.
 
 ### Tier 3: Physics & Generative Validation
-* **10. [cite_start]Physics-Informed Neural Networks (PINN):** Embedding Equations of Motion (EoM) directly into the loss function to penalize physically impossible maneuvers[cite: 216, 220].
-* **11. [cite_start]Kolmogorov-Arnold Networks (KAN):** Symbolic regression for real-time estimation of aerodynamic coefficients (Lift/Drag)[cite: 236, 239].
-* **12. [cite_start]Generative Adversarial Networks (GAN):** "Red Teaming" the system by generating synthetic zero-day attack signatures to harden the classifiers[cite: 249, 250].
+* **10. Physics-Informed Neural Networks (PINN):** Embedding Equations of Motion (EoM) directly into the loss function to penalize physically impossible maneuvers.
+* **11. Kolmogorov-Arnold Networks (KAN):** Symbolic regression for real-time estimation of aerodynamic coefficients (Lift/Drag).
+* **12. Generative Adversarial Networks (GAN):** "Red Teaming" the system by generating synthetic zero-day attack signatures to harden the classifiers.
 
 ## 🏗 Architecture (Distributed Sensor Grid)
 * **Controller:** Workstation (Ansible)
