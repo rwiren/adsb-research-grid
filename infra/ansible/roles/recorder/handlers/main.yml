@@ -1,0 +1,6 @@
+---
+- name: Restart Recorder Service
+  systemd:
+    name: adsb-recorder.service
+    state: restarted
+    daemon_reload: yes

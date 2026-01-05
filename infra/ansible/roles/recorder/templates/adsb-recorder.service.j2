@@ -1,0 +1,21 @@
+# ==============================================================================
+# Service: adsb-recorder.service
+# Version: 1.0
+# Managed By: Ansible
+# ==============================================================================
+
+[Unit]
+Description=ADSB Raw Data Recorder
+After=docker.service network.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+ExecStart=/home/pi/adsb_record.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

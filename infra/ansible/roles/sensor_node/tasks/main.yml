@@ -37,7 +37,7 @@
       - containerd.io
       - docker-buildx-plugin
       - docker-compose-plugin
-      - python3-docker  # Required for Ansible to control Docker
+      - python3-docker  # <--- This is the correct way to install the SDK on Pi
     state: present
 
 - name: Add user 'pi' to docker group
@@ -51,3 +51,27 @@
     name: docker
     state: started
     enabled: yes
+
+- name: Force Blacklist DVB Drivers (Nuclear Option)
+  copy:
+    dest: /etc/modprobe.d/blacklist-rtl.conf
+    content: |
+      blacklist dvb_usb_rtl28xxu
+      blacklist rtl2832
+      blacklist dvb_usb_v2
+      blacklist dvb_core
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Deploy Sensor Stack (Docker Compose)
+  template:
+    src: docker-compose.yml.j2
+    dest: /opt/adsb-grid/docker-compose.yml
+    mode: '0644'
+
+- name: Ensure Sensor Stack is Running
+  community.docker.docker_compose_v2:
+    project_src: /opt/adsb-grid
+    state: present
+    pull: always

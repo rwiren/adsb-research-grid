@@ -1,4 +1,10 @@
 ---
+# ==============================================================================
+# Role: Common
+# Description: Base system configuration for all nodes.
+#              Updates, Tools, Firewall, and Locale fixes.
+# ==============================================================================
+
 - name: Update apt cache
   apt:
     update_cache: yes
@@ -12,18 +18,32 @@
   apt:
     name:
       - curl
+      - wget
       - git
       - htop
-      - ufw
-      - fail2ban
-      - python3-pip
+      - net-tools
+      - vim
+      - screen
     state: present
 
 - name: Set up UFW firewall (Allow SSH)
   ufw:
     rule: allow
-    name: OpenSSH
+    port: '22'
+    proto: tcp
 
 - name: Enable UFW firewall
   ufw:
     state: enabled
+
+# --- NEW ADDITIONS (Locale Fixes) ---
+
+- name: Install 'locales-all' to fix LC_CTYPE warnings
+  apt:
+    name: locales-all
+    state: present
+
+- name: Set system locale to en_US.UTF-8
+  # FIX: Used 'update-locale' instead of 'localectl' to avoid D-Bus "Access denied" errors
+  command: update-locale LANG=en_US.UTF-8
+  changed_when: false

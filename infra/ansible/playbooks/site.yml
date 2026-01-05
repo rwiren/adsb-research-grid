@@ -1,8 +1,16 @@
 ---
-- name: Provision Sensor Nodes
-  hosts: sensors
-  become: yes
+# ==============================================================================
+# Master Playbook: Site Provisioning
+# ==============================================================================
+
+- hosts: sensors
+  become: true
+  vars_files:
+    - ../group_vars/all.yml
+    # - ../group_vars/all/vault.yml  <-- Uncomment if using vault
+
   roles:
     - common
     - zerotier
-    - sensor_node   # <--- The new capability
+    - sensor_node
+    - recorder      # <--- NEW ROLE ADDED

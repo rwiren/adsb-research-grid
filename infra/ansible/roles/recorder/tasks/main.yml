@@ -1,0 +1,38 @@
+---
+# ==============================================================================
+# Role: Recorder
+# Description: Deploys the raw data recording script and systemd service.
+# ==============================================================================
+
+- name: Create data storage directory
+  file:
+    path: /home/pi/adsb_data
+    state: directory
+    owner: pi
+    group: pi
+    mode: '0755'
+
+- name: Deploy ADS-B Recording Script (v1.1)
+  template:
+    src: adsb_record.sh.j2
+    dest: /home/pi/adsb_record.sh
+    owner: pi
+    group: pi
+    mode: '0755'
+  notify: Restart Recorder Service
+
+- name: Deploy Systemd Service Unit
+  template:
+    src: adsb-recorder.service.j2
+    dest: /etc/systemd/system/adsb-recorder.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart Recorder Service
+
+- name: Ensure Recorder Service is Enabled and Started
+  systemd:
+    name: adsb-recorder.service
+    enabled: yes
+    state: started
+    daemon_reload: yes

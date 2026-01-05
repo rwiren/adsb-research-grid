@@ -1,0 +1,39 @@
+#!/bin/bash
+# ==============================================================================
+# Script Name: adsb_record.sh
+# Version: 1.1
+# Managed By: Ansible
+# Description: Connects to local readsb container, records raw data,
+#              rotates files every 15 mins, and cleans up old data.
+# ==============================================================================
+
+# --- Configuration ---
+DATA_DIR="/home/pi/adsb_data"
+PORT=30005
+HOST="127.0.0.1"
+DURATION=900  # 15 minutes
+RETENTION_DAYS=2 # Strict limit for 32GB SD card
+
+# --- Initialization ---
+if [ ! -d "$DATA_DIR" ]; then
+    mkdir -p "$DATA_DIR"
+fi
+
+# --- Main Loop ---
+echo "$(date): Starting ADS-B Recording Service (v1.1)..."
+
+while true; do
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    FILENAME="$DATA_DIR/raw_adsb_$TIMESTAMP.bin"
+
+    echo "$(date): Recording to $FILENAME for ${DURATION} seconds..."
+
+    # Record data. If connection fails, timeout exits immediately.
+    timeout "$DURATION" nc "$HOST" "$PORT" > "$FILENAME"
+
+    # CRITICAL SAFETY: Sleep 10s to prevent runaway CPU loop if container is down
+    sleep 10
+
+    # Cleanup old files
+    find "$DATA_DIR" -name "raw_adsb_*.bin" -mtime +$RETENTION_DAYS -exec rm {} \;
+done
