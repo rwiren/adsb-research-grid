@@ -1,0 +1,16 @@
+# --- Global Setup ---
+ansible_user: pi
+
+# --- Networking ---
+trusted_wifi_networks: "{{ vault_wifi_networks }}"
+zerotier_net_id: "{{ vault_zerotier_net_id }}"
+
+# --- Brain Services ---
+mqtt_user: "{{ vault_mqtt_user }}"
+mqtt_password: "{{ vault_mqtt_password }}"
+influx_token: "{{ vault_influx_token }}"
+influx_org: "{{ vault_influx_org }}"
+influx_bucket: "{{ vault_influx_bucket }}"
+grafana_user: "{{ vault_grafana_admin_user }}"
+grafana_password: "{{ vault_grafana_admin_password }}"
+opensearch_password: "{{ vault_opensearch_admin_password }}"

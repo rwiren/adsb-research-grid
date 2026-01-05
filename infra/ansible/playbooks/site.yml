@@ -1,0 +1,25 @@
+---
+# 1. BASE LAYER (Security & Networking)
+- hosts: all
+  become: true
+  roles:
+    - common
+
+# 2. TOWER LAYER (AI & Aggregation)
+- hosts: tower
+  become: true
+  roles:
+    - tower_core
+
+# 3. SENSOR LAYER (Standard Detection Stack)
+- hosts: sensors
+  become: true
+  roles:
+    - sensor_node
+
+# 4. TIMING LAYER (Stratum-1 Precision)
+# Applies ONLY to sensor-north (on top of the sensor layer)
+- hosts: sensor-north
+  become: true
+  roles:
+    - strat1_timing

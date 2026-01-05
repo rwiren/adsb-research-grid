@@ -1,0 +1,26 @@
+# --- OS & Mac Junk ---
+.DS_Store
+*.log
+__pycache__/
+
+# --- Secrets & Keys ---
+*.pem
+*.key
+id_rsa
+zerotier_secret_ids.txt
+
+# --- Ansible ---
+*.retry
+*.bg
+infra/ansible/inventory/hosts.dev
+
+# --- Data (The Black Hole) ---
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# --- Python ---
+venv/
+*.egg-info/
+infra/ansible/.vault_pass
