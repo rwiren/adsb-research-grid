@@ -1,0 +1,7 @@
+---
+# General Settings
+timezone: "Europe/Helsinki"
+
+# ZeroTier Configuration
+zerotier_network_id: "45b6e887e22d8422"  # <--- From your screenshot
+zerotier_api_token: "{{ vault_zerotier_token }}"

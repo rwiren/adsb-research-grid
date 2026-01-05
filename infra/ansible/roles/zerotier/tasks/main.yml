@@ -1,0 +1,19 @@
+---
+- name: Install ZeroTier (One-line script method)
+  shell: curl -s https://install.zerotier.com | sudo bash
+  args:
+    creates: /usr/sbin/zerotier-cli
+
+- name: Join the Network
+  command: "zerotier-cli join {{ zerotier_network_id }}"
+  register: join_result
+  changed_when: "'200 join OK' in join_result.stdout"
+
+- name: Get ZeroTier Node Address
+  command: "zerotier-cli info -j"
+  register: zt_info
+  changed_when: false
+
+- name: Display Node ID (For authorization)
+  debug:
+    msg: "Node ID is: {{ (zt_info.stdout | from_json).address }}. Please authorize this in the ZeroTier Dashboard."

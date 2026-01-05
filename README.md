@@ -1,7 +1,7 @@
 # Securing the Skies: ADS-B Spoofing Detection Grid
 
 [![License: Academic](https://img.shields.io/badge/License-Academic_Research-blue.svg)](#)
-[![Version](https://img.shields.io/badge/Version-v0.1.1-green.svg)](#)
+[![Version](https://img.shields.io/badge/Version-v0.2.0-green.svg)](#)
 
 ## 📋 Table of Contents
 1. [Research Goal](#-research-goal)

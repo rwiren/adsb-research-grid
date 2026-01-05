@@ -1,17 +1,13 @@
-[all:vars]
-ansible_user=pi
-# Secrets are handled by Vault/Vars
+[controller]
+localhost ansible_connection=local
 
-# --- TOWER (The Core Intelligence) ---
-[tower]
-# We don't know the local IP yet (it will be assigned by DHCP)
-# Update 'ansible_host' after you boot it and see it in Unifi.
-tower-core ansible_host=CHANGE_ME_TOWER_IP local_data_ip=CHANGE_ME_TOWER_LAN_IP
-
-# --- SENSORS (The Collectors) ---
 [sensors]
-# Sensor North: Needs a NEW IP (not .153).
-sensor-north ansible_host=CHANGE_ME_NORTH_IP location="North" strat1=true target_brain_ip=CHANGE_ME_TOWER_LAN_IP
+# We now use the ZeroTier IP as the primary address
+sensor-north ansible_host=192.168.192.130 ansible_user=pi zt_ip=192.168.192.130
 
-sensor-east  ansible_host=192.168.192.120 location="East" target_brain_ip=CHANGE_ME_TOWER_LAN_IP
-sensor-west  ansible_host=192.168.192.130 location="West" target_brain_ip=CHANGE_ME_TOWER_LAN_IP
+# Placeholders for future nodes
+# sensor-east ansible_host=192.168.192.120 ansible_user=pi
+# sensor-west ansible_host=192.168.192.110 ansible_user=pi
+
+[tower]
+# tower-core ansible_host=192.168.192.100 ansible_user=pi
