@@ -25,3 +25,59 @@ services:
     tmpfs:
       - /run/readsb
       - /var/log
+# --- FEEDERS ---
+
+  piaware:
+    image: flightaware/piaware:latest
+    restart: always
+    environment:
+      - BEASTHOST=readsb
+      - BEASTPORT=30005
+      - FEEDER_ID={{ piaware_feeder_id }}
+      - ALLOW_MLAT=yes
+      - MLAT_RESULTS=yes
+    depends_on:
+      - readsb
+
+  fr24feed:
+    image: flightradar24/fr24feed:latest
+    restart: always
+    environment:
+      - BEASTHOST=readsb
+      - BEASTPORT=30005
+      - FR24KEY={{ fr24_key }}
+    depends_on:
+      - readsb
+
+  planefinder:
+    image: planefinder/pfclient:latest
+    restart: always
+    environment:
+      - BEASTHOST=readsb
+      - BEASTPORT=30005
+      - SHARECODE={{ pf_sharecode }}
+    ports:
+      - "30053:30053"
+    depends_on:
+      - readsb
+
+  radarbox:
+    image: ghcr.io/sdr-enthusiasts/docker-radarbox-flightstick:latest
+    restart: always
+    environment:
+      - BEASTHOST=readsb
+      - BEASTPORT=30005
+      - SHARING_KEY={{ rb_key }}
+    depends_on:
+      - readsb
+
+  opensky:
+    image: ghcr.io/sdr-enthusiasts/docker-opensky-feeder:latest
+    restart: always
+    environment:
+      - BEASTHOST=readsb
+      - BEASTPORT=30005
+      - OPENSKY_USERNAME={{ opensky_username }}
+      - OPENSKY_SERIAL={{ opensky_serial }}
+    depends_on:
+      - readsb
