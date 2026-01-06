@@ -5,3 +5,8 @@ timezone: "Europe/Helsinki"
 # ZeroTier Configuration
 zerotier_network_id: "45b6e887e22d8422"  # <--- From your screenshot
 zerotier_api_token: "{{ vault_zerotier_token }}"
+
+# --- ADS-B Receiver Settings ---
+adsb_gain: 49.6      # Tuner gain (dB). Use "max" for auto-gain, or specific values like 49.6
+adsb_ppm: 0          # Frequency correction (Parts Per Million)
+project_name: "adsb-research-grid"

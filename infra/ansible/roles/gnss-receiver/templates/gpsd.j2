@@ -1,0 +1,19 @@
+# Version: 7.0.0
+# Description: GPSD Configuration for Splitter Architecture
+# Managed by Ansible
+
+START_DAEMON="true"
+USBAUTO="false"
+
+# DEVICES:
+# 1. tcp://127.0.0.1:2001 -> The SPLITTER port (Buffered Data)
+# 2. /dev/pps0            -> The Time Pulse (Hardware)
+DEVICES="tcp://127.0.0.1:2001 /dev/pps0"
+
+# GPSD OPTIONS:
+# -n: Start immediately
+# -G: Listen on all interfaces
+# -s 230400: Matches the Hardware Hub speed
+GPSD_OPTIONS="-n -G -s 230400"
+
+OPTIONS=""

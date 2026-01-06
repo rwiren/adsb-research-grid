@@ -1,0 +1,18 @@
+[Unit]
+Description=GNSS Splitter (Port 2001 Mirror)
+# Version: 1.0.0
+# Description: Creates a 'Safety Valve' port (2001) for visualization.
+# Isolates gpsd from the main Hardware Hub (2000) to prevent buffer overflows.
+After=gnss-receiver.service
+Requires=gnss-receiver.service
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=3
+# Connect to Main Hub (2000) -> Re-broadcast on Port 2001
+# 'fork' allows multiple clients (gpsd, scripts) to connect safely.
+ExecStart=/usr/bin/socat -d -d TCP-LISTEN:2001,reuseaddr,fork TCP:127.0.0.1:2000
+
+[Install]
+WantedBy=multi-user.target

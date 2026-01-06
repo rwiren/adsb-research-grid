@@ -1,38 +1,51 @@
 ---
-# ==============================================================================
-# Role: Recorder
-# Description: Deploys the raw data recording script and systemd service.
-# ==============================================================================
-
-- name: Create data storage directory
+- name: "Create data storage directory"
   file:
-    path: /home/pi/adsb_data
+    path: "/home/pi/adsb_data"
     state: directory
-    owner: pi
-    group: pi
-    mode: '0755'
+    owner: "pi"
+    group: "pi"
+    mode: "0755"
 
-- name: Deploy ADS-B Recording Script (v1.1)
+# --- ADS-B RECORDER ---
+- name: "Deploy ADS-B Recording Script (v1.1)"
   template:
-    src: adsb_record.sh.j2
-    dest: /home/pi/adsb_record.sh
-    owner: pi
-    group: pi
-    mode: '0755'
-  notify: Restart Recorder Service
+    src: "adsb_record.sh.j2"
+    dest: "/home/pi/adsb_record.sh" # Kept in home as per your existing setup
+    owner: "pi"
+    group: "pi"
+    mode: "0755"
 
-- name: Deploy Systemd Service Unit
+- name: "Deploy ADS-B Recorder Service"
   template:
-    src: adsb-recorder.service.j2
-    dest: /etc/systemd/system/adsb-recorder.service
-    owner: root
-    group: root
-    mode: '0644'
-  notify: Restart Recorder Service
+    src: "adsb-recorder.service.j2"
+    dest: "/etc/systemd/system/adsb-recorder.service"
+    mode: "0644"
+  notify: restart adsb-recorder
 
-- name: Ensure Recorder Service is Enabled and Started
+# --- GNSS RECORDER (NEW) ---
+- name: "Deploy GNSS Recording Script"
+  template:
+    src: "gnss_record.sh.j2"
+    dest: "/usr/local/bin/gnss_record.sh"
+    owner: "pi"
+    group: "pi"
+    mode: "0755"
+
+- name: "Deploy GNSS Recorder Service"
+  template:
+    src: "gnss-recorder.service.j2"
+    dest: "/etc/systemd/system/gnss-recorder.service"
+    mode: "0644"
+  notify: restart gnss-recorder
+
+# --- SERVICE CONTROL ---
+- name: "Ensure Recorders are Enabled and Started"
   systemd:
-    name: adsb-recorder.service
+    name: "{{ item }}"
     enabled: yes
     state: started
     daemon_reload: yes
+  loop:
+    - adsb-recorder
+    - gnss-recorder

@@ -1,6 +1,12 @@
 ---
-- name: Restart Recorder Service
+- name: restart adsb-recorder
   systemd:
-    name: adsb-recorder.service
+    name: adsb-recorder
+    state: restarted
+    daemon_reload: yes
+
+- name: restart gnss-recorder
+  systemd:
+    name: gnss-recorder
     state: restarted
     daemon_reload: yes

@@ -1,49 +1,75 @@
 ---
-# ==============================================================================
-# Role: Common
-# Description: Base system configuration for all nodes.
-#              Updates, Tools, Firewall, and Locale fixes.
-# ==============================================================================
+# Version: 1.5.0
+# Role: common
+# Description: Removed Locale tasks to prevent Ansible errors.
 
-- name: Update apt cache
+- name: "[System] Update apt cache"
   apt:
     update_cache: yes
     cache_valid_time: 3600
+  become: yes
 
-- name: Upgrade all packages
+- name: "[System] Upgrade all packages"
   apt:
     upgrade: dist
+  become: yes
 
-- name: Install essential tools
+- name: "[System] Install essential tools"
   apt:
     name:
       - curl
       - wget
       - git
       - htop
-      - net-tools
+      - tmux
       - vim
-      - screen
+      - net-tools
+      - pps-tools
     state: present
+  become: yes
 
-- name: Set up UFW firewall (Allow SSH)
+- name: "[Firewall] Set up UFW (Allow SSH)"
   ufw:
     rule: allow
     port: '22'
     proto: tcp
+  become: yes
 
-- name: Enable UFW firewall
+- name: "[Firewall] Enable UFW"
   ufw:
     state: enabled
+  become: yes
 
-# --- NEW ADDITIONS (Locale Fixes) ---
-
-- name: Install 'locales-all' to fix LC_CTYPE warnings
-  apt:
-    name: locales-all
+# --- Fix: PPS (Pulse Per Second) Support ---
+- name: "[System] Enable PPS Support in Kernel (Bookworm)"
+  lineinfile:
+    path: /boot/firmware/config.txt
+    regexp: '^dtoverlay=pps-gpio'
+    line: 'dtoverlay=pps-gpio,gpiopin=4'
     state: present
+  register: pps_config_bookworm
+  ignore_errors: yes
+  become: yes
 
-- name: Set system locale to en_US.UTF-8
-  # FIX: Used 'update-locale' instead of 'localectl' to avoid D-Bus "Access denied" errors
-  command: update-locale LANG=en_US.UTF-8
-  changed_when: false
+- name: "[System] Enable PPS Support in Kernel (Legacy)"
+  lineinfile:
+    path: /boot/config.txt
+    regexp: '^dtoverlay=pps-gpio'
+    line: 'dtoverlay=pps-gpio,gpiopin=4'
+    state: present
+  register: pps_config_legacy
+  when: pps_config_bookworm.failed
+  become: yes
+
+- name: "[System] Load pps-gpio Module"
+  modprobe:
+    name: pps-gpio
+    state: present
+  become: yes
+
+- name: "[System] Add pps-gpio to /etc/modules"
+  lineinfile:
+    path: /etc/modules
+    line: "pps-gpio"
+    state: present
+  become: yes
