@@ -1,6 +1,15 @@
 # 📝 Project Changelog
 
 
+## [0.3.2] - 2026-01-06
+### Added
+- **Cross-Platform Validation:** Successfully benchmarked the analysis pipeline on three hardware architectures:
+    - **Apple Silicon (M4 Max):** 26.46s (Baseline)
+    - **Windows x86_64 (WSL 2):** 34.13s (~1.3x slower)
+    - **Intel Mac (2017):** 60.45s (~2.3x slower)
+- **Documentation:** Added "How to Contribute" guide to README.
+
+
 ## [0.3.0] - 2026-01-06
 ### Added
 - **Scientific Audit Suite:** Promoted `scripts/eda_check.py` to "Master Edition".

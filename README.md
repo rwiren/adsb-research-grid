@@ -121,3 +121,22 @@ If you use this dataset, architecture, or tooling in your research, please cite:
 > Wiren, Richard. (2026). *ADS-B Research Grid: Distributed Sensor Network for Spoofing Detection* [Software]. https://github.com/rwiren/adsb-research-grid
 
 See [CITATION.cff](CITATION.cff) for BibTeX format.
+
+---
+## 🤝 How to Contribute
+
+We follow a strict DevOps workflow to ensure integrity across Apple Silicon, Intel, and Windows.
+
+### 1. The Golden Rule
+**Main is protected.** Never push directly to main. Always use a feature branch.
+
+### 2. Workflow
+1.  **Sync:** `git checkout main && git pull origin main`
+2.  **Branch:** `git checkout -b feature/your-feature-name`
+3.  **Test:** Run `make analyze` (Must pass locally!)
+4.  **Commit:** Use [Conventional Commits](https://www.conventionalcommits.org/) (e.g., `feat:`, `fix:`, `docs:`).
+5.  **Merge:** Open a Pull Request.
+
+### 3. Setup
+- Run `make setup` to initialize the environment.
+- Fetch data manually from `sensor-north` (data is not in git).
