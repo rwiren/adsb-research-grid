@@ -1,0 +1,15 @@
+[Unit]
+Description=GNSS Raw Data Recorder
+After=gnss-receiver.service
+Requires=gnss-receiver.service
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+ExecStart=/bin/bash /usr/local/bin/gnss_record.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

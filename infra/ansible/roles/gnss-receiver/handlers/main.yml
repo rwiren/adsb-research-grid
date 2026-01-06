@@ -1,0 +1,34 @@
+---
+# Version: 1.4.0
+# Handlers for gnss-receiver role
+
+- name: restart gnss-receiver
+  systemd:
+    name: gnss-receiver
+    state: restarted
+    daemon_reload: yes
+
+- name: restart gnss-ntrip-client
+  systemd:
+    name: gnss-ntrip-client
+    state: restarted
+    daemon_reload: yes
+
+- name: restart gnss-splitter
+  systemd:
+    name: gnss-splitter
+    state: restarted
+    daemon_reload: yes
+
+- name: restart gpsd
+  systemd:
+    name: gpsd
+    state: restarted
+    daemon_reload: yes
+
+# NEW HANDLER
+- name: restart gnss-configurator
+  systemd:
+    name: gnss-configurator
+    state: restarted
+    daemon_reload: yes

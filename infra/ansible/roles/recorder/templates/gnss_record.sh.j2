@@ -1,0 +1,29 @@
+#!/bin/bash
+# ------------------------------------------------------------------
+# Filename: gnss_record.sh
+# Description: Captures Raw GNSS stream (NMEA/UBX) from Port 2000
+# ------------------------------------------------------------------
+
+# Configuration
+SOURCE_HOST="127.0.0.1"
+SOURCE_PORT="2000"
+DATA_DIR="/home/pi/adsb_data"
+# Rotates file every 15 minutes (900 seconds) to match ADS-B recorder
+DURATION="900" 
+
+# Ensure directory exists
+mkdir -p "$DATA_DIR"
+
+while true; do
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    FILENAME="${DATA_DIR}/raw_gnss_${TIMESTAMP}.log"
+    
+    echo "$(date): Recording GNSS Stream to $FILENAME for $DURATION seconds..."
+    
+    # capture for DURATION seconds then exit, loop restarts it
+    # timeout handles the duration
+    timeout "$DURATION" socat -u TCP:"$SOURCE_HOST":"$SOURCE_PORT" CREATE:"$FILENAME"
+    
+    # Small pause to prevent rapid looping on error
+    sleep 1
+done

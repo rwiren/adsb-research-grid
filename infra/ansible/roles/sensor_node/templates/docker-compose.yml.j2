@@ -1,95 +1,41 @@
 version: '3.8'
+# Version: 2.0.0
+# Description: Final Verified State. Fixed SDR Serial + Redundant Location Vars.
 
 services:
-  # --- CORE DECODER ---
-  readsb:
-    image: ghcr.io/sdr-enthusiasts/docker-readsb-protobuf:latest
-    container_name: readsb
-    restart: always
-    tty: true
-    devices:
-      - /dev/bus/usb:/dev/bus/usb
+  # --- CORE FEEDER (Ultrafeeder) ---
+  ultrafeeder:
+    image: ghcr.io/sdr-enthusiasts/docker-adsb-ultrafeeder:latest
+    container_name: ultrafeeder
+    hostname: ultrafeeder
+    restart: unless-stopped
+    device_cgroup_rules:
+      - 'c 189:* rwm'
     ports:
-      - "8080:8080"   # Web Map
-      - "30005:30005" # Beast Output
+      - "8080:80"        # Tar1090 Web Interface
+      - "30005:30005"    # Beast Output
     environment:
+      # --- General Settings ---
+      - LOGLEVEL=error
       - TZ={{ timezone }}
-      - READSB_DEVICE_TYPE=rtlsdr
-      - READSB_NET_ENABLE=true
-      - READSB_DCFILTER=true
-      - READSB_FIX=true
-      - READSB_GAIN={{ adsb_gain }}
+      
+      # --- Location (REDUNDANT MAPPING) ---
+      # Fixes the "North Sea" 0.00 issue
+      - LAT={{ lat }}
+      - LON={{ lon }}
       - READSB_LAT={{ lat }}
       - READSB_LON={{ lon }}
-      - READSB_ALT={{ alt }}
-    tmpfs:
-      - /run/readsb
-      - /var/log
+      - ALT={{ alt }}
 
-  # --- FEEDERS (Conditional) ---
+      # --- SDR Config ---
+      - READSB_DEVICE_TYPE=rtlsdr
+      # Mapped to '00001000' in host_vars
+      - READSB_RTLSDR_DEVICE={{ sdr_serial | default('0') }}
+      - READSB_RTLSDR_PPM={{ adsb_ppm }}
+      - READSB_GAIN={{ adsb_gain }}
 
-  piaware:
-    image: flightaware/piaware:latest
-    restart: always
-    environment:
-      - BEASTHOST=readsb
-      - BEASTPORT=30005
-      - ALLOW_MLAT=yes
-      - MLAT_RESULTS=yes
-      # Only inject ID if defined in host_vars
-      {% if piaware_feeder_id is defined %}
-      - FEEDER_ID={{ piaware_feeder_id }}
-      {% endif %}
-    depends_on:
-      - readsb
-
-  fr24feed:
-    image: flightradar24/fr24feed:latest
-    restart: always
-    environment:
-      - BEASTHOST=readsb
-      - BEASTPORT=30005
-      {% if fr24_key is defined %}
-      - FR24KEY={{ fr24_key }}
-      {% endif %}
-    depends_on:
-      - readsb
-
-  planefinder:
-    image: planefinder/pfclient:latest
-    restart: always
-    environment:
-      - BEASTHOST=readsb
-      - BEASTPORT=30005
-      {% if pf_sharecode is defined %}
-      - SHARECODE={{ pf_sharecode }}
-      {% endif %}
-    ports:
-      - "30053:30053"
-    depends_on:
-      - readsb
-
-  radarbox:
-    image: ghcr.io/sdr-enthusiasts/docker-radarbox-flightstick:latest
-    restart: always
-    environment:
-      - BEASTHOST=readsb
-      - BEASTPORT=30005
-      {% if rb_key is defined %}
-      - SHARING_KEY={{ rb_key }}
-      {% endif %}
-    depends_on:
-      - readsb
-
-  opensky:
-    image: ghcr.io/sdr-enthusiasts/docker-opensky-feeder:latest
-    restart: always
-    environment:
-      - BEASTHOST=readsb
-      - BEASTPORT=30005
-      {% if opensky_username is defined %}
-      - OPENSKY_USERNAME={{ opensky_username }}
-      - OPENSKY_SERIAL={{ opensky_serial }}
-      {% endif %}
-    depends_on:
-      - readsb
+    volumes:
+      - /dev:/dev:ro
+      - /run/readsb:/run/readsb
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/sb_graph:/var/lib/sb_graph

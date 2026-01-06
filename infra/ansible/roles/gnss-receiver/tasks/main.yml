@@ -1,0 +1,138 @@
+---
+# Version: 6.1.0 (Updated 2026-01-07)
+# Role: gnss-receiver
+# Description: Adds Persistence Layer and U-blox Baud Rate Fix.
+
+- name: "[Setup] Install Build Dependencies & Tools"
+  apt:
+    name:
+      - build-essential
+      - git
+      - cmake
+      - libssl-dev
+      - socat
+      - gpsd
+      - gpsd-clients
+      - coreutils  # Added for stty
+    state: present
+    update_cache: yes
+  become: yes
+
+# --- RTKLIB SETUP ---
+- name: "[Cleanup] Remove existing RTKLIB directory"
+  file:
+    path: /opt/RTKLIB
+    state: absent
+  when: force_rebuild | default(false)
+
+- name: "[Setup] Clone RTKLIB (Demo5 Fork)"
+  git:
+    repo: 'https://github.com/rtklibexplorer/RTKLIB.git'
+    dest: /opt/RTKLIB
+    version: demo5
+    force: yes
+    depth: 1
+  register: repo_clone
+
+- name: "[Build] Compile str2str Tool"
+  shell: |
+    make clean
+    make
+  args:
+    chdir: /opt/RTKLIB/app/consapp/str2str/gcc
+  when: repo_clone.changed or ansible_check_mode
+
+- name: "[Install] Deploy str2str Binary"
+  copy:
+    src: /opt/RTKLIB/app/consapp/str2str/gcc/str2str
+    dest: /usr/local/bin/str2str
+    mode: '0755'
+    remote_src: yes
+  become: yes
+  notify: restart gnss-receiver
+
+# --- HARDWARE INITIALIZATION (New) ---
+
+- name: "[Init] Deploy U-blox Initialization Script"
+  copy:
+    src: ublox_init.sh
+    dest: /usr/local/bin/ublox_init.sh
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: "[Init] Create Systemd Drop-in Directory for GNSS Receiver"
+  file:
+    path: /etc/systemd/system/gnss-receiver.service.d
+    state: directory
+    mode: '0755'
+
+- name: "[Init] Deploy Systemd Override (Baud Rate Fix)"
+  template:
+    src: gnss-receiver-override.conf.j2
+    dest: /etc/systemd/system/gnss-receiver.service.d/override.conf
+    mode: '0644'
+  notify: restart gnss-receiver
+
+# --- SERVICE DEPLOYMENT ---
+
+# 1. Hardware Hub (Port 2000)
+- name: "[Config] Deploy Systemd Service (Hardware Hub)"
+  template:
+    src: gnss-receiver.service.j2
+    dest: /etc/systemd/system/gnss-receiver.service
+    mode: '0644'
+  notify: restart gnss-receiver
+
+# 2. RTK Injector (NTRIP -> Port 2000)
+- name: "[RTK] Deploy NTRIP Client Service (Injector)"
+  template:
+    src: gnss-ntrip-client.service.j2
+    dest: /etc/systemd/system/gnss-ntrip-client.service
+    mode: '0644'
+  notify: restart gnss-ntrip-client
+
+# 3. Splitter (Port 2000 -> Port 2001)
+- name: "[Config] Deploy Splitter Service (Port 2001)"
+  template:
+    src: gnss-splitter.service.j2
+    dest: /etc/systemd/system/gnss-splitter.service
+    mode: '0644'
+  notify: restart gnss-splitter
+
+# 4. GPSD Config (Uses Port 2001)
+- name: "[Tools] Configure GPSD to use Splitter Port 2001"
+  template:
+    src: gpsd.j2
+    dest: /etc/default/gpsd
+    mode: '0644'
+  notify: restart gpsd
+
+# --- PERSISTENCE LAYER ---
+
+- name: "[Config] Deploy Configuration Script"
+  copy:
+    src: configure_gnss.sh
+    dest: /usr/local/bin/configure_gnss.sh
+    mode: '0755'
+
+- name: "[Config] Deploy Configurator Service"
+  template:
+    src: gnss-configurator.service.j2
+    dest: /etc/systemd/system/gnss-configurator.service
+    mode: '0644'
+  notify: restart gnss-configurator
+
+# --- ENABLE SERVICES ---
+- name: "[Service] Enable and Start All Services"
+  systemd:
+    name: "{{ item }}"
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  loop:
+    - gnss-receiver
+    - gnss-ntrip-client
+    - gnss-splitter
+    - gpsd
+    - gnss-configurator

@@ -7,10 +7,12 @@
   become: true
   vars_files:
     - ../group_vars/all.yml
-    # - ../group_vars/all/vault.yml  <-- Uncomment if using vault
+    # - ../group_vars/all/vault.yml
 
   roles:
     - common
     - zerotier
     - sensor_node
-    - recorder      # <--- NEW ROLE ADDED
+    - recorder
+    - gnss-receiver
+    - strat1_timing    # <--- NEW: Installs Chrony (Stratum 1 Time)

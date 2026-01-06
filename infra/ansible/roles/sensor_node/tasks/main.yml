@@ -1,4 +1,7 @@
 ---
+# Version: 1.1.0
+# Update: Added 'remove_orphans' to clean up old containers (readsb) causing port conflicts.
+
 - name: Install Docker prerequisites
   apt:
     name:
@@ -6,6 +9,7 @@
       - curl
       - gnupg
     state: present
+    update_cache: yes
 
 - name: Create directory for Docker key
   file:
@@ -20,10 +24,10 @@
     mode: '0644'
 
 - name: Add Docker repository
-  shell: |
-    echo     "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian     $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable" |     tee /etc/apt/sources.list.d/docker.list > /dev/null
-  args:
-    creates: /etc/apt/sources.list.d/docker.list
+  apt_repository:
+    repo: "deb [arch=arm64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable"
+    state: present
+    filename: docker
 
 - name: Update apt cache (again)
   apt:
@@ -37,7 +41,6 @@
       - containerd.io
       - docker-buildx-plugin
       - docker-compose-plugin
-      - python3-docker  # <--- This is the correct way to install the SDK on Pi
     state: present
 
 - name: Add user 'pi' to docker group
@@ -47,10 +50,10 @@
     append: yes
 
 - name: Enable Docker service
-  service:
+  systemd:
     name: docker
-    state: started
     enabled: yes
+    state: started
 
 - name: Force Blacklist DVB Drivers (Nuclear Option)
   copy:
@@ -58,10 +61,7 @@
     content: |
       blacklist dvb_usb_rtl28xxu
       blacklist rtl2832
-      blacklist dvb_usb_v2
-      blacklist dvb_core
-    owner: root
-    group: root
+      blacklist rtl2830
     mode: '0644'
 
 - name: Deploy Sensor Stack (Docker Compose)
@@ -75,3 +75,4 @@
     project_src: /opt/adsb-grid
     state: present
     pull: always
+    remove_orphans: true   # <--- THE FIX: Kills the old 'readsb' container automatically

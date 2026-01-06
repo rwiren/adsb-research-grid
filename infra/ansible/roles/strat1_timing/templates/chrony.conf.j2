@@ -1,0 +1,38 @@
+# Welcome to the chrony configuration file.
+# Specially tuned for Stratum 1 PPS Timing
+
+# 1. Use the PPS source (Kernel PPS)
+#    refid: PPS tag for logs
+#    lock: Lock NMEA to this PPS signal
+#    poll: 4 (16 seconds) for fast convergence
+refclock PPS /dev/pps0 refid PPS poll 4 precision 1e-7 prefer
+
+# 2. Use the NMEA source (via SHM from GPSD)
+#    offset: 0.200 (approx serial delay, compensated by PPS lock)
+#    noselect: Don't use for time, just for "seconds" numbering
+refclock SHM 0 refid GPS precision 1e-1 offset 0.200 delay 0.2 noselect
+
+# 3. Fallback Pool (in case GPS fails)
+pool 2.debian.pool.ntp.org iburst
+
+# 4. Tuning for Low Latency / Static Sensor
+#    Drift file for reboot persistence
+driftfile /var/lib/chrony/chrony.drift
+#    Step the clock if error is > 0.1s for first 3 updates
+makestep 0.1 3
+#    Hardware timestamping on interface (if supported)
+hwtimestamp *
+
+# 5. Access Control
+#    Allow local network to query time (optional)
+allow 192.168.0.0/16
+allow 10.0.0.0/8
+
+# 6. Logging (Scientific Data Capture) -- NEW SECTION
+#    Log tracking: Records offset/freq/residual
+#    Log measurements: Records raw source data
+log tracking measurements statistics
+logdir /var/log/chrony
+
+# 7. Real Time Clock sync
+rtcsync

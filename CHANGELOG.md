@@ -1,6 +1,18 @@
 # 📝 Project Changelog
 
 
+## [0.3.3] - 2026-01-07
+### Added
+- **Recorder:** Implemented dual-stream recording; now capturing raw GNSS (NMEA) alongside ADS-B data.
+- **Timing:** Enabled scientific logging in Chrony (`tracking.log`, `statistics.log`) for Stratum 1 drift analysis.
+- **Config:** Hardcoded RTK-derived precise coordinates for `sensor-north` to improve MLAT anchor accuracy.
+
+### Fixed
+- **GNSS:** Resolved U-blox baud rate mismatch loop by implementing active `gpsctl` switching (9600 -> 230400).
+- **Systemd:** Hardened `gnss-receiver` service with `ExecStartPre` hooks and `socat` baud locking.
+- **Ansible:** Fixed missing service restart handlers for the recorder role.
+
+
 ## [0.3.2] - 2026-01-06
 ### Added
 - **Cross-Platform Validation:** Successfully benchmarked the analysis pipeline on three hardware architectures:
