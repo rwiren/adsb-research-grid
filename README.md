@@ -138,5 +138,8 @@ We follow a strict DevOps workflow to ensure integrity across Apple Silicon, Int
 5.  **Merge:** Open a Pull Request.
 
 ### 3. Setup
-- Run `make setup` to initialize the environment.
-- Fetch data manually from `sensor-north` (data is not in git).
+- **Vault Password:** You need the project secret to decrypt configuration files.
+    - *Action:* Ask the Maintainer for the password, then run:
+    - `echo 'THE_PASSWORD' > .vault_pass`
+- **Environment:** Run `make setup` to initialize the Python environment.
+- **Data:** Fetch `.bin` files manually from `sensor-north` (data is not in git).
