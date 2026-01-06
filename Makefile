@@ -1,45 +1,54 @@
-# ADS-B Research Grid - Control Plane
-# v0.3.0
+# ==============================================================================
+# 🛠️ ADS-B Research Grid - Controller Makefile
+# Version: v0.3.1
+# Date: 2026-01-06
+#
+# This file automates environment setup, deployment, and data analysis.
+# ==============================================================================
 
-.PHONY: help deploy analyze clean sync
+.PHONY: help setup deploy analyze clean
 
-# ---------------------------------------------------------
-# 🆘 Help
-# ---------------------------------------------------------
+# --- Global Variables ---
+VENV_DIR = venv
+PYTHON = $(VENV_DIR)/bin/python3
+PIP = $(VENV_DIR)/bin/pip
+ANSIBLE_PLAYBOOK = $(VENV_DIR)/bin/ansible-playbook
+INVENTORY = infra/ansible/inventory/hosts.prod
+PLAYBOOK = infra/ansible/playbooks/site.yml
+
+# --- Default Target ---
 help:
-	@echo "📡 ADS-B Grid Commands:"
-	@echo "  make deploy   - Update the sensor nodes (Ansible)"
-	@echo "  make sync     - Fetch new data from sensor-north"
-	@echo "  make analyze  - Run the Scientific Audit (v5 Master)"
-	@echo "  make clean    - Remove old analysis artifacts"
+	@echo "----------------------------------------------------------------"
+	@echo "📡 ADS-B Research Grid Automation"
+	@echo "----------------------------------------------------------------"
+	@echo "make setup    - Create Python venv and install dependencies"
+	@echo "make deploy   - Run Ansible to provision/update the grid"
+	@echo "make analyze  - Run the EDA script (Data Quality Check)"
+	@echo "make clean    - Remove virtual environment and temp files"
+	@echo "----------------------------------------------------------------"
 
-# ---------------------------------------------------------
-# 🚀 Deployment (Ansible)
-# ---------------------------------------------------------
+# --- 1. Environment Setup ---
+setup:
+	@echo "🔧 Creating Python virtual environment..."
+	python3 -m venv $(VENV_DIR)
+	@echo "📦 Installing requirements..."
+	$(PIP) install --upgrade pip
+	$(PIP) install -r requirements.txt
+	@echo "✅ Setup complete. To activate: source $(VENV_DIR)/bin/activate"
+
+# --- 2. Deployment (Ansible) ---
 deploy:
-	ansible-playbook infra/ansible/playbooks/site.yml -i infra/ansible/inventory/hosts.prod
+	@echo "🚀 Deploying configuration to the grid..."
+	$(ANSIBLE_PLAYBOOK) -i $(INVENTORY) $(PLAYBOOK) --vault-password-file .vault_pass
 
-# ---------------------------------------------------------
-# 📥 Data Sync (Fetch from Pi)
-# ---------------------------------------------------------
-# Uses scp to grab all bin files. 
-# Note: "quotes" around the remote path prevent local wildcard expansion errors.
-sync:
-	@echo "[INFO] Syncing data from Sensor North..."
-	scp -C "pi@sensor-north:~/adsb_data/*.bin" data/raw/
-
-# ---------------------------------------------------------
-# 📊 Analysis (Master Edition)
-# ---------------------------------------------------------
-# Runs the new scripts/eda_check.py with the correct directory argument
+# --- 3. Analysis (Python) ---
 analyze:
-	@echo "[INFO] Running Scientific Audit..."
-	python3 scripts/eda_check.py --dir data/raw --lat 60.319555 --lon 24.830816
+	@echo "📊 Running Exploratory Data Analysis (EDA)..."
+	$(PYTHON) scripts/eda_check.py
 
-# ---------------------------------------------------------
-# 🧹 Housekeeping
-# ---------------------------------------------------------
+# --- 4. Maintenance ---
 clean:
-	@echo "[INFO] Cleaning analysis output..."
-	rm -rf analysis/latest/*
-	@echo "[SUCCESS] Analysis folder clean."
+	@echo "🧹 Cleaning up..."
+	rm -rf $(VENV_DIR)
+	find . -type d -name "__pycache__" -exec rm -rf {} +
+	@echo "✨ Clean complete."
