@@ -4,7 +4,7 @@ authors:
   - family-names: "Wiren"
     given-names: "Richard"
 title: "ADS-B Research Grid: Distributed Sensor Network for Spoofing Detection"
-version: 0.2.2
+version: 0.3.2
 date-released: 2026-01-06
 url: "https://github.com/rwiren/adsb-research-grid"
 keywords:
