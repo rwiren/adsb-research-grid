@@ -9,19 +9,19 @@ services:
     devices:
       - /dev/bus/usb:/dev/bus/usb
     ports:
-      - "8080:8080"     # Web Interface
-      - "30005:30005"   # Raw Data (Beast)
+      - "8080:8080"
+      - "30005:30005"
     environment:
       - TZ={{ timezone }}
       - READSB_DEVICE_TYPE=rtlsdr
+      # CORRECTED VARIABLE: This container requires '_ENABLE' to add the --net flag
+      - READSB_NET_ENABLE=true
       - READSB_DCFILTER=true
       - READSB_FIX=true
-      # This connects the template to your group_vars!
       - READSB_GAIN={{ adsb_gain }}
       - READSB_LAT=60.319555
       - READSB_LON=24.830816
       - READSB_ALT=100
-    # tmpfs saves your 32GB SD card by writing logs/temp data to RAM
     tmpfs:
       - /run/readsb
       - /var/log
