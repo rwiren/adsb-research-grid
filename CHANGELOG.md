@@ -1,5 +1,16 @@
 # 📝 Project Changelog
 
+## [0.2.2] - 2026-01-06
+### Fixed
+- **Sensor Node Networking:** Resolved critical issue where `readsb` container ports were closed.
+- **Configuration:** Forced `--net` flags using `READSB_EXTRA_ARGS` to bypass container variable parsing issues.
+- **Data Recording:** Verified recording of binary data (non-zero byte files confirmed).
+
+### Added
+- **Repository Structure:** Added `requirements.txt`, `Makefile`, and `CITATION.cff`.
+- **Analysis Tools:** Added `scripts/eda_check.py` for parsing Beast Binary files and generating health-check plots.
+- **License:** Added MIT License.
+
 ## [v0.2.0] - 2026-01-05 (Infrastructure Baseline)
 ### 🚀 Added
 * **Ansible Roles:**

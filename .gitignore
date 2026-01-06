@@ -24,3 +24,19 @@ data/processed/*
 venv/
 *.egg-info/
 infra/ansible/.vault_pass
+# --- Research Data ---
+# Ignore all files in data/raw, but keep the folder itself
+data/raw/*
+!data/raw/.gitkeep
+
+# Ignore processed CSVs (optional, depending on size)
+data/processed/*.csv
+
+# Ignore local analysis plots
+analysis/*.png
+analysis/*.pdf
+
+# System
+__pycache__/
+*.pyc
+.DS_Store
