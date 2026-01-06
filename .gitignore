@@ -1,42 +1,16 @@
-# --- OS & Mac Junk ---
-.DS_Store
-*.log
-__pycache__/
-
-# --- Secrets & Keys ---
-*.pem
-*.key
-id_rsa
-zerotier_secret_ids.txt
-
-# --- Ansible ---
-*.retry
-*.bg
-infra/ansible/inventory/hosts.dev
-
-# --- Data (The Black Hole) ---
-data/raw/*
-data/processed/*
-!data/raw/.gitkeep
-!data/processed/.gitkeep
-
-# --- Python ---
-venv/
-*.egg-info/
-infra/ansible/.vault_pass
-# --- Research Data ---
-# Ignore all files in data/raw, but keep the folder itself
-data/raw/*
-!data/raw/.gitkeep
-
-# Ignore processed CSVs (optional, depending on size)
+# --- Research Data & Artifacts ---
+data/raw/*.bin
 data/processed/*.csv
+analysis/**/*.png
+analysis/**/*.pdf
 
-# Ignore local analysis plots
-analysis/*.png
-analysis/*.pdf
-
-# System
+# --- Python & System ---
 __pycache__/
 *.pyc
 .DS_Store
+venv/
+.pytest_cache/
+
+# --- Ansible ---
+*.retry
+infra/ansible/.vault_pass

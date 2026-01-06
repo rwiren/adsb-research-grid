@@ -1,5 +1,15 @@
 # 📝 Project Changelog
 
+## [0.2.3] - 2026-01-06
+### Added
+- **License:** Officially added MIT License file.
+- **Dependencies:** Froze exact versions in `requirements.txt` (numpy, pyModeS, etc.).
+- **Documentation:** Finalized README with "Research Workflow" and citation data.
+
+### Security
+- **Git:** Added strict ignore rules for `.vault_pass` and raw data binaries.
+
+
 ## [0.2.2] - 2026-01-06
 ### Fixed
 - **Sensor Node Networking:** Resolved critical issue where `readsb` container ports were closed.
