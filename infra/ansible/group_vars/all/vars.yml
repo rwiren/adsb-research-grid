@@ -1,6 +1,5 @@
----
 # ==============================================================================
-# Global Variables
+# Global Variables (Cleartext)
 # ==============================================================================
 
 # Project Name
@@ -9,9 +8,8 @@ project_name: "adsb-research-grid"
 # Timezone
 timezone: "Europe/Helsinki"
 
-# ZeroTier Network ID (Verified from Screenshot)
+# ZeroTier Network ID
 zerotier_network_id: "45b6e887e22d8422"
 
 # ADS-B Receiver Settings
-# 'autogain' is best for general use. Use specific dB (e.g. 49.6) if needed.
 adsb_gain: autogain
