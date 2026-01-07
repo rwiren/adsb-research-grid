@@ -1,13 +1,37 @@
+# -----------------------------------------------------------------------------
+# FILE: infra/ansible/inventory/hosts.prod
+# VERSION: 2.3
+# DATE: 2026-01-07
+# DESCRIPTION: Production inventory for ADS-B Research Grid.
+# -----------------------------------------------------------------------------
+
 [controller]
 localhost ansible_connection=local
 
 [sensors]
-# We now use the ZeroTier IP as the primary address
-sensor-north ansible_host=192.168.192.130 ansible_user=pi zt_ip=192.168.192.130
+# -----------------------------------------------------------------------------
+# NODE: sensor-north
+# HARDWARE: RPi 4 + FlightAware Pro Stick Plus (Blue) + 60cm Rooftop Antenna
+# ROLE: Baseline/Control Node
+# -----------------------------------------------------------------------------
+# TUNING HISTORY (Rooftop Antenna):
+# - 29.7 dB: CLIPPING (-1.5 dBFS) -> Too Loud
+# - 20.7 dB: CLIPPING (-1.8 dBFS) -> Still Too Loud (LNA Saturation)
+# - 12.5 dB: OPTIMAL  (-13.5 dBFS) -> Clean, but lost range (4 NM)
+# - 16.6 dB: CURRENT TARGET -> Attempting to recover range while keeping signal < -3 dBFS
+sensor-north ansible_host=192.168.192.130 ansible_user=pi zt_ip=192.168.192.130 sdr_type=rtlsdr sdr_gain=16.6 sdr_ppm=0
 
-# Placeholders for future nodes
-# sensor-east ansible_host=192.168.192.120 ansible_user=pi
-# sensor-west ansible_host=192.168.192.110 ansible_user=pi
+# -----------------------------------------------------------------------------
+# FUTURE NODES
+# -----------------------------------------------------------------------------
+# WEST: Silver Stick (No Amp = Max Gain 49.6 likely safe)
+# sensor-west ansible_host=192.168.192.110 ansible_user=pi zt_ip=192.168.192.110 sdr_type=rtlsdr sdr_gain=49.6 sdr_ppm=0
+
+# EAST: Jetvision Black (No Amp = Max Gain 49.6 likely safe)
+# sensor-east ansible_host=192.168.192.120 ansible_user=pi zt_ip=192.168.192.120 sdr_type=rtlsdr sdr_gain=49.6 sdr_ppm=0
+
+[sensors:vars]
+install_path=/opt/adsb-grid
 
 [tower]
 # tower-core ansible_host=192.168.192.100 ansible_user=pi

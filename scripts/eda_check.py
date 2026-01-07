@@ -23,7 +23,7 @@ import numpy as np
 # --- Configuration ---
 sns.set_theme(style="whitegrid")
 OUTPUT_DIR = "analysis/latest"
-SAMPLE_LIMIT = 50000 
+SAMPLE_LIMIT = 500000 
 
 # --- Helpers ---
 def haversine(lat1, lon1, lat2, lon2):
@@ -182,7 +182,7 @@ def run_analysis(input_dir, lat, lon):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dir", default="data/raw")
+    parser.add_argument("--dir", default="research_data/raw_logs")
     parser.add_argument("--lat", type=float, default=60.319555)
     parser.add_argument("--lon", type=float, default=24.830816)
     args = parser.parse_args()
