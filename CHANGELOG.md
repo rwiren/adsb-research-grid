@@ -1,3 +1,15 @@
+## [0.3.5] - 2026-01-08
+### Changed
+- **Sensor Calibration:** Finalized `sensor-north` gain at **16.6 dB** to accommodate high-gain rooftop antenna (reduced from 29.7 dB).
+- **Diagnostics:** Updated `scripts/check_signal_health.py` to **v3.2**, adding support for low-gain settings and expanded tuning tables.
+- **Documentation:** Updated Project Master File to **v0.3.5** status, reflecting the move to "Operational" for the North Node.
+
+### Added
+- **Validation Artifacts:** Added `analysis/latest/` plots confirming 189 NM range and -7.7 dBFS peak signal (zero clipping).
+- **Tower Architecture (Draft):** Added initial Ansible inventory for `tower-core` (Raspberry Pi 5).
+- **Data Pipeline (Draft):** Added `infra/database/` schema for TimescaleDB and `scripts/ingest_pipeline.py` for future state-vector stitching.
+- **Model Zoo:** Created `model_zoo/REGISTRY.md` defining the 12-architecture ensemble roadmap.
+
 
 ## [0.3.4] - 2026-01-07
 ### Added
