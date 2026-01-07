@@ -1,7 +1,7 @@
 # Securing the Skies: ADS-B Spoofing Detection Grid
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-v0.3.2-green.svg)](#)
+[![Version](https://img.shields.io/badge/Version-v0.3.4-green.svg)](#)
 [![Status](https://img.shields.io/badge/Status-Phase%203%3A%20Validation-success.svg)](#)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](#)
 
