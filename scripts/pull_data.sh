@@ -4,7 +4,8 @@
 
 # --- Configuration ---
 PI_USER="pi"
-PI_HOST="192.168.1.30"
+#PI_HOST="192.168.1.30"
+PI_HOST="192.168.192.130"
 REMOTE_DIR="~/adsb_data/"
 LOCAL_DIR="./research_data/raw_logs/"
 

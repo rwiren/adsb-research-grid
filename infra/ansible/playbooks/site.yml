@@ -5,14 +5,23 @@
 
 - hosts: sensors
   become: true
-  vars_files:
-    - ../group_vars/all.yml
-    # - ../group_vars/all/vault.yml
+  # Note: variables are auto-loaded from inventory/group_vars
+  # vars_files is not strictly needed if your directory structure is standard,
+  # but keeping it doesn't hurt if the paths are correct.
 
   roles:
+    # 1. System & Network (The Base)
     - common
     - zerotier
+
+    # 2. Hardware Drivers (Must come before consumers!)
+    - gnss-receiver   # <--- MOVED UP: Installs GPSD / RTKLIB
+
+    # 3. Time Synchronization (Needs GPSD)
+    - strat1_timing   # <--- MOVED UP: Configures Chrony to use GPS
+
+    # 4. Applications (Docker)
     - sensor_node
-    - recorder
-    - gnss-receiver
-    - strat1_timing    # <--- NEW: Installs Chrony (Stratum 1 Time)
+
+    # 5. Data Logging (Depends on everything above)
+    - recorder        # <--- MOVED DOWN: Now safe to run
