@@ -1,3 +1,17 @@
+
+## [0.3.4] - 2026-01-07
+### Added
+- **Scientific Dashboard:** New `gnss_unified.py` script generating Jitter histograms, CEP-50/95 target plots, and temporal correlation timelines.
+- **Automation:** New Ansible playbook `check_gnss.yml` for verifying sensor node status.
+- **Reporting:** Automatic generation of `REPORT_SUMMARY.md` with statistical baselines (Mean Jitter, CEP radius).
+
+### Changed
+- **Data Transport:** Updated `pull_data.sh` to sync hybrid datasets (both legacy `.log` NMEA and new `.json` GPSD files).
+- **Recording Architecture:** Switched sensor node recording from raw NMEA to GPSD JSON format to capture nanosecond PPS timing.
+
+### Deprecated
+- Legacy NMEA-only recording (replaced by JSON/PPS stream).
+
 # 📝 Project Changelog
 
 

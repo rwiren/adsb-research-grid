@@ -1,0 +1,36 @@
+---
+- name: Analyze GNSS and PPS Accuracy
+  hosts: sensor-north
+  become: true
+  vars:
+    local_script: scripts/check_gnss_pps.py
+    remote_script: /usr/local/bin/check_gnss_pps.py
+    remote_report: /tmp/gnss_report.png
+    local_report_dir: ./reports/
+
+  tasks:
+    - name: Ensure matplotlib is installed
+      apt:
+        name: python3-matplotlib
+        state: present
+        update_cache: yes
+
+    - name: Deploy analysis script
+      copy:
+        src: "{{ local_script }}"
+        dest: "{{ remote_script }}"
+        mode: '0755'
+
+    - name: Run analysis (Wait 60s...)
+      command: "python3 {{ remote_script }} --duration 60"
+      register: output
+
+    - name: Display Results
+      debug:
+        msg: "{{ output.stdout_lines }}"
+
+    - name: Fetch Report Image
+      fetch:
+        src: "{{ remote_report }}"
+        dest: "{{ local_report_dir }}"
+        flat: yes
