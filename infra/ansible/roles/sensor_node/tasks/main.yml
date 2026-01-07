@@ -1,8 +1,9 @@
 ---
-# Version: 1.1.0
-# Update: Added 'remove_orphans' to clean up old containers (readsb) causing port conflicts.
+# Version: 1.2.0
+# Role: sensor_node
+# Description: Installs Docker and deploys the ADS-B container stack.
 
-- name: Install Docker prerequisites
+- name: Install Docker Dependencies
   apt:
     name:
       - ca-certificates
@@ -10,30 +11,31 @@
       - gnupg
     state: present
     update_cache: yes
+  become: yes
 
-- name: Create directory for Docker key
+- name: Create Keyrings Directory
   file:
     path: /etc/apt/keyrings
     state: directory
     mode: '0755'
+  become: yes
 
-- name: Download Docker's official GPG key
-  get_url:
-    url: https://download.docker.com/linux/debian/gpg
-    dest: /etc/apt/keyrings/docker.asc
-    mode: '0644'
+- name: Add Docker GPG Key
+  shell: |
+    curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  args:
+    creates: /etc/apt/keyrings/docker.gpg
+  become: yes
 
-- name: Add Docker repository
-  apt_repository:
-    repo: "deb [arch=arm64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable"
-    state: present
-    filename: docker
+- name: Add Docker Repository
+  shell: |
+    echo \
+    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+    $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+    tee /etc/apt/sources.list.d/docker.list > /dev/null
+  become: yes
 
-- name: Update apt cache (again)
-  apt:
-    update_cache: yes
-
-- name: Install Docker Engine and Compose
+- name: Install Docker Engine
   apt:
     name:
       - docker-ce
@@ -42,18 +44,15 @@
       - docker-buildx-plugin
       - docker-compose-plugin
     state: present
+    update_cache: yes
+  become: yes
 
-- name: Add user 'pi' to docker group
+- name: Add User to Docker Group
   user:
-    name: pi
+    name: "{{ ansible_user }}"
     groups: docker
     append: yes
-
-- name: Enable Docker service
-  systemd:
-    name: docker
-    enabled: yes
-    state: started
+  become: yes
 
 - name: Force Blacklist DVB Drivers (Nuclear Option)
   copy:
@@ -63,16 +62,24 @@
       blacklist rtl2832
       blacklist rtl2830
     mode: '0644'
+  become: yes
+  notify: Reload Modprobe
+
+# --- FIX START: Create the Directory First ---
+- name: Create App Directory
+  file:
+    path: /opt/adsb-grid
+    state: directory
+    mode: '0755'
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  become: yes
+# --- FIX END ---
 
 - name: Deploy Sensor Stack (Docker Compose)
   template:
     src: docker-compose.yml.j2
     dest: /opt/adsb-grid/docker-compose.yml
     mode: '0644'
-
-- name: Ensure Sensor Stack is Running
-  community.docker.docker_compose_v2:
-    project_src: /opt/adsb-grid
-    state: present
-    pull: always
-    remove_orphans: true   # <--- THE FIX: Kills the old 'readsb' container automatically
+  become: yes
+  notify: Restart Sensor Stack

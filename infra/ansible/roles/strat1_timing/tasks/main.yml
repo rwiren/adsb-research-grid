@@ -1,29 +1,40 @@
 ---
 # Role: strat1_timing
-# Description: Configures Chrony to use GPS+PPS for Stratum 1 accuracy.
+# Description: Configures Chrony.
+# - RTK Nodes: Uses PPS for Stratum 1 accuracy.
+# - Standard Nodes: Uses standard internet NTP pool.
 
 - name: "[Time] Install Chrony"
   apt:
     name: chrony
     state: present
     update_cache: yes
+  become: yes
 
-- name: "[Time] Deploy Scientific Chrony Config"
+# --- RTK SPECIFIC TASKS (Sensor-North) ---
+
+- name: "[Time] Deploy Scientific Chrony Config (PPS)"
   template:
     src: chrony.conf.j2
     dest: /etc/chrony/chrony.conf
     mode: '0644'
   notify: restart chrony
+  become: yes
+  when: ntrip_host is defined  # <--- Only for High Precision Node
 
-- name: "[Time] Ensure Chrony is enabled and running"
-  systemd:
-    name: chrony
-    enabled: yes
-    state: started
-
-# Tweaking the kernel for low-latency GPIO processing (Optional but good for PPS)
 - name: "[System] Low Latency tuning"
   sysctl:
     name: kernel.sched_rt_runtime_us
     value: '-1'
     state: present
+  become: yes
+  when: ntrip_host is defined  # <--- Only for High Precision Node
+
+# --- COMMON TASKS ---
+
+- name: "[Time] Ensure Chrony is enabled and running"
+  service:
+    name: chrony
+    enabled: yes
+    state: started
+  become: yes

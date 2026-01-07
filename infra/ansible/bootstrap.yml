@@ -1,0 +1,33 @@
+---
+- name: Bootstrap New Node (Install ZeroTier)
+  hosts: all
+  become: yes
+  gather_facts: no
+
+  vars:
+    # Research Grid Network ID
+    zerotier_network_id: "45b6e887e22d8422"
+
+  tasks:
+    - name: Set Hostname
+      hostname:
+        name: "{{ hostname }}"
+
+    - name: Install ZeroTier
+      shell: curl -s https://install.zerotier.com | bash
+      args:
+        creates: /usr/sbin/zerotier-cli
+
+    - name: Join ZeroTier Network
+      command: zerotier-cli join {{ zerotier_network_id }}
+      register: zt_join
+      changed_when: "'200 join OK' in zt_join.stdout"
+
+    - name: Get Member ID
+      command: zerotier-cli info
+      register: zt_info
+      changed_when: false
+
+    - name: 🚨 RECORD THIS MEMBER ID 🚨
+      debug:
+        msg: "Go to my.zerotier.com and authorize this ID: {{ zt_info.stdout.split(' ')[2] }}"

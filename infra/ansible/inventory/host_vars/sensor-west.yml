@@ -1,0 +1,20 @@
+---
+# --- Identity & Location ---
+hostname: "sensor-west"
+timezone: "Europe/Helsinki"
+
+# Location (Kirkkonummi / Jorvas)
+lat: 60.1307
+lon: 24.5130
+alt: 30
+
+# --- Hardware Config ---
+# Jetvision (Black) needs higher gain than FlightAware (Blue)
+dump1090_gain: 49.6
+# Standard USB Audio index
+dump1090_device_index: 0
+
+# GPS: G-STAR IV (Standard Precision)
+# Usually appears as ttyUSB0. Baud 4800 is standard for G-STAR IV.
+gps_device: "/dev/ttyUSB0"
+gps_baud: 4800

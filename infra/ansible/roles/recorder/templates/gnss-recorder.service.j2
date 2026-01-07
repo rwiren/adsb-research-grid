@@ -1,15 +1,27 @@
 [Unit]
-Description=GNSS Raw Data Recorder
-After=gnss-receiver.service
+Description=GNSS Data Recorder Service
+After=network.target
+# --- FIX START: Conditional Dependency ---
+{% if ntrip_host is defined %}
+# For RTK Nodes (Sensor-North): Wait for the custom receiver stack
 Requires=gnss-receiver.service
+After=gnss-receiver.service
+{% else %}
+# For Standard Nodes (Sensor-West): Wait for standard GPSD
+Requires=gpsd.service
+After=gpsd.service
+{% endif %}
+# --- FIX END ---
 
 [Service]
 Type=simple
-User=pi
-Group=pi
-ExecStart=/bin/bash /usr/local/bin/gnss_record.sh
+User={{ ansible_user }}
+Group={{ ansible_user }}
+# Ensure the output directory exists
+ExecStartPre=/bin/mkdir -p /opt/adsb-grid/data/gnss
+ExecStart=/opt/adsb-grid/scripts/gnss_record.sh
 Restart=always
-RestartSec=5
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target

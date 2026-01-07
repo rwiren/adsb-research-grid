@@ -1,7 +1,7 @@
 ---
-# Version: 1.5.0
+# Version: 1.6.0
 # Role: common
-# Description: Removed Locale tasks to prevent Ansible errors.
+# Description: Added 'ufw' to essential tools AND conditional checks for PPS tasks.
 
 - name: "[System] Update apt cache"
   apt:
@@ -25,6 +25,7 @@
       - vim
       - net-tools
       - pps-tools
+      - ufw
     state: present
   become: yes
 
@@ -41,6 +42,8 @@
   become: yes
 
 # --- Fix: PPS (Pulse Per Second) Support ---
+# Only run these on nodes that actually have PPS hardware (e.g., Sensor-North)
+
 - name: "[System] Enable PPS Support in Kernel (Bookworm)"
   lineinfile:
     path: /boot/firmware/config.txt
@@ -50,6 +53,7 @@
   register: pps_config_bookworm
   ignore_errors: yes
   become: yes
+  when: ntrip_host is defined  # <--- Condition Added
 
 - name: "[System] Enable PPS Support in Kernel (Legacy)"
   lineinfile:
@@ -58,7 +62,8 @@
     line: 'dtoverlay=pps-gpio,gpiopin=4'
     state: present
   register: pps_config_legacy
-  when: pps_config_bookworm.failed
+  # Only run if it's an RTK node AND the previous Bookworm task failed
+  when: (ntrip_host is defined) and (pps_config_bookworm.failed | default(false))
   become: yes
 
 - name: "[System] Load pps-gpio Module"
@@ -66,6 +71,7 @@
     name: pps-gpio
     state: present
   become: yes
+  when: ntrip_host is defined  # <--- Condition Added (Fixes the Timeout)
 
 - name: "[System] Add pps-gpio to /etc/modules"
   lineinfile:
@@ -73,3 +79,4 @@
     line: "pps-gpio"
     state: present
   become: yes
+  when: ntrip_host is defined  # <--- Condition Added
