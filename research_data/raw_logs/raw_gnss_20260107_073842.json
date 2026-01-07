@@ -1,0 +1,16 @@
+{"class":"VERSION","release":"3.25","rev":"3.25","proto_major":3,"proto_minor":15}
+{"class":"DEVICES","devices":[{"class":"DEVICE","path":"tcp://127.0.0.1:2001","driver":"u-blox","activated":"2026-01-07T05:38:41.479Z","flags":1},{"class":"DEVICE","path":"/dev/pps0","driver":"PPS","activated":"2026-01-07T05:37:27.000Z"}]}
+{"class":"WATCH","enable":true,"json":true,"nmea":false,"raw":0,"scaled":false,"timing":false,"split24":false,"pps":false}
+{"class":"TPV","device":"tcp://127.0.0.1:2001","mode":0,"time":"2026-01-07T05:38:56.500Z","leapseconds":18,"ept":0.005}
+{"class":"PPS","device":"/dev/pps0","real_sec":1767764337,"real_nsec":0,"clock_sec":1767764336,"clock_nsec":999999379,"precision":-20,"shm":"NTP1"}
+{"class":"TPV","device":"tcp://127.0.0.1:2001","mode":0,"time":"2026-01-07T05:40:09.900Z","leapseconds":18,"ept":0.005}
+{"class":"PPS","device":"/dev/pps0","real_sec":1767764410,"real_nsec":0,"clock_sec":1767764410,"clock_nsec":132,"precision":-20,"shm":"NTP1"}
+{"class":"TPV","device":"tcp://127.0.0.1:2001","mode":0,"time":"2026-01-07T05:47:46.800Z","leapseconds":18,"ept":0.005}
+{"class":"PPS","device":"/dev/pps0","real_sec":1767764867,"real_nsec":0,"clock_sec":1767764866,"clock_nsec":999999748,"precision":-20,"shm":"NTP1"}
+{"class":"TPV","device":"tcp://127.0.0.1:2001","mode":0,"time":"2026-01-07T05:47:48.700Z","leapseconds":18,"ept":0.005}
+{"class":"PPS","device":"/dev/pps0","real_sec":1767764869,"real_nsec":0,"clock_sec":1767764868,"clock_nsec":999999651,"precision":-20,"shm":"NTP1"}
+{"class":"TPV","device":"tcp://127.0.0.1:2001","mode":0,"time":"2026-01-07T05:51:21.500Z","leapseconds":18,"ept":0.005}
+{"class":"PPS","device":"/dev/pps0","real_sec":1767765082,"real_nsec":0,"clock_sec":1767765081,"clock_nsec":999999300,"precision":-20,"shm":"NTP1"}
+{"class":"SKY","device":"tcp://127.0.0.1:2001","gdop":1.37,"hdop":0.61,"pdop":1.22,"tdop":0.64,"vdop":1.05,"uSat":12}
+{"class":"TPV","device":"tcp://127.0.0.1:2001","mode":0,"time":"2026-01-07T05:52:00.300Z","leapseconds":18,"ept":0.005}
+{"class":"PPS","device":"/dev/pps0","real_sec":1767765121,"real_nsec":0,"clock_sec":1767765120,"clock_nsec":999999424,"precision":-20,"shm":"NTP1"}

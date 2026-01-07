@@ -1,0 +1,13 @@
+{"class":"VERSION","release":"3.25","rev":"3.25","proto_major":3,"proto_minor":15}
+{"class":"DEVICES","devices":[{"class":"DEVICE","path":"tcp://127.0.0.1:2001","driver":"u-blox","activated":"2026-01-07T03:08:32.471Z","flags":1},{"class":"DEVICE","path":"/dev/pps0","driver":"PPS","activated":"2026-01-07T03:06:24.000Z"}]}
+{"class":"WATCH","enable":true,"json":true,"nmea":false,"raw":0,"scaled":false,"timing":false,"split24":false,"pps":false}
+{"class":"SKY","device":"tcp://127.0.0.1:2001","gdop":1.20,"hdop":0.56,"pdop":1.06,"tdop":0.57,"vdop":0.90,"uSat":12}
+{"class":"TPV","device":"tcp://127.0.0.1:2001","mode":0,"time":"2026-01-07T03:13:40.800Z","leapseconds":18,"ept":0.005}
+{"class":"PPS","device":"/dev/pps0","real_sec":1767755621,"real_nsec":0,"clock_sec":1767755621,"clock_nsec":1194,"precision":-20,"shm":"NTP1"}
+{"class":"TPV","device":"tcp://127.0.0.1:2001","mode":0,"leapseconds":18}
+{"class":"SKY","device":"tcp://127.0.0.1:2001","gdop":1.59,"hdop":0.82,"pdop":1.39,"tdop":0.78,"vdop":1.12,"uSat":12}
+{"class":"TPV","device":"tcp://127.0.0.1:2001","mode":0,"time":"2026-01-07T03:17:00.600Z","leapseconds":18,"ept":0.005}
+{"class":"PPS","device":"/dev/pps0","real_sec":1767755821,"real_nsec":0,"clock_sec":1767755821,"clock_nsec":4548,"precision":-20,"shm":"NTP1"}
+{"class":"TPV","device":"tcp://127.0.0.1:2001","mode":0,"time":"2026-01-07T03:17:01.500Z","leapseconds":18,"ept":0.005}
+{"class":"PPS","device":"/dev/pps0","real_sec":1767755822,"real_nsec":0,"clock_sec":1767755822,"clock_nsec":1896,"precision":-20,"shm":"NTP1"}
+{"class":"SKY","device":"tcp://127.0.0.1:2001","gdop":1.58,"hdop":0.82,"pdop":1.38,"tdop":0.77,"vdop":1.11,"uSat":12}
