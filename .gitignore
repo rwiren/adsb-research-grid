@@ -1,9 +1,3 @@
-# --- Research Data & Artifacts ---
-data/raw/*.bin
-data/processed/*.csv
-analysis/**/*.png
-analysis/**/*.pdf
-
 # --- Python & System ---
 __pycache__/
 *.pyc
@@ -11,6 +5,45 @@ __pycache__/
 venv/
 .pytest_cache/
 
-# --- Ansible ---
+# --- Ansible & Secrets ---
 *.retry
 infra/ansible/.vault_pass
+.env
+
+# --- Research Data (The Big Files) ---
+# Block the entire folder to prevent accidental binary commits
+research_data/
+data/raw/
+data/processed/
+scripts/data/
+
+# --- Analysis Artifacts ---
+# We generally don't want generated plots in git, only in final docs
+# analysis/**/*.png
+analysis/**/*.pdf
+analysis/**/*.html
+
+# --- Infrastructure Volumes (Tower-Core) ---
+# Prevent committing database state
+infra/database/data/
+mosquitto/data/
+mosquitto/log/
+influxdb/
+opensearch/
+
+# --- Model Zoo Artifacts (Future) ---
+*.pt
+*.onnx
+*.tflite
+
+# --- Analysis Output (Curated) ---
+# Ignore all analysis folders by default...
+analysis/*
+
+# ...But Force-Include the official reports and latest dashboards
+!analysis/latest/
+!analysis/gnss_unified/
+!analysis/adsb_latest/
+!analysis/adsb_v2/
+!analysis/*.md
+!analysis/**/*.md
