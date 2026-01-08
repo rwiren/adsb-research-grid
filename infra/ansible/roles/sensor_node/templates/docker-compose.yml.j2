@@ -1,51 +1,51 @@
 version: '3.8'
 
 services:
-  # ---------------------------------------------------------------------------
-  # Ultrafeeder: The main ADS-B decoder/feeder container
-  # ---------------------------------------------------------------------------
   ultrafeeder:
     image: ghcr.io/sdr-enthusiasts/docker-adsb-ultrafeeder:latest
     container_name: ultrafeeder
-    restart: always
     hostname: ultrafeeder
-    tty: true
+    restart: always
     device_cgroup_rules:
       - 'c 189:* rwm'
+    volumes:
+      - /dev:/dev:ro
+      # Storage Mappings
+      - /opt/adsb-grid/data/ultrafeeder/globe_history:/var/globe_history
+      - /opt/adsb-grid/data/ultrafeeder/graphs1090:/var/lib/collectd/rrd
+      - /proc/diskstats:/proc/diskstats:ro
     environment:
-      # -----------------------------------------------------------------------
-      # HARDWARE CONFIGURATION
-      # Pulled from Ansible Inventory (hosts.prod)
-      # -----------------------------------------------------------------------
+      # --- GENERAL SETTINGS ---
       - LOGLEVEL=error
+      - TZ={{ timezone | default('UTC') }}
+
+      # --- HARDWARE CONFIGURATION ---
       - READSB_DEVICE_TYPE={{ sdr_type | default('rtlsdr') }}
-      - READSB_GAIN={{ sdr_gain | default('autogain') }}
-      
-      # -----------------------------------------------------------------------
-      # LOCATION CONFIGURATION
-      # Ensure these are defined in your group_vars or inventory
-      # -----------------------------------------------------------------------
-      - LAT={{ sensor_lat | default('60.319555') }}
-      - LONG={{ sensor_lon | default('24.830816') }}
-      
-      # -----------------------------------------------------------------------
-      # VISUALIZATION
-      # -----------------------------------------------------------------------
+      - READSB_GAIN={{ sdr_gain | default('49.6') }}
+
+      # --- LOCATION CONFIGURATION ---
+      # Standardized on 'latitude/longitude' to match host_vars
+      - LAT={{ latitude }}
+      - LONG={{ longitude }}
+      - ALT={{ altitude | default('0') }}
+
+      # --- VISUALIZATION ---
+      - UUID={{ adsb_uuid | default('') }}
+      - MLAT_NO_ANON_RESULTS=true
       - UPDATE_TAR1090=true
-      - TAR1090_DEFAULTCENTERLAT={{ sensor_lat | default('60.319555') }}
-      - TAR1090_DEFAULTCENTERLON={{ sensor_lon | default('24.830816') }}
+      - TAR1090_DEFAULTCENTERLAT={{ latitude }}
+      - TAR1090_DEFAULTCENTERLON={{ longitude }}
       - TAR1090_MESSAGERATEINTITLE=true
 
-    volumes:
-      - /opt/adsb/ultrafeeder/globe_history:/var/globe_history
-      - /opt/adsb/ultrafeeder/graphs1090:/var/lib/collectd
-      - /proc/diskstats:/proc/diskstats:ro
-      - /dev:/dev:ro
-    
+      # --- SMART PERFORMANCE TUNING (Revision 0.3.6) ---
+      # Logic: If Pi 4 or 5, enable disk writing (Heatmaps).
+      # If Pi 3 (or unknown), disable disk writing to prevent I/O lag and SD wear.
+      - READSB_EXTRA_ARGS=--net-connector=127.0.0.1,30005,beast_in {% if rpi_board_model.stdout is defined and ('Raspberry Pi 4' in rpi_board_model.stdout or 'Raspberry Pi 5' in rpi_board_model.stdout) %}--write-state=/var/globe_history --heatmap-dir=/var/globe_history{% endif %}
+
     ports:
-      - 8080:80       # Tar1090 Web Interface
-      - 30005:30005   # Beast Output (Raw Data)
-    
+      - 8080:80        # Tar1090 Web Interface
+      - 30005:30005    # Beast Output (Raw Data)
+
     tmpfs:
       - /run:exec,size=64M
-      - /var/log
+      - /var/log:size=32M
