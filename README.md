@@ -3,6 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/Version-v0.3.5-green.svg)](#)
 [![Status](https://img.shields.io/badge/Status-Phase%203%3A%20Validation-success.svg)](#)
+[![Wiki](https://img.shields.io/badge/Docs-Project%20Wiki-purple?style=flat-square)](https://github.com/rwiren/adsb-research-grid/wiki)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](#)
 ![Last Updated](https://img.shields.io/github/last-commit/rwiren/adsb-research-grid?label=Last%20Updated&color=orange)
 
