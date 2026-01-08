@@ -1,27 +1,27 @@
 ---
 # ==============================================================================
-# Master Playbook: Site Provisioning
+# Master Playbook: Site Provisioning (Rev 0.3.6)
 # ==============================================================================
 
-- hosts: sensors
+- name: "[sensors] Configure Sensor Nodes"
+  hosts: sensors
   become: true
-  # Note: variables are auto-loaded from inventory/group_vars
-  # vars_files is not strictly needed if your directory structure is standard,
-  # but keeping it doesn't hurt if the paths are correct.
+  gather_facts: true # Required for "Smart Pi 3" detection
 
   roles:
     # 1. System & Network (The Base)
-    - common
-    - zerotier
+    - role: common
+    - role: zerotier
 
     # 2. Hardware Drivers (Must come before consumers!)
-    - gnss-receiver   # <--- MOVED UP: Installs GPSD / RTKLIB
+    - role: gnss-receiver
 
     # 3. Time Synchronization (Needs GPSD)
-    - strat1_timing   # <--- MOVED UP: Configures Chrony to use GPS
+    - role: strat1_timing
 
     # 4. Applications (Docker)
-    - sensor_node
+    - role: sensor_node
 
     # 5. Data Logging (Depends on everything above)
-    - recorder        # <--- MOVED DOWN: Now safe to run
+    - role: recorder
+

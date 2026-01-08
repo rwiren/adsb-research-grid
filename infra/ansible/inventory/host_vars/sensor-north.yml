@@ -3,18 +3,20 @@ hostname: "sensor-north"
 timezone: "Europe/Helsinki"
 
 # Location (Keimola Field Site)
-lat: 60.319555
-lon: 24.830816
-alt: 105
+# CRITICAL: These variable names must match what docker-compose.yml.j2 expects
+latitude: 60.319555
+longitude: 24.830816
+altitude: 105
 
 # --- Feeder Keys ---
-# LEAVE EMPTY! 
+# LEAVE EMPTY!
 # This ensures the sensor generates a NEW identity on first boot.
 
 # --- Hardware Config ---
 # SDR Serial (Found via logs: 00001000)
 sdr_serial: "00001000"
 
-# NTRIP Settings (Credentials are pulled securely from Vault)
+# --- NTRIP Settings ---
+# Note: Ensure 'ntrip_user' and 'ntrip_password' are in your vault!
 ntrip_host: "opencaster.nls.fi"
 ntrip_mount: "VRS-FKP"

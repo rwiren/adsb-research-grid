@@ -25,7 +25,7 @@ sensor-north ansible_host=192.168.192.130 ansible_user=pi zt_ip=192.168.192.130 
 # FUTURE NODES
 # -----------------------------------------------------------------------------
 # WEST: Silver Stick (No Amp = Max Gain 49.6 likely safe)
-# sensor-west ansible_host=192.168.192.110 ansible_user=pi zt_ip=192.168.192.110 sdr_type=rtlsdr sdr_gain=49.6 sdr_ppm=0
+sensor-west ansible_host=192.168.192.110 ansible_user=pi zt_ip=192.168.192.110 sdr_type=rtlsdr sdr_gain=49.6 sdr_ppm=0
 
 # EAST: Jetvision Black (No Amp = Max Gain 49.6 likely safe)
 # sensor-east ansible_host=192.168.192.120 ansible_user=pi zt_ip=192.168.192.120 sdr_type=rtlsdr sdr_gain=49.6 sdr_ppm=0
