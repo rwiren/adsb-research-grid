@@ -1,0 +1,61 @@
+---
+- hosts: sensor-west
+  become: true
+  tasks:
+    # ==========================================================================
+    # 📱 NETWORK 1: iPhone Hotspot (Roaming/Jorvas)
+    # ==========================================================================
+    - name: 🔍 Check if iPhone connection exists
+      shell: nmcli connection show "mission-iphone"
+      register: iphone_check
+      ignore_errors: yes
+      changed_when: false
+
+    - name: 📝 Create iPhone Profile
+      command: >
+        nmcli connection add type wifi ifname wlan0 
+        con-name "mission-iphone" 
+        ssid "{{ vault_iphone_ssid }}"
+      when: iphone_check.rc != 0
+
+    - name: 🔑 Set iPhone Password
+      command: >
+        nmcli connection modify "mission-iphone"
+        wifi-sec.key-mgmt wpa-psk 
+        wifi-sec.psk "{{ vault_iphone_psk }}"
+      when: iphone_check.rc != 0
+
+    - name: 🚀 Set iPhone Priority (High)
+      command: >
+        nmcli connection modify "mission-iphone"
+        connection.autoconnect yes
+        connection.autoconnect-priority 100
+
+    # ==========================================================================
+    # ☁️ NETWORK 2: Sky-Testing (Balcony/Local)
+    # ==========================================================================
+    - name: 🔍 Check if Sky-Testing connection exists
+      shell: nmcli connection show "mission-sky-testing"
+      register: sky_check
+      ignore_errors: yes
+      changed_when: false
+
+    - name: 📝 Create Sky-Testing Profile
+      command: >
+        nmcli connection add type wifi ifname wlan0 
+        con-name "mission-sky-testing" 
+        ssid "{{ vault_sky_ssid }}"
+      when: sky_check.rc != 0
+
+    - name: 🔑 Set Sky-Testing Password
+      command: >
+        nmcli connection modify "mission-sky-testing"
+        wifi-sec.key-mgmt wpa-psk 
+        wifi-sec.psk "{{ vault_sky_psk }}"
+      when: sky_check.rc != 0
+
+    - name: 🚀 Set Sky-Testing Priority (Medium)
+      command: >
+        nmcli connection modify "mission-sky-testing"
+        connection.autoconnect yes
+        connection.autoconnect-priority 90

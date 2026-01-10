@@ -1,19 +1,159 @@
 ---
 # ==============================================================================
 # 📂 File: infra/ansible/playbooks/health.yml
-# Version: 0.4.2
-# Date: 2026-01-08
-# Description: Playbook to trigger the grid_health role on all sensors.
-#              Uses serial execution to prevent terminal output overlap.
+# Description: Scientific Grid Health & Performance Monitor
+# Updates: Added NMEA GGA parsing for precise RTK/Fix mode detection.
 # ==============================================================================
-
 - name: "🏥 Grid Health & Performance Monitor"
   hosts: sensors
-  gather_facts: yes
-  become: yes
-  
-  # Run one host at a time to keep the terminal output readable
-  serial: 1 
-  
-  roles:
-    - grid_health
+  become: true
+  gather_facts: true
+  vars:
+    # Thresholds
+    temp_warn: 70.0
+    disk_warn: 80
+    
+  tasks:
+    # ----------------------------------------------------------------------
+    # 1. HARDWARE HEALTH (Thermals & Storage)
+    # ----------------------------------------------------------------------
+    - name: "[HW] Measure CPU Temperature"
+      shell: vcgencmd measure_temp | egrep -o '[0-9]*\.[0-9]*'
+      register: cpu_temp
+      changed_when: false
+
+    - name: "[HW] Check for Throttling Events"
+      shell: vcgencmd get_throttled
+      register: cpu_throttled
+      changed_when: false
+
+    - name: "[HW] Check Disk Usage (/data)"
+      shell: "df -h / | awk 'NR==2 {print $5}' | sed 's/%//'"
+      register: disk_usage
+      changed_when: false
+
+    - name: "[HW] Check Memory Usage"
+      shell: "free -m | awk 'NR==2{printf \"%.0f%%\", $3*100/$2 }'"
+      register: mem_usage
+      changed_when: false
+
+    # ----------------------------------------------------------------------
+    # 2. NETWORK HEALTH (ZeroTier & Internet)
+    # ----------------------------------------------------------------------
+    - name: "[Net] Check ZeroTier Status"
+      shell: zerotier-cli status | awk '{print $2}'
+      register: zt_status
+      ignore_errors: yes
+      changed_when: false
+
+    - name: "[Net] Ping Internet (Google DNS)"
+      shell: ping -c 1 -W 1 8.8.8.8 > /dev/null && echo "ONLINE" || echo "OFFLINE"
+      register: internet_status
+      ignore_errors: yes
+      changed_when: false
+
+    # ----------------------------------------------------------------------
+    # 3. GNSS & RTK SCIENCE STATUS (NMEA Analysis)
+    # ----------------------------------------------------------------------
+    - name: "[GNSS] Check GPSD Service Status"
+      systemd:
+        name: gpsd
+      register: gpsd_status
+
+    - name: "[GNSS] 🛰️ Analyze Precise Signal Mode (NMEA GGA)"
+      # Fetches 20 raw sentences, finds the first GGA, extracts Field 6 (Quality)
+      # NMEA 0183 standard GGA Quality Indicators:
+      # 0=Invalid, 1=GPS(SPS), 2=DGPS, 4=RTK-Fixed, 5=RTK-Float, 6=Dead Reckoning
+      shell: |
+        timeout 5 gpspipe -r -n 20 | grep -m 1 -E "G[N|P]GGA" | awk -F, '{print $7}'
+      register: gnss_quality_raw
+      ignore_errors: yes
+      changed_when: false
+
+    - name: "[GNSS] 🧠 Interpret Signal Quality"
+      set_fact:
+        gnss_status_human: >-
+          {% if gnss_quality_raw.stdout == '0' or gnss_quality_raw.stdout == '' %}NO FIX ❌
+          {% elif gnss_quality_raw.stdout == '1' %}3D FIX (Std) ✅
+          {% elif gnss_quality_raw.stdout == '2' %}3D FIX (DGPS) ✅
+          {% elif gnss_quality_raw.stdout == '4' %}RTK FIXED 🎯
+          {% elif gnss_quality_raw.stdout == '5' %}RTK FLOAT 🌊
+          {% elif gnss_quality_raw.stdout == '6' %}DEAD RECKONING 💀
+          {% else %}2D/SEARCHING ⚠️ (Raw: {{ gnss_quality_raw.stdout }}){% endif %}
+
+    - name: "[RTK] Check Splitter Service (North Only)"
+      systemd:
+        name: str2str-splitter
+      register: rtk_service
+      when: "'sensor-north' in inventory_hostname"
+
+    # ----------------------------------------------------------------------
+    # 4. ADS-B & RECORDER STATUS
+    # ----------------------------------------------------------------------
+    - name: "[ADS-B] Check Beast Port (30005) Accessibility"
+      wait_for:
+        port: 30005
+        timeout: 1
+      register: adsb_port
+      ignore_errors: yes
+
+    - name: "[Recorder] Check Raw Data Growth (Last 1 min)"
+      shell: |
+        find /var/lib/adsb_storage -type f -mmin -1 | wc -l
+      register: record_growth
+      changed_when: false
+
+    # ----------------------------------------------------------------------
+    # 5. DATA LOGGING (APPEND TO HISTORY)
+    # ----------------------------------------------------------------------
+    - name: "[History] Ensure Storage History File Exists"
+      file:
+        path: "/var/lib/adsb_storage/storage_history.csv"
+        state: touch
+        mode: '0644'
+
+    - name: "[History] Append Current Storage Stats"
+      shell: |
+        echo "$(date -u +%Y-%m-%dT%H:%M:%SZ),{{ disk_usage.stdout }},{{ record_growth.stdout }}" >> /var/lib/adsb_storage/storage_history.csv
+
+    # ----------------------------------------------------------------------
+    # 6. REPORTING
+    # ----------------------------------------------------------------------
+    - name: "📊 Compile Health Report Data"
+      set_fact:
+        report:
+          timestamp: "{{ ansible_date_time.iso8601 }}"
+          node: "{{ inventory_hostname }}"
+          cpu_temp: "{{ cpu_temp.stdout }}"
+          disk_usage: "{{ disk_usage.stdout }}"
+          gnss_fix: "{{ gnss_status_human | trim }}"
+          rtk_status: "{{ 'ACTIVE' if (rtk_service.status.ActiveState|default('inactive') == 'active') else 'N/A' }}"
+          adsb_status: "{{ 'OPEN' if (adsb_port is success) else 'CLOSED 🔴' }}"
+          recording: "{{ 'ACTIVE' if (record_growth.stdout | int > 0) else 'IDLE' }}"
+
+    - name: "Ensure Report Directory Exists"
+      delegate_to: localhost
+      file:
+        path: "data/health_reports"
+        state: directory
+      become: false
+
+    - name: "💾 Save Report to JSON"
+      delegate_to: localhost
+      copy:
+        content: "{{ report | to_nice_json }}"
+        dest: "data/health_reports/{{ inventory_hostname }}_latest.json"
+      become: false
+
+    - name: "🖥️ DISPLAY DASHBOARD"
+      debug:
+        msg:
+          - "========================================================"
+          - "🏥 NODE: {{ report.node | upper }} | 🌡️ {{ report.cpu_temp }}°C | 💾 {{ report.disk_usage }}%"
+          - "========================================================"
+          - "🌐 NET:  Internet [{{ internet_status.stdout }}] | ZT [{{ zt_status.stdout | default('ERR') }}]"
+          - "🛰️ GNSS: Status [{{ gpsd_status.status.ActiveState }}]   | Fix [{{ report.gnss_fix }}] | RTK [{{ report.rtk_status }}]"
+          - "📡 ADS-B: Port 30005 [{{ report.adsb_status }}] | Recording [{{ report.recording }}]"
+          - "========================================================"
+          - "⚠️ ISSUES: {{ 'None' if (report.cpu_temp|float < temp_warn and report.disk_usage|int < disk_warn) else 'CHECK THERMALS/DISK!' }}"
+          - "========================================================"

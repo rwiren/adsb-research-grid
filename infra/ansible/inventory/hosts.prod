@@ -1,8 +1,19 @@
 # ==============================================================================
 # 📂 File: infra/ansible/inventory/hosts.prod
-# Version: 0.4.4
-# Date: 2026-01-09
-# Description: Defines sensor nodes based on proven "Kill Balcony" hardware specs.
+# Version: 0.4.7
+# Date: 2026-01-10
+#
+# HARDWARE & OS MANIFEST:
+# -----------------------------------------------------------------------------
+# SENSOR-NORTH (RTK Base):
+#   - HW: Raspberry Pi 4B
+#   - OS: Debian 13.2 (Trixie) -> Uses NetworkManager
+#   - GNSS: u-blox F9P (/dev/ttyACM0) @ 230400 baud
+#
+# SENSOR-WEST (Scout):
+#   - HW: Raspberry Pi 4B
+#   - OS: Debian 13.2 (Trixie) -> Uses NetworkManager
+#   - GNSS: G-STAR IV (/dev/ttyUSB0) @ 4800 baud
 # ==============================================================================
 
 [controller]
@@ -17,17 +28,35 @@ localhost ansible_connection=local
 # - Interface: /dev/ttyACM0 (Confirmed via Balena script)
 # - Baud Rate: 230400 (Required for F9P high bandwidth)
 # -----------------------------------------------------------------------------
-#sensor-north ansible_host=192.168.1.30 gnss_device=/dev/ttyACM0 gnss_baudrate=230400 socat_hub_port=2000 ntrip_caster=192.168.1.30 ntrip_host=opencaster.nls.fi ntrip_port=2101 ntrip_mountpoint=VRS-FKP ntrip_user=rwiren ntrip_password=Riku3404
+sensor-north ansible_host=192.168.1.30 gnss_device=/dev/ttyACM0 gnss_baudrate=230400 socat_hub_port=2000 ntrip_caster=192.168.1.30 ntrip_host=opencaster.nls.fi ntrip_port=2101 ntrip_mountpoint=VRS-FKP ntrip_user=rwiren ntrip_password=Riku3404
 
 # -----------------------------------------------------------------------------
 # SENSOR-WEST: RPi 4 + G-STAR IV (USB)
 # ROLE: Production Data Collection
 # -----------------------------------------------------------------------------
 #sensor-west ansible_host=192.168.192.110 gnss_device=/dev/ttyUSB0 gnss_baudrate=4800
-# sensor-west ansible_host=192.168.192.110 # zt
-sensor-west ansible_host=192.168.1.8 # local
+sensor-west ansible_host=192.168.192.110 # zt
+# sensor-west ansible_host=192.168.1.8 # local
+
+#
+# PLANNED Jan 10 / 11 2026
+# -----------------------------------------------------------------------------
+# SENSOR-EAST: RPi 4 + G-STAR IV (USB)
+# ROLE: Triangulation Scout (Planned)
+# -----------------------------------------------------------------------------
+# (Uncomment when online)
+# sensor-east ansible_host=192.168.192.20 gnss_device=/dev/ttyUSB0 gnss_baudrate=4800
+
+[compute]
+# -----------------------------------------------------------------------------
+# TOWER-CORE: RPi 5 + 1TB NVMe
+# ROLE: Data Aggregation & Analysis Node
+# -----------------------------------------------------------------------------
+# (Uncomment when online)
+# tower-core ansible_host=192.168.192.30 ansible_user=pi
 
 [sensors:vars]
 # ⚠️ CRITICAL: Ansible must log in as 'pi'
 ansible_user=pi
 install_path=/opt/adsb-grid
+sensor_id={{ inventory_hostname }}
