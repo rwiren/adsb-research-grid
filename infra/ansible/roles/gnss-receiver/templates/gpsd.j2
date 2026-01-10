@@ -1,19 +1,19 @@
-# Version: 7.0.0
-# Description: GPSD Configuration for Splitter Architecture
-# Managed by Ansible
+# ==============================================================================
+# FILE: /etc/default/gpsd
+# MANAGED BY: Ansible (v0.4.4)
+# ==============================================================================
 
 START_DAEMON="true"
-USBAUTO="false"
+GPSD_OPTIONS="-n -G"
 
 # DEVICES:
-# 1. tcp://127.0.0.1:2001 -> The SPLITTER port (Buffered Data)
-# 2. /dev/pps0            -> The Time Pulse (Hardware)
-DEVICES="tcp://127.0.0.1:2001 /dev/pps0"
+# - North: Reads from socat Hub
+# - West: Reads from USB Hardware
+{% if socat_hub_port is defined %}
+DEVICES="tcp://127.0.0.1:{{ socat_hub_port }}"
+{% else %}
+DEVICES="{{ gnss_device }}"
+{% endif %}
 
-# GPSD OPTIONS:
-# -n: Start immediately
-# -G: Listen on all interfaces
-# -s 230400: Matches the Hardware Hub speed
-GPSD_OPTIONS="-n -G -s 230400"
-
-OPTIONS=""
+USBAUTO="true"
+GPSD_SOCKET="/var/run/gpsd.sock"

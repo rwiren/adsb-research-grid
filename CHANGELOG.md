@@ -1,3 +1,46 @@
+## [0.4.6b] - 2026-01-10 (Scientific Pipeline Release)
+### 🚀 Major Features
+- **Scientific Data Pipeline:**
+    - **Ingest:** Added `fetch.yml` to securely pull CSV logs to `research_data/`.
+    - **Consolidate:** Added `scripts/consolidate_data.py` to merge fragmented 2-minute logs into Daily Masters.
+    - **Visualize:** Added `scripts/eda_academic_report.py` (v2.0) generating professional PDF research reports.
+- **Smart Logging Architecture:**
+    - Replaced legacy recording with `smart_adsb_logger.py` in `infra/ansible/roles/recorder/`.
+    - Added `gps_hardware_init.sh` for robust U-Blox/SDR hardware initialization.
+
+### 📂 Repository Refactoring
+- **Archival:** Moved legacy plots and R-history files to `analysis/archive/` to clean the workspace.
+- **Storage Metrics:** Added `scripts/analyze_storage.py` and `scripts/collect_storage_metrics.py` for long-term disk usage tracking.
+- **Infrastructure:** Added `setup_data_manager.yml` and `setup_metrics_collector.yml` playbooks.
+
+### 🔧 Fixes & improvements
+- **Ansible:** Fixed `fetch` playbook path resolution to ensure data lands in project root.
+- **Hardware:** Validated `sensor-west` (Pi 4/SDR) GNSS lock and RF signal integrity (-31.1 dBFS).
+- **Visualization:** Fixed "1970 Epoch" timestamp bug in analysis scripts.
+
+
+
+## [0.4.6] - 2026-01-10
+### Added
+- **Scientific Pipeline:** Implemented `scripts/consolidate_data.py` to merge fragmented 2-minute sensor logs into clean daily MASTER datasets (`_aircraft`, `_gnss`, `_stats`).
+- **Visualization Engine:** Introduced `scripts/eda_academic_report.py` (v2.0) which generates 3-page academic PDF reports containing:
+    - Executive Summaries (Uptime, Traffic Volume, Signal Integrity).
+    - RF Intelligence Plots (RSSI vs Altitude, Message Rates).
+    - Hardware Diagnostics (GNSS Drift, CPU Thermals).
+- **Workflow Automation:** Added `make consolidate` and `make analyze` targets to the Makefile.
+
+### Changed
+- **Data Ingestion:** Updated `fetch.yml` to v0.4.7; fixed critical path resolution issue to ensure data lands in project root (`research_data/`) regardless of execution directory.
+- **Ansible Syntax:** Updated variable injection to use modern `ansible_facts` namespace, eliminating deprecation warnings.
+- **Hardware Validation:** Validated `sensor-west` (Raspberry Pi 4 / Silver RTL-SDR) performance:
+    - Confirmed GNSS lock with ~30m stationary drift (expected for indoor/test).
+    - Validated RF signal integrity (-31.1 dBFS avg).
+
+### Fixed
+- **Timestamp Scaling:** Resolved "1970 Epoch" bug in analysis scripts by forcing `unit='s'` during Pandas datetime conversion.
+- **Duplicate Indexing:** Added robustness to analysis scripts to handle duplicate timestamps in overlapping sensor logs.
+
+
 ## [0.3.5] - 2026-01-08
 ### Changed
 - **Sensor Calibration:** Finalized `sensor-north` gain at **16.6 dB** to accommodate high-gain rooftop antenna (reduced from 29.7 dB).

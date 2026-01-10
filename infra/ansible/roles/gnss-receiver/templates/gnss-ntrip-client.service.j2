@@ -1,33 +1,30 @@
+# ==============================================================================
+# UNIT: NTRIP Client (RTK Injector)
+# FILE: infra/ansible/roles/gnss-receiver/templates/gnss-ntrip-client.service.j2
+# VERSION: 0.4.4
+# ==============================================================================
+
 [Unit]
-Description=GNSS NTRIP Client (RTK Injector)
-After=gnss-receiver.service network-online.target
-Requires=gnss-receiver.service
+Description=NTRIP Client (RTK Injector)
+After=gnss-socat-hub.service network-online.target
+Wants=gnss-socat-hub.service
 
 [Service]
 Type=simple
-Restart=always
-RestartSec=10
 User=root
+Restart=always
+RestartSec=15
 
-# Credentials from Vault
-Environment="NTRIP_HOST={{ ntrip_host }}"
-Environment="NTRIP_MOUNT={{ ntrip_mount }}"
-Environment="NTRIP_USER={{ ntrip_user }}"
-Environment="NTRIP_PASS={{ ntrip_pass }}"
-Environment="LAT={{ lat }}"
-Environment="LON={{ lon }}"
-Environment="ALT={{ alt }}"
+# ACADEMIC LOGIC:
+# 1. Input: NTRIP Caster (Remote)
+# 2. Output: Local Data Hub (tcpcli://localhost:{{ socat_hub_port }})
+#    - This pushes RTCM corrections INTO the socat hub, which writes them to HW.
 
-# The Magic Command (Matches your old 'start.sh')
-# 1. Connect to NTRIP Caster (-in ntrip://...)
-# 2. Send our approx position (GGA) to get local corrections (-p ...)
-# 3. Inject corrections INTO the local Hub (-out tcpcli://localhost:2000)
 ExecStart=/usr/local/bin/str2str \
-    -in ntrip://${NTRIP_USER}:${NTRIP_PASS}@${NTRIP_HOST}:2101/${NTRIP_MOUNT} \
-    -p ${LAT} ${LON} ${ALT} \
-    -n 10 \
-    -out tcpcli://127.0.0.1:2000 \
-    -msg "1002,1006,1013,1019,1033,1077,1087,1097,1107,1127,1230"
+  -in ntrip://{{ ntrip_user }}:{{ ntrip_password }}@{{ ntrip_host }}:{{ ntrip_port }}/{{ ntrip_mountpoint }} \
+  -out tcpcli://127.0.0.1:{{ socat_hub_port }} \
+  -msg "1002,1006,1013,1019,1033,1077,1087,1097,1107,1127,1230" \
+  -n 10
 
 [Install]
 WantedBy=multi-user.target

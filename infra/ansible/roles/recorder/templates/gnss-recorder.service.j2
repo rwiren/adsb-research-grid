@@ -1,27 +1,30 @@
+# ==============================================================================
+# File: infra/ansible/roles/recorder/templates/gnss-recorder.service.j2
+# Service: gnss-recorder.service
+# Version: 0.3.9
+# Managed By: Ansible
+# ==============================================================================
+
 [Unit]
 Description=GNSS Data Recorder Service
 After=network.target
-# --- FIX START: Conditional Dependency ---
+# Conditional logic: Wait for the correct GNSS source (RTK vs Standard)
 {% if ntrip_host is defined %}
-# For RTK Nodes (Sensor-North): Wait for the custom receiver stack
 Requires=gnss-receiver.service
 After=gnss-receiver.service
 {% else %}
-# For Standard Nodes (Sensor-West): Wait for standard GPSD
 Requires=gpsd.service
 After=gpsd.service
 {% endif %}
-# --- FIX END ---
 
 [Service]
 Type=simple
-User={{ ansible_user }}
-Group={{ ansible_user }}
-# Ensure the output directory exists
-ExecStartPre=/bin/mkdir -p /opt/adsb-grid/data/gnss
-ExecStart=/opt/adsb-grid/scripts/gnss_record.sh
+# Updated path for v0.3.9 (System Binary Path)
+ExecStart=/usr/local/bin/gnss_record.sh
 Restart=always
 RestartSec=10
+User=root
+Group=root
 
 [Install]
 WantedBy=multi-user.target

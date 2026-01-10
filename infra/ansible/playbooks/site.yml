@@ -1,27 +1,43 @@
 ---
 # ==============================================================================
-# Master Playbook: Site Provisioning (Rev 0.3.6)
+# MASTER PLAYBOOK: Site Configuration
 # ==============================================================================
 
 - name: "[sensors] Configure Sensor Nodes"
   hosts: sensors
   become: true
-  gather_facts: true # Required for "Smart Pi 3" detection
+  
+  # Global variables usually go in group_vars, but we can ensure defaults here
+  vars:
+    pip_install_packages: []
 
   roles:
     # 1. System & Network (The Base)
     - role: common
+      tags: [common, system]
+
     - role: zerotier
+      tags: [zerotier, network]
 
-    # 2. Hardware Drivers (Must come before consumers!)
+    # 2. Hardware: GNSS Receiver (RTK/GPS)
     - role: gnss-receiver
+      tags: [gnss, rtk, hardware]
 
-    # 3. Time Synchronization (Needs GPSD)
-    - role: strat1_timing
-
-    # 4. Applications (Docker)
+    # 3. Hardware: SDR & Decoder (The "Ears")
+    # (Only run if variables are defined for the host)
     - role: sensor_node
+      tags: [sdr, adsb, decoder]
 
-    # 5. Data Logging (Depends on everything above)
+    # 4. Data Recording (The "Brain")
     - role: recorder
+      tags: [recorder, data]
+
+    # 5. Precise Timing (Stratum 1)
+    - role: strat1_timing
+      tags: [chrony, time, pps]
+
+# Add these lines at the bottom:
+- import_playbook: health.yml
+- import_playbook: setup_data_manager.yml
+- import_playbook: setup_metrics_collector.yml
 

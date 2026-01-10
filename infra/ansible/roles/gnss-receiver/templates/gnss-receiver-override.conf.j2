@@ -1,9 +1,0 @@
-# ------------------------------------------------------------------
-# Filename: gnss-receiver-override.conf
-# Description: Systemd Drop-in to force GPS initialization before start.
-# Managed by: Ansible
-# ------------------------------------------------------------------
-
-[Service]
-# Run the initialization script before the main process starts
-ExecStartPre=/usr/local/bin/ublox_init.sh

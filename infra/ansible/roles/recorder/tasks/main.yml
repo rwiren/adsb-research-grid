@@ -1,51 +1,39 @@
 ---
-- name: "Create data storage directory"
-  file:
-    path: "/home/pi/adsb_data"
+# ==============================================================================
+# FILE: infra/ansible/roles/recorder/tasks/main.yml
+# VERSION: 0.4.5
+# DESCRIPTION: Deploys the Smart Logger to the standardized /opt location.
+# ==============================================================================
+
+- name: Ensure ADSB Sensor Directory Exists (/opt)
+  ansible.builtin.file:
+    path: /opt/adsb-sensor
     state: directory
-    owner: "pi"
-    group: "pi"
-    mode: "0755"
+    owner: pi
+    group: pi
+    mode: '0755'
 
-# --- ADS-B RECORDER ---
-- name: "Deploy ADS-B Recording Script (v1.1)"
-  template:
-    src: "adsb_record.sh.j2"
-    dest: "/home/pi/adsb_record.sh" # Kept in home as per your existing setup
-    owner: "pi"
-    group: "pi"
-    mode: "0755"
+- name: Deploy Smart Logger Script (v1.4.0)
+  ansible.builtin.copy:
+    src: smart_adsb_logger.py
+    dest: /opt/adsb-sensor/smart_adsb_logger.py
+    owner: pi
+    group: pi
+    mode: '0755'
+  notify: Restart Smart Logger
 
-- name: "Deploy ADS-B Recorder Service"
-  template:
-    src: "adsb-recorder.service.j2"
-    dest: "/etc/systemd/system/adsb-recorder.service"
-    mode: "0644"
-  notify: restart adsb-recorder
+- name: Deploy Service Definition
+  ansible.builtin.template:
+    src: smart-logger.service.j2
+    dest: /etc/systemd/system/smart-logger.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart Smart Logger
 
-# --- GNSS RECORDER (NEW) ---
-- name: "Deploy GNSS Recording Script"
-  template:
-    src: "gnss_record.sh.j2"
-    dest: "/usr/local/bin/gnss_record.sh"
-    owner: "pi"
-    group: "pi"
-    mode: "0755"
-
-- name: "Deploy GNSS Recorder Service"
-  template:
-    src: "gnss-recorder.service.j2"
-    dest: "/etc/systemd/system/gnss-recorder.service"
-    mode: "0644"
-  notify: restart gnss-recorder
-
-# --- SERVICE CONTROL ---
-- name: "Ensure Recorders are Enabled and Started"
-  systemd:
-    name: "{{ item }}"
+- name: Ensure Smart Logger is Running and Enabled
+  ansible.builtin.systemd:
+    name: smart-logger
     enabled: yes
     state: started
     daemon_reload: yes
-  loop:
-    - adsb-recorder
-    - gnss-recorder

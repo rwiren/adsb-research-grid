@@ -1,0 +1,28 @@
+---
+# ==============================================================================
+# File: infra/ansible/roles/recorder/defaults/main.yml
+# Role: recorder
+# Version: 0.4.0
+# Description: Default variables for data storage and recording settings.
+# ==============================================================================
+
+# --- Storage Configuration ---
+# CRITICAL: This points to the high-speed partition verified by benchmarks.
+storage_dir: "/var/lib/adsb_storage"
+storage_user: "pi"
+storage_group: "pi"
+
+# --- Feature Toggles ---
+# ⚠️ SAFETY SWITCH: Raw IQ recording generates ~15GB/hour.
+# Set to 'false' by default to protect SD cards.
+# Set to 'true' ONLY on nodes with external USB/SSD storage mounted.
+enable_raw_recording: false
+
+# --- Recording Settings ---
+# Duration of each recording segment in seconds
+# 900s = 15 minutes per file (Standard Science Segment)
+record_duration: 900
+
+# --- Network Defaults ---
+# Host to connect to for data stream (usually local container)
+recorder_host: "127.0.0.1"

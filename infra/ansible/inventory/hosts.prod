@@ -1,37 +1,33 @@
-# -----------------------------------------------------------------------------
-# FILE: infra/ansible/inventory/hosts.prod
-# VERSION: 2.3
-# DATE: 2026-01-07
-# DESCRIPTION: Production inventory for ADS-B Research Grid.
-# -----------------------------------------------------------------------------
+# ==============================================================================
+# 📂 File: infra/ansible/inventory/hosts.prod
+# Version: 0.4.4
+# Date: 2026-01-09
+# Description: Defines sensor nodes based on proven "Kill Balcony" hardware specs.
+# ==============================================================================
 
 [controller]
 localhost ansible_connection=local
 
 [sensors]
 # -----------------------------------------------------------------------------
-# NODE: sensor-north
-# HARDWARE: RPi 4 + FlightAware Pro Stick Plus (Blue) + 60cm Rooftop Antenna
-# ROLE: Baseline/Control Node
+# SENSOR-NORTH: RPi 4 + u-blox F9P (USB)
+# ROLE: RTK Base Station
 # -----------------------------------------------------------------------------
-# TUNING HISTORY (Rooftop Antenna):
-# - 29.7 dB: CLIPPING (-1.5 dBFS) -> Too Loud
-# - 20.7 dB: CLIPPING (-1.8 dBFS) -> Still Too Loud (LNA Saturation)
-# - 12.5 dB: OPTIMAL  (-13.5 dBFS) -> Clean, but lost range (4 NM)
-# - 16.6 dB: CURRENT TARGET -> Attempting to recover range while keeping signal < -3 dBFS
-sensor-north ansible_host=192.168.192.130 ansible_user=pi zt_ip=192.168.192.130 sdr_type=rtlsdr sdr_gain=16.6 sdr_ppm=0
+# HARDWARE PROFILE:
+# - Interface: /dev/ttyACM0 (Confirmed via Balena script)
+# - Baud Rate: 230400 (Required for F9P high bandwidth)
+# -----------------------------------------------------------------------------
+#sensor-north ansible_host=192.168.1.30 gnss_device=/dev/ttyACM0 gnss_baudrate=230400 socat_hub_port=2000 ntrip_caster=192.168.1.30 ntrip_host=opencaster.nls.fi ntrip_port=2101 ntrip_mountpoint=VRS-FKP ntrip_user=rwiren ntrip_password=Riku3404
 
 # -----------------------------------------------------------------------------
-# FUTURE NODES
+# SENSOR-WEST: RPi 4 + G-STAR IV (USB)
+# ROLE: Production Data Collection
 # -----------------------------------------------------------------------------
-# WEST: Silver Stick (No Amp = Max Gain 49.6 likely safe)
-sensor-west ansible_host=192.168.192.110 ansible_user=pi zt_ip=192.168.192.110 sdr_type=rtlsdr sdr_gain=49.6 sdr_ppm=0
-
-# EAST: Jetvision Black (No Amp = Max Gain 49.6 likely safe)
-# sensor-east ansible_host=192.168.192.120 ansible_user=pi zt_ip=192.168.192.120 sdr_type=rtlsdr sdr_gain=49.6 sdr_ppm=0
+#sensor-west ansible_host=192.168.192.110 gnss_device=/dev/ttyUSB0 gnss_baudrate=4800
+# sensor-west ansible_host=192.168.192.110 # zt
+sensor-west ansible_host=192.168.1.8 # local
 
 [sensors:vars]
+# ⚠️ CRITICAL: Ansible must log in as 'pi'
+ansible_user=pi
 install_path=/opt/adsb-grid
-
-[tower]
-# tower-core ansible_host=192.168.192.100 ansible_user=pi

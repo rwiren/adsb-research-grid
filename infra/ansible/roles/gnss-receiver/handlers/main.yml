@@ -1,42 +1,27 @@
 ---
-# Version: 1.5.0
-# Handlers for gnss-receiver role
-# Description: Updated handler names to match Task notifications (Case Sensitive!)
+# ==============================================================================
+# HANDLERS: GNSS Receiver
+# FILE: infra/ansible/roles/gnss-receiver/handlers/main.yml
+# VERSION: 0.4.4
+# ==============================================================================
 
 - name: Restart GPSD
   service:
     name: gpsd
     state: restarted
     enabled: yes
-  become: yes
-
-- name: Reload Systemd
-  systemd:
     daemon_reload: yes
-  become: yes
+
+- name: Restart Data Hub
+  service:
+    name: gnss-socat-hub
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
 
 - name: Restart NTRIP Client
   service:
     name: gnss-ntrip-client
     state: restarted
     enabled: yes
-  become: yes
-
-# Legacy handlers (kept just in case, or for other roles)
-- name: restart gnss-receiver
-  service:
-    name: gnss-receiver
-    state: restarted
-  become: yes
-
-- name: restart gnss-splitter
-  service:
-    name: gnss-splitter
-    state: restarted
-  become: yes
-
-- name: restart gnss-configurator
-  service:
-    name: gnss-configurator
-    state: restarted
-  become: yes
+    daemon_reload: yes

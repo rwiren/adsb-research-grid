@@ -1,0 +1,59 @@
+---
+# ==============================================================================
+# 📂 File: infra/ansible/roles/fetch_data/tasks/main.yml
+# Version: 0.4.3
+# Date: 2026-01-08
+# Description: Downloads logs/reports to Project Root (Fixed Pathing).
+# ==============================================================================
+
+- name: "Define Local Destination Directory"
+  set_fact:
+    # Uses playbook_dir to calculate the absolute path to the Project Root.
+    # Structure: infra/ansible/playbooks/ -> ../../../ -> Project Root
+    local_dest: "{{ playbook_dir }}/../../../research_data/logs/{{ inventory_hostname }}/{{ ansible_date_time.date }}"
+
+- name: "[Logs] Dump Service Logs to Temp Files"
+  shell: "journalctl -u {{ item }} --since '24 hours ago' --no-pager > /tmp/{{ item }}.log"
+  loop:
+    - gnss-ntrip-client
+    - gpsd
+    - adsb-recorder
+    - gnss-recorder
+  ignore_errors: yes
+
+- name: "[Fetch] Download Service Logs"
+  fetch:
+    src: "/tmp/{{ item }}.log"
+    dest: "{{ local_dest }}/"
+    flat: yes
+  loop:
+    - gnss-ntrip-client
+    - gpsd
+    - adsb-recorder
+    - gnss-recorder
+  ignore_errors: yes
+
+- name: "[Fetch] Download Health Report"
+  fetch:
+    src: "/data/health_status.json"
+    dest: "{{ local_dest }}/health_status.json"
+    flat: yes
+  ignore_errors: yes
+
+- name: "[Fetch] Download Storage History"
+  fetch:
+    src: "/data/storage_history.csv"
+    dest: "{{ local_dest }}/storage_history.csv"
+    flat: yes
+  ignore_errors: yes
+
+- name: "[Cleanup] Remove Temp Log Files"
+  file:
+    path: "/tmp/{{ item }}.log"
+    state: absent
+  loop:
+    - gnss-ntrip-client
+    - gpsd
+    - adsb-recorder
+    - gnss-recorder
+  ignore_errors: yes

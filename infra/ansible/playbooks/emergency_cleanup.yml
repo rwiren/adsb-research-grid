@@ -1,0 +1,38 @@
+---
+- name: Emergency Disk Cleanup for ADSB Sensors
+  hosts: sensors
+  become: true
+  tasks:
+    - name: 🛑 Stop the Data Manager service immediately
+      # Assuming it's a systemd service. If you run it manually, we might need 'pkill'
+      # But let's try to stop the python process pattern safely first.
+      shell: "pkill -f data_manager.py"
+      ignore_errors: true
+      register: stop_result
+
+    - name: ℹ️ Confirm process stop
+      debug:
+        msg: "Process stop command return code: {{ stop_result.rc }}"
+
+    - name: 🧹 Delete massive .bin files (Keep .bin.gz)
+      # This finds all files ending in .bin in the storage dir and deletes them
+      find:
+        paths: /var/lib/adsb_storage/
+        patterns: "*.bin"
+      register: bin_files_to_delete
+
+    - name: 🗑️ Remove the found .bin files
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ bin_files_to_delete.files }}"
+      loop_control:
+        label: "{{ item.path }}"
+
+    - name: 📊 Check remaining disk space
+      shell: "df -h /var/lib/adsb_storage/"
+      register: disk_space
+
+    - name: 📈 Display disk space
+      debug:
+        var: disk_space.stdout_lines

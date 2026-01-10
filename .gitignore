@@ -1,49 +1,54 @@
-# --- Python & System ---
+# ==============================================================================
+# 🙈 File: .gitignore
+# Version: 0.4.5
+# Description: Defines build artifacts and data exclusions for the repository.
+# ==============================================================================
+
+# --- 1. Python & System Artifacts ---
 __pycache__/
 *.pyc
+*.pyo
 .DS_Store
 venv/
 .pytest_cache/
 
-# --- Ansible & Secrets ---
-*.retry
-infra/ansible/.vault_pass
+# --- 2. Secrets & Ansible ---
+# CRITICAL: Never commit passwords or keys
+.vault_pass
 .env
+*.retry
+infra/ansible/inventory/host_vars/secret_*.yml
 
-# --- Research Data (The Big Files) ---
-# Block the entire folder to prevent accidental binary commits
+# --- 3. Research Data (Source of Truth) ---
+# We block the bulk data to prevent repository bloat (GBs of logs)
 research_data/
-data/raw/
-data/processed/
-scripts/data/
+data/
+storage_history.csv
 
-# --- Analysis Artifacts ---
-# We generally don't want generated plots in git, only in final docs
-# analysis/**/*.png
-analysis/**/*.pdf
-analysis/**/*.html
+# --- 4. Analysis & Reports ---
+# Ignore intermediate artifacts
+analysis/*
 
-# --- Infrastructure Volumes (Tower-Core) ---
-# Prevent committing database state
+# ... BUT explicitly track these valuable summary reports:
+!analysis/daily_reports/
+!analysis/archive/
+!analysis/**/*.md
+
+# --- 5. Infrastructure Volumes ---
 infra/database/data/
 mosquitto/data/
 mosquitto/log/
 influxdb/
 opensearch/
 
-# --- Model Zoo Artifacts (Future) ---
+# --- 6. Model Zoo (Future Proofing) ---
 *.pt
 *.onnx
 *.tflite
-
-# --- Analysis Output (Curated) ---
-# Ignore all analysis folders by default...
-analysis/*
-
-# ...But Force-Include the official reports and latest dashboards
-!analysis/latest/
-!analysis/gnss_unified/
-!analysis/adsb_latest/
-!analysis/adsb_v2/
-!analysis/*.md
-!analysis/**/*.md
+*.tar.gz
+*.zip
+analysis/archive/
+*.tar.gz
+*.zip
+analysis/archive/
+research_data/

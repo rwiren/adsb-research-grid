@@ -1,0 +1,32 @@
+# ==============================================================================
+# UNIT: GNSS Hardware Initializer
+# FILE: infra/ansible/roles/gnss-receiver/templates/gps-init.service.j2
+# DEPLOY TARGET: /etc/systemd/system/gps-init.service
+# VERSION: 0.4.0
+#
+# DESCRIPTION:
+#   Systemd unit that triggers the physical layer configuration script.
+#   It uses 'ExecStartPre' logic patterns but as a standalone OneShot to
+#   guarantee completion before dependent services (GPSD/Recorder) launch.
+# ==============================================================================
+
+[Unit]
+Description=GNSS Hardware UART Configuration (v0.4.0)
+After=local-fs.target
+# DEVOPS: Strict ordering. This MUST succeed before we try to read data.
+Before=gpsd.service gnss-recorder.service gnss-ntrip-client.service
+
+[Service]
+Type=oneshot
+# ACADEMIC: Dynamic Configuration Injection.
+# We pass the specific hardware path and baud rate defined in the inventory
+# to support the heterogeneous grid (UART High-Speed vs USB Low-Speed).
+ExecStart=/usr/local/bin/gps_hardware_init.sh {{ gnss_device }} {{ gnss_baudrate }}
+RemainAfterExit=yes
+User=root
+Group=root
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

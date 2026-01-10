@@ -1,18 +1,21 @@
 [Unit]
-Description=GNSS Receiver (Socat TCP Hub)
+Description=GNSS Hardware Hub (str2str)
+# Description: Reads raw Serial Data and exposes it on TCP 2000.
+# This is the "Root" of the RTK data pipeline.
 After=network.target
-# This ensures our init script ran first
-Requires=gnss-receiver.service
+Before=gnss-splitter.service
 
 [Service]
 Type=simple
-User=root
 Restart=always
 RestartSec=5
-
-# CRITICAL: We add ',b230400' to ensure socat keeps the high speed
-# and doesn't revert the port to 9600 defaults.
-ExecStart=/usr/bin/socat -d -d -v TCP-LISTEN:2000,fork,reuseaddr FILE:/dev/ttyACM0,raw,echo=0,b230400
+# Run initialization script before starting the stream
+ExecStartPre=/usr/local/bin/ublox_init.sh
+# Start str2str:
+# -in serial://ttyACM0:230400  -> Read from USB at High Speed
+# -out tcpsvr://:2000          -> Serve raw data on Local Port 2000
+ExecStart=/usr/local/bin/str2str -in serial://ttyACM0:230400#ubx -out tcpsvr://:2000
+ExecStop=/usr/bin/killall str2str
 
 [Install]
 WantedBy=multi-user.target

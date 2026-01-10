@@ -1,0 +1,27 @@
+# ==============================================================================
+# UNIT: GNSS Data Hub (socat)
+# FILE: infra/ansible/roles/gnss-receiver/templates/gnss-socat-hub.service.j2
+# VERSION: 0.4.4
+# ==============================================================================
+
+[Unit]
+Description=GNSS Data Hub (socat)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Restart=always
+RestartSec=5
+
+# DEVOPS: Physical Layer Init
+ExecStartPre=/usr/bin/stty -F {{ gnss_device }} {{ gnss_baudrate }} raw -echo -echoe -echok -crtscts
+
+# DATA HUB:
+# Replicates: socat ... TCP-LISTEN:2000 ... FILE:$DEVICE ...
+ExecStart=/usr/bin/socat -d -d -v \
+    TCP-LISTEN:{{ socat_hub_port }},reuseaddr,fork \
+    FILE:{{ gnss_device }},b{{ gnss_baudrate }},raw,echo=0
+
+[Install]
+WantedBy=multi-user.target
