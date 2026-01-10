@@ -1,96 +1,50 @@
 ---
-# Role: gnss-receiver
-# Version: 2.0.0
-# Description: Smart role that installs GPSD for standard nodes OR RTKLIB for RTK nodes.
+# ==============================================================================
+# ROLE: GNSS Receiver
+# FILE: infra/ansible/roles/gnss-receiver/tasks/main.yml
+# VERSION: 0.4.4
+# ==============================================================================
 
-# ==========================================
-# 🟢 STANDARD GPS NODE (Sensor-West)
-# ==========================================
-- name: "[Standard] Install GPSD and Tools"
+- name: "[Common] Install GPSD, socat, and Tools"
   apt:
     name:
       - gpsd
       - gpsd-clients
       - python3-gps
+      - pps-tools
+      - socat
     state: present
-  become: yes
-  when: ntrip_host is not defined
+    update_cache: yes
 
-- name: "[Standard] Configure GPSD"
+# ... (Include RTKLIB compile tasks here if not already present) ...
+
+# ------------------------------------------------------------------------------
+# ARCHITECTURE COMPONENT 1: THE DATA HUB (North Only)
+# ------------------------------------------------------------------------------
+- name: "[Hub] Deploy socat Data Hub Service"
   template:
-    src: gpsd.j2
-    dest: /etc/default/gpsd
+    src: gnss-socat-hub.service.j2
+    dest: /etc/systemd/system/gnss-socat-hub.service
     mode: '0644'
-  become: yes
-  notify: Restart GPSD
-  when: ntrip_host is not defined
+  notify: Restart Data Hub
+  when: socat_hub_port is defined
 
-- name: "[Standard] Ensure GPSD is Started"
-  service:
-    name: gpsd
-    state: started
-    enabled: yes
-  become: yes
-  when: ntrip_host is not defined
-
-# ==========================================
-# 🔵 HIGH PRECISION RTK NODE (Sensor-North)
-# ==========================================
-- name: "[RTK] Install Build Dependencies"
-  apt:
-    name:
-      - build-essential
-      - cmake
-      - libusb-1.0-0-dev
-    state: present
-  become: yes
-  when: ntrip_host is defined
-
-- name: "[RTK] Clone RTKLIB"
-  git:
-    repo: 'https://github.com/rtklibexplorer/RTKLIB.git'
-    dest: /opt/RTKLIB
-    version: master
-  become: yes
-  when: ntrip_host is defined
-
-- name: "[RTK] Compile RTKLIB (str2str)"
-  make:
-    chdir: /opt/RTKLIB/app/str2str/gcc
-  become: yes
-  when: ntrip_host is defined
-
-- name: "[RTK] Install str2str Binary"
-  copy:
-    src: /opt/RTKLIB/app/str2str/gcc/str2str
-    dest: /usr/local/bin/str2str
-    mode: '0755'
-    remote_src: yes
-  become: yes
-  when: ntrip_host is defined
-
-- name: "[RTK] Copy U-blox Initialization Script"
-  copy:
-    src: ublox_init.sh
-    dest: /usr/local/bin/ublox_init.sh
-    mode: '0755'
-  become: yes
-  when: ntrip_host is defined
-
-- name: "[RTK] Deploy GNSS Configurator Service"
-  template:
-    src: gnss-configurator.service.j2
-    dest: /etc/systemd/system/gnss-configurator.service
-    mode: '0644'
-  become: yes
-  notify: Reload Systemd
-  when: ntrip_host is defined
-
+# ------------------------------------------------------------------------------
+# ARCHITECTURE COMPONENT 2: THE NTRIP CLIENT (North Only)
+# ------------------------------------------------------------------------------
 - name: "[RTK] Deploy NTRIP Client Service"
   template:
     src: gnss-ntrip-client.service.j2
     dest: /etc/systemd/system/gnss-ntrip-client.service
     mode: '0644'
-  become: yes
   notify: Restart NTRIP Client
-  when: ntrip_host is defined
+  when: socat_hub_port is defined
+
+# ------------------------------------------------------------------------------
+# ARCHITECTURE COMPONENT 3: GPSD CONFIGURATION
+# ------------------------------------------------------------------------------
+- name: "[Common] Configure GPSD"
+  template:
+    src: gpsd.j2
+    dest: /etc/default/gpsd
+  notify: Restart GPSD

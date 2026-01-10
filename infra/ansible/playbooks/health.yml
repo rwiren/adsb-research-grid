@@ -1,0 +1,19 @@
+---
+# ==============================================================================
+# 📂 File: infra/ansible/playbooks/health.yml
+# Version: 0.4.2
+# Date: 2026-01-08
+# Description: Playbook to trigger the grid_health role on all sensors.
+#              Uses serial execution to prevent terminal output overlap.
+# ==============================================================================
+
+- name: "🏥 Grid Health & Performance Monitor"
+  hosts: sensors
+  gather_facts: yes
+  become: yes
+  
+  # Run one host at a time to keep the terminal output readable
+  serial: 1 
+  
+  roles:
+    - grid_health

@@ -1,6 +1,7 @@
 # ==============================================================================
+# File: infra/ansible/roles/recorder/templates/adsb-recorder.service.j2
 # Service: adsb-recorder.service
-# Version: 1.0
+# Version: 0.3.9
 # Managed By: Ansible
 # ==============================================================================
 
@@ -11,11 +12,12 @@ Requires=docker.service
 
 [Service]
 Type=simple
-User=pi
-Group=pi
-ExecStart=/home/pi/adsb_record.sh
+# Updated path for v0.3.9 (System Binary Path)
+ExecStart=/usr/local/bin/adsb_record.sh
 Restart=always
 RestartSec=10
+User=root
+Group=root
 
 [Install]
 WantedBy=multi-user.target

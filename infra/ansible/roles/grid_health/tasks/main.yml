@@ -1,0 +1,118 @@
+---
+- name: "[HW] Measure CPU Temperature"
+  command: cat /sys/class/thermal/thermal_zone0/temp
+  register: cpu_temp
+  changed_when: false
+
+- name: "[HW] Check for Throttling Events"
+  command: vcgencmd get_throttled
+  register: throttled_status
+  changed_when: false
+  failed_when: false
+
+- name: "[HW] Check Disk Usage (/data)"
+  shell: df -h /var/lib/adsb_storage | awk 'NR==2 {print $5}'
+  register: disk_usage
+  changed_when: false
+
+- name: "[HW] Check Memory Usage"
+  shell: free -m | awk 'NR==2{printf "%.2f%%", $3*100/$2 }'
+  register: mem_usage
+  changed_when: false
+
+- name: "[Net] Check ZeroTier Status"
+  command: zerotier-cli info
+  register: zerotier_status
+  changed_when: false
+  failed_when: false
+
+- name: "[Net] Ping Internet (Google DNS)"
+  command: ping -c 1 8.8.8.8
+  register: internet_ping
+  ignore_errors: yes
+  changed_when: false
+
+- name: "[GNSS] Check GPSD Service Status"
+  command: systemctl is-active gpsd
+  register: gpsd_status
+  failed_when: false
+  changed_when: false
+
+- name: "[GNSS] Query Live GPS Fix Mode (Timeout 5s)"
+  shell: "timeout 5s gpspipe -w -n 10 | grep -m 1 TPV | jq -r '.mode' || echo 0"
+  register: gnss_fix_mode
+  failed_when: false
+  changed_when: false
+
+- name: "[RTK] Check Splitter Service (North Only)"
+  command: systemctl is-active gnss-splitter
+  register: splitter_status
+  failed_when: false
+  changed_when: false
+  when: "'sensor-north' in inventory_hostname"
+
+- name: "[ADS-B] Check Beast Port (30005) Accessibility"
+  wait_for:
+    port: 30005
+    timeout: 1
+  register: adsb_port
+  ignore_errors: yes
+
+- name: "[Recorder] Check Raw Data Growth (Last 1 min)"
+  shell: find /var/lib/adsb_storage -name "raw_*.bin" -mmin -1 | wc -l
+  register: recorder_growth
+  changed_when: false
+
+- name: "[History] Ensure Storage History File Exists"
+  file:
+    path: /var/lib/adsb_storage/storage_history.csv
+    state: touch
+    mode: '0644'
+
+- name: "[History] Append Current Storage Stats"
+  ansible.builtin.command: "/usr/bin/python3 /home/{{ ansible_user }}/scripts/collect_storage_metrics.py"
+
+- name: "📊 Compile Health Report Data"
+  set_fact:
+    health_report:
+      timestamp: "{{ ansible_date_time.iso8601 }}"
+      node: "{{ inventory_hostname }}"
+      hardware:
+        temp: "{{ (cpu_temp.stdout | int / 1000) | round(1) }}°C"
+        throttled: "{{ 'YES' if (throttled_status.stdout | default('0x0') != 'throttled=0x0') else 'NO' }}"
+        disk_usage: "{{ disk_usage.stdout }}"
+        ram_usage: "{{ mem_usage.stdout }}"
+      network:
+        zerotier: "{{ 'ONLINE' if '200 info' in zerotier_status.stdout else 'OFFLINE' }}"
+        internet: "{{ 'ONLINE' if internet_ping.rc == 0 else 'OFFLINE' }}"
+      gnss:
+        service: "{{ gpsd_status.stdout | upper }}"
+        fix_type: "{{ '3D FIX' if (gnss_fix_mode.stdout | default('0') | int >= 3) else 'NO FIX ❌' }}"
+        rtk_splitter: "{{ splitter_status.stdout | default('N/A') | upper }}"
+      adsb:
+        port_30005: "{{ 'OPEN' if adsb_port is success else 'CLOSED ❌' }}"
+        recording: "{{ 'ACTIVE' if (recorder_growth.stdout | int > 0) else 'IDLE' }}"
+
+- name: "Ensure Report Directory Exists"
+  file:
+    path: "/var/lib/adsb_storage/health"
+    state: directory
+    mode: '0755'
+
+- name: "💾 Save Report to JSON"
+  copy:
+    content: "{{ health_report | to_nice_json }}"
+    dest: "/var/lib/adsb_storage/health_status.json"
+
+- name: "🖥️ DISPLAY DASHBOARD"
+  debug:
+    msg:
+      - "========================================================"
+      - "🏥 NODE: {{ inventory_hostname | upper }} | 🌡️ {{ health_report.hardware.temp }} | 💾 {{ health_report.hardware.disk_usage }}"
+      - "========================================================"
+      - "🌐 NET:  Internet [{{ health_report.network.internet }}] | ZT [{{ health_report.network.zerotier }}]"
+      - "🛰️ GNSS: Status [{{ health_report.gnss.service }}]   | Fix [{{ health_report.gnss.fix_type }}] | RTK [{{ health_report.gnss.rtk_splitter }}]"
+      - "📡 ADS-B: Port 30005 [{{ health_report.adsb.port_30005 }}] | Recording [{{ health_report.adsb.recording }}]"
+      - "========================================================"
+      - "⚠️ ISSUES: {{ 'None' if (health_report.network.internet == 'ONLINE') else 'Check logs' }}"
+      - "========================================================"

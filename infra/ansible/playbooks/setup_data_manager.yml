@@ -1,0 +1,28 @@
+---
+- name: 🛡️ Setup Data Management (Compression & Verification)
+  hosts: sensors
+  become: true
+  vars:
+    # We navigate up 3 levels from 'infra/ansible/playbooks' to find 'scripts'
+    local_script_path: "../../../scripts/data_manager.py"
+    # Destination on the sensor node
+    remote_script_dir: "/home/{{ ansible_user }}/scripts"
+
+  tasks:
+    - name: 📂 Create scripts directory on sensor
+      ansible.builtin.file:
+        path: "{{ remote_script_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: 📜 Copy Data Manager Script
+      ansible.builtin.copy:
+        src: "{{ local_script_path }}"
+        dest: "{{ remote_script_dir }}/data_manager.py"
+        mode: '0755'
+
+    - name: ⏱️ Schedule Data Manager (Every 15 mins)
+      ansible.builtin.cron:
+        name: "Run Data Manager (Compress & Verify)"
+        minute: "*/15"
+        job: "/usr/bin/python3 {{ remote_script_dir }}/data_manager.py"

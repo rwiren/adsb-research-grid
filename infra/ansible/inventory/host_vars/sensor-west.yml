@@ -1,20 +1,52 @@
----
-# --- Identity & Location ---
+# ==============================================================================
+# FILE: infra/ansible/inventory/host_vars/sensor-west.yml
+# VERSION: 0.4.5
+# MAINTAINER: DevOps / Research Team
+# DATE: 2026-01-09
+# ==============================================================================
+# DESCRIPTION:
+# Host-specific configuration for the "Sensor-West" mobile node currently
+# deployed at the Keimola testing site.
+#
+# ARCHITECTURAL CONTEXT:
+# Unlike the stationary 'sensor-north' (which uses UART/GPIO for Stratum 1),
+# this node relies on USB peripherals for both GNSS and SDR functions.
+# This file defines the specific calibration offsets required to normalize
+# data from these USB devices for scientific analysis.
+# ==============================================================================
+
+# --- SYSTEM IDENTITY ---
 hostname: "sensor-west"
 timezone: "Europe/Helsinki"
+rpi_model: "Raspberry Pi 4B"
 
-# Location (Kirkkonummi / Jorvas)
-lat: 60.1307
-lon: 24.5130
-alt: 30
+# --- LOCATION METADATA (Keimola Testing Site) ---
+# Used by: readsb (decoder) for MLAT synchronization and range plotting.
+# Status: Active Field Test Location
+# Precision: ~3 decimal places (approx 100m resolution)
+latitude: "60.319"
+longitude: "24.830"
+altitude: "96"              # Updated from 50 to 96m (GPS HAE/MSL observed 2026-01-09)
 
-# --- Hardware Config ---
-# Jetvision (Black) needs higher gain than FlightAware (Blue)
-dump1090_gain: 49.6
-# Standard USB Audio index
-dump1090_device_index: 0
+# --- GNSS HARDWARE CONFIGURATION ---
+# Hardware: GlobalSat G-STAR IV (USB)
+# Driver: gpsd
+# Connection: USB Serial (Prolific PL2303)
+# ------------------------------------------------------------------------------
+gnss_type: "usb"            # Triggers SHM config in Chrony template (vs PPS for UART)
+gnss_device: "/dev/ttyUSB0"
+gnss_baudrate: 4800         # VERIFIED: 2026-01-09 via stty command (Standard SiRF IV)
+gnss_driver_flags: "-n -G"  # -n: Instant poll, -G: Network export (Port 2947)
 
-# GPS: G-STAR IV (Standard Precision)
-# Usually appears as ttyUSB0. Baud 4800 is standard for G-STAR IV.
-gps_device: "/dev/ttyUSB0"
-gps_baud: 4800
+# --- TIMING CALIBRATION ---
+# Critical for Time-of-Arrival (TOA) spoofing research.
+# Methodology: Baseline measured against Stratum 2 NTP servers on 2026-01-09.
+# Observation: Raw hardware lag (USB Latency + Driver Jitter) was ~204ms.
+chrony_offset: 0.204        # Compensates for the measured USB latency
+
+# --- SDR CONFIGURATION ---
+# Hardware: 3x USB Receivers (Silver RTL-SDR, Black Jetvision, Blue FlightAware)
+# TODO: Flash specific serial numbers to dongles to prevent enumeration drift.
+# Currently defaulting to generic until hardware serialization is performed.
+sdr_serial: "00000001"
+enable_raw_recording: false

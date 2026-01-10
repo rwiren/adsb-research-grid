@@ -1,0 +1,58 @@
+---
+# ==============================================================================
+# FILE: infra/ansible/playbooks/fetch.yml
+# VERSION: 0.4.6
+# MAINTAINER: DevOps / Research Team
+# DATE: 2026-01-09
+# ==============================================================================
+# DESCRIPTION:
+#   Orchestrates the retrieval of scientific datasets from remote sensors.
+#   It supports dynamic filename discovery (timestamped CSVs) to ensure 
+#   no data is overwritten during multi-session research campaigns.
+#
+# OPERATIONS:
+#   1. Identifies latest CSV logs (Aircraft, Stats, GNSS)
+#   2. Downloads them to 'research_data/YYYY-MM-DD/{node}/'
+#   3. Cleans up temporary artifacts
+#
+# CHANGELOG:
+#   - 0.4.6: Fixed 'dest' path resolution to target project root (research_data)
+#            instead of nesting inside playbook directory. Added playbook_dir anchor.
+# ==============================================================================
+
+- name: "📥 Grid Data Retrieval (Scientific Data Pipeline)"
+  hosts: sensors
+  gather_facts: yes
+  become: yes
+   
+  tasks:
+    # --- 1. DYNAMIC DISCOVERY ---
+    - name: "[Discovery] Locate all generated CSV research logs"
+      find:
+        paths: "/var/lib/adsb_storage/csv_data"
+        patterns: "*.csv"
+        age: "-1d" # Only files modified in the last 24h
+      register: csv_files
+
+    # --- 2. DATA INGESTION ---
+    - name: "[Ingest] Transfer CSV logs to Local Research Repository"
+      fetch:
+        src: "{{ item.path }}"
+        # DEVOPS COMMENT: 
+        # specific 'dest' path resolution to ensure data lands in project root/research_data 
+        # rather than nesting inside infra/ansible/playbooks.
+        # We step back 3 levels: playbooks -> ansible -> infra -> ROOT
+        dest: "{{ playbook_dir }}/../../../research_data/{{ ansible_date_time.date }}/{{ 'west' if 'west' in inventory_hostname else 'north' }}/"
+        flat: yes
+      with_items: "{{ csv_files.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+
+    - name: "[Ingest] Retrieve Storage History (Metrics)"
+      fetch:
+        src: "/var/lib/adsb_storage/storage_history.csv"
+        # DEVOPS COMMENT: 
+        # Matching path logic for consistency with research logs above.
+        dest: "{{ playbook_dir }}/../../../research_data/{{ ansible_date_time.date }}/{{ 'west' if 'west' in inventory_hostname else 'north' }}/"
+        flat: yes
+      ignore_errors: yes
