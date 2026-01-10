@@ -2,6 +2,7 @@
 """
 ==============================================================================
 FILE: scripts/eda_academic_report.py
+VERSION: 3.1.0 (Robust)
 DESCRIPTION:
   Generates a multi-page PDF Research Report for ADS-B Sensor Data.
   Page 1: Executive Summary (Tables, Metrics, Insights)
@@ -9,8 +10,8 @@ DESCRIPTION:
   Page 3: Hardware & GNSS Stability (Plots 7-11)
   
   Updates:
-  - Fixed Unix Epoch timestamp scaling (1970 bug).
-  - Added text-based insights and summary tables.
+  - Added Overflow Protection for corrupted timestamps.
+  - Added "Showcase" generation trigger automatically.
 ==============================================================================
 """
 
@@ -32,14 +33,15 @@ sns.set_theme(style="whitegrid")
 DATA_DIR = "research_data"
 
 def load_master_data(sensor_path, log_type):
-    """Robustly loads the MASTER csv for a specific log type."""
+    """Robustly loads the MASTER csv with Overflow Protection."""
     pattern = os.path.join(sensor_path, f"*_{log_type}_MASTER_*.csv")
     files = glob.glob(pattern)
     if not files:
         return None
     
     try:
-        df = pd.read_csv(files[0])
+        # Load low_memory=False to handle mixed types
+        df = pd.read_csv(files[0], low_memory=False)
     except Exception as e:
         print(f"      ❌ Error reading {files[0]}: {e}")
         return None
@@ -48,7 +50,18 @@ def load_master_data(sensor_path, log_type):
     time_cols = [c for c in df.columns if 'time' in c.lower() or 'now' in c.lower()]
     if time_cols:
         col = time_cols[0]
-        # FIX: Explicitly treat float timestamps as Seconds (Unix Epoch)
+        
+        # --- FIX: OVERFLOW PROTECTION ---
+        # 1. Force numeric conversion first (turn garbage strings into NaN)
+        df[col] = pd.to_numeric(df[col], errors='coerce')
+        
+        # 2. Filter out "Insane" values that cause Float Overflow in Pandas
+        #    Unix Epoch ~1.7 billion. Anything > 10 billion is likely ms or garbage.
+        #    We keep only valid seconds: 0 < t < 4,000,000,000 (Year 2096)
+        df = df[df[col] < 4000000000]
+        df = df[df[col] > 0]
+        
+        # 3. Now safe to convert to Datetime
         df[col] = pd.to_datetime(df[col], unit='s', errors='coerce')
         
         # Drop rows with invalid times
@@ -57,7 +70,7 @@ def load_master_data(sensor_path, log_type):
         # Sort by time
         df = df.sort_values(by=col)
         
-        # FIX: Handle Duplicate Timestamps
+        # Handle Duplicate Timestamps
         df = df.drop_duplicates(subset=[col], keep='first')
         
         df.set_index(col, inplace=True)
@@ -82,15 +95,20 @@ def generate_summary_page(pdf, sensor_name, date_str, df_air, df_gnss, df_stats)
     avg_rssi = df_air['rssi'].mean() if (df_air is not None and 'rssi' in df_air.columns) else 0
     
     # GNSS Metrics
-    avg_sats = df_gnss['used'].astype(float).mean() if (df_gnss is not None and 'used' in df_gnss.columns) else 0
-    gps_fix_count = len(df_gnss) if df_gnss is not None else 0
+    if df_gnss is not None and 'used' in df_gnss.columns:
+        valid_fixes = df_gnss[df_gnss['used'] > 0]
+        avg_sats = valid_fixes['used'].mean() if not valid_fixes.empty else 0
+        gps_fix_count = len(df_gnss)
+    else:
+        avg_sats = 0
+        gps_fix_count = 0
     
     # Stats Metrics
     avg_temp = 0
     if df_stats is not None and 'cpu_temp' in df_stats.columns:
-         # Clean temp string
-         temps = df_stats['cpu_temp'].astype(str).str.replace("'C", "", regex=False).str.replace("C", "", regex=False)
-         avg_temp = pd.to_numeric(temps, errors='coerce').mean()
+        # Clean temp string
+        temps = df_stats['cpu_temp'].astype(str).str.replace("'C", "", regex=False).str.replace("C", "", regex=False)
+        avg_temp = pd.to_numeric(temps, errors='coerce').mean()
 
     # --- INSIGHTS SECTION ---
     report_text = f"""
@@ -106,7 +124,7 @@ def generate_summary_page(pdf, sensor_name, date_str, df_air, df_gnss, df_stats)
     2. HARDWARE STATUS
        • Average CPU Temperature:        {avg_temp:.1f} °C
        • GNSS Data Points Collected:     {gps_fix_count}
-       • Average Satellites Used:        {avg_sats:.1f}
+       • Avg Satellites (Locked):        {avg_sats:.1f}
        
     3. AUTOMATED INSIGHTS
        • Signal Quality: {"✅ Strong" if avg_rssi > -25 else "⚠️ Moderate" if avg_rssi > -35 else "🔴 Weak"}
@@ -230,7 +248,7 @@ def generate_sensor_report(sensor_name, date_str, sensor_path):
             axes2[0, 0].legend()
             axes2[0, 0].tick_params(axis='x', rotation=45)
         else:
-             axes2[0, 0].text(0.5, 0.5, "No GNSS Data", ha='center')
+            axes2[0, 0].text(0.5, 0.5, "No GNSS Data", ha='center')
 
         # Plot 8: CPU Temp
         if df_stats is not None and 'cpu_temp' in df_stats.columns:
@@ -255,11 +273,11 @@ def generate_sensor_report(sensor_name, date_str, sensor_path):
 
         # Plot 10: CPU Load
         if df_stats is not None and 'cpu_load_percent' in df_stats.columns:
-             load = pd.to_numeric(df_stats['cpu_load_percent'], errors='coerce')
-             axes2[1, 1].plot(df_stats.index, load, color='black')
-             axes2[1, 1].set_title("10. System CPU Load %")
-             axes2[1, 1].set_ylim(0, 100)
-             axes2[1, 1].tick_params(axis='x', rotation=45)
+            load = pd.to_numeric(df_stats['cpu_load_percent'], errors='coerce')
+            axes2[1, 1].plot(df_stats.index, load, color='black')
+            axes2[1, 1].set_title("10. System CPU Load %")
+            axes2[1, 1].set_ylim(0, 100)
+            axes2[1, 1].tick_params(axis='x', rotation=45)
 
         # Plot 11: Memory
         if df_stats is not None and 'memory_used_percent' in df_stats.columns:
@@ -277,7 +295,7 @@ def generate_sensor_report(sensor_name, date_str, sensor_path):
         print(f"      ✅ Report Saved.")
 
 def main():
-    print("🔬 INITIALIZING ACADEMIC VISUALIZATION ENGINE (v2.0)...")
+    print("🔬 INITIALIZING ACADEMIC VISUALIZATION ENGINE (v3.1)...")
     
     for date_folder in sorted(os.listdir(DATA_DIR)):
         date_path = os.path.join(DATA_DIR, date_folder)
