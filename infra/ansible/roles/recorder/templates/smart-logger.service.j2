@@ -1,15 +1,14 @@
 # ==============================================================================
 # FILE: /etc/systemd/system/smart-logger.service
-# VERSION: 0.4.5 (Managed by Ansible)
+# VERSION: 1.0.0 (Research Edition)
 # ==============================================================================
 # DESCRIPTION:
 #   Systemd unit for the ADSB Smart Logger.
-#   Ensures the service runs as 'pi', starts after the network/GPSD,
-#   and injects environment variables for Hardware Agnosticism.
+#   Updated to support dynamic aircraft logging for research.
 # ==============================================================================
 
 [Unit]
-Description=Smart ADS-B Data Logger (Academic v1.4.0)
+Description=Smart ADS-B Data Logger (Research Mode)
 After=network.target readsb.service gpsd.service
 Wants=gpsd.service
 
@@ -22,19 +21,19 @@ WorkingDirectory=/opt/adsb-sensor
 # -----------------------------------------------------------
 # HARDWARE CONFIGURATION
 # -----------------------------------------------------------
-# These variables allow the same Python script to run on
-# Sensor-North (HAT) and Sensor-West (USB) without code changes.
-Environment="SENSOR_ID={{ sensor_id }}"
+Environment="SENSOR_ID={{ sensor_id | default(inventory_hostname) }}"
 Environment="SENSOR_GNSS_PATH={{ gnss_device_path | default('/dev/ttyUSB0') }}"
-
-# -----------------------------------------------------------
-# RUNTIME CONFIGURATION
-# -----------------------------------------------------------
-# Force Python to unbuffer output so logs appear instantly in journalctl
 Environment="PYTHONUNBUFFERED=1"
 
-# EXECUTION PATH (Standardized to /opt)
-ExecStart=/usr/bin/python3 /opt/adsb-sensor/smart_adsb_logger.py
+# -----------------------------------------------------------
+# EXECUTION COMMAND (FIXED)
+# -----------------------------------------------------------
+# Now dynamically adds flags based on Ansible inventory variables
+ExecStart=/usr/bin/python3 /opt/adsb-sensor/smart_adsb_logger.py \
+    --host localhost \
+    --port 30005 \
+    --log-dir /var/lib/adsb_storage/csv_data \
+    {% if log_aircraft_csv | default(false) %}--log-aircraft{% endif %}
 
 # RESTART POLICY
 Restart=always

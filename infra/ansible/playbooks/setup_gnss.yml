@@ -1,0 +1,26 @@
+---
+- name: "🛰️ Configure Smart GNSS (Hardware Detection)"
+  hosts: sensors
+  become: true
+  
+  tasks:
+    - name: Ensure script directory exists
+      file:
+        path: "/home/pi/adsb-sensor/scripts"
+        state: directory
+        mode: '0755'
+
+    - name: Upload Smart GNSS Configuration Script
+      copy:
+        src: "../../../scripts/configure_gnss.sh"
+        dest: "/home/pi/adsb-sensor/scripts/configure_gnss.sh"
+        mode: '0755'
+
+    - name: Execute GNSS Auto-Configuration
+      command: "/home/pi/adsb-sensor/scripts/configure_gnss.sh"
+      register: gnss_result
+      changed_when: "'Restarting gpsd' in gnss_result.stdout"
+
+    - name: Show Configuration Result
+      debug:
+        msg: "{{ gnss_result.stdout_lines }}"

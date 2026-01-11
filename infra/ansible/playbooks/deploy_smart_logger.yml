@@ -2,27 +2,26 @@
 # ==============================================================================
 # PROJECT: ADS-B Spoofing Data Collection (Academic Research)
 # FILE: infra/ansible/playbooks/deploy_smart_logger.yml
-# VERSION: 0.4.5
-# DATE: 2026-01-09
-# DESCRIPTION:
-#   Targeted deployment for the Smart Logger component.
-#   - Installs to professional path: /opt/adsb-sensor/
-#   - Updates Systemd service definition
-#   - Restarts service to apply Python code changes immediately
+# VERSION: 1.0.0 (Path Fix)
+# DESCRIPTION: Forces logger installation with correct storage paths.
 # ==============================================================================
 
 - name: Deploy Smart ADSB CSV Logger for Research
-  hosts: sensor-west
+  hosts: sensors
   become: yes
-  vars:
-    # --- Configuration Variables ---
-    sensor_id: "sensor-west"
-    # Default to USB, can be overridden by inventory
-    gnss_device_path: "{{ gnss_device | default('/dev/ttyUSB0') }}"
-
+  
   tasks:
-    # 1. PREPARE ENVIRONMENT
-    - name: Ensure ADSB Sensor Directory Exists (/opt)
+    # 1. CRITICAL: Create the storage directory required by fetch.yml
+    - name: Ensure Storage Directory Exists (/var/lib/adsb_storage/csv_data)
+      ansible.builtin.file:
+        path: /var/lib/adsb_storage/csv_data
+        state: directory
+        owner: pi
+        group: pi
+        mode: '0775'
+
+    # 2. PREPARE ENVIRONMENT
+    - name: Ensure Application Directory Exists (/opt/adsb-sensor)
       ansible.builtin.file:
         path: /opt/adsb-sensor
         state: directory
@@ -30,10 +29,9 @@
         group: pi
         mode: '0755'
 
-    # 2. DEPLOY CODE
-    - name: Deploy Smart Logger Script (v1.4.0)
+    # 3. DEPLOY CODE
+    - name: Deploy Smart Logger Script
       ansible.builtin.copy:
-        # Looks inside roles/recorder/files/
         src: ../roles/recorder/files/smart_adsb_logger.py
         dest: /opt/adsb-sensor/smart_adsb_logger.py
         owner: pi
@@ -41,10 +39,9 @@
         mode: '0755'
       notify: Restart Smart Logger
 
-    # 3. CONFIGURE SERVICE
-    - name: Deploy Service Definition
+    # 4. CONFIGURE SERVICE (Uses the updated template from Step 1)
+    - name: Deploy Systemd Service Definition
       ansible.builtin.template:
-        # Looks inside roles/recorder/templates/
         src: ../roles/recorder/templates/smart-logger.service.j2
         dest: /etc/systemd/system/smart-logger.service
         owner: root
@@ -52,7 +49,7 @@
         mode: '0644'
       notify: Restart Smart Logger
 
-    # 4. STARTUP
+    # 5. STARTUP
     - name: Ensure Smart Logger is Running
       ansible.builtin.systemd:
         name: smart-logger

@@ -1,6 +1,6 @@
 # ==============================================================================
 # 🙈 File: .gitignore
-# Version: 0.4.5
+# Version: 0.5.0 (Data Science Release)
 # Description: Defines build artifacts and data exclusions for the repository.
 # ==============================================================================
 
@@ -19,14 +19,14 @@ venv/
 *.retry
 infra/ansible/inventory/host_vars/secret_*.yml
 
-# --- 3. Research Data (Source of Truth) ---
-# We block the bulk data to prevent repository bloat (GBs of logs)
+# --- 3. Research Data (Excluded) ---
+# Raw logs are too big for Git. We track the 'docs/showcase' summaries instead.
 research_data/
 data/
 storage_history.csv
 
 # --- 4. Analysis & Reports ---
-# Ignore intermediate artifacts
+# Ignore intermediate working files...
 analysis/*
 
 # ... BUT explicitly track these valuable summary reports:
@@ -34,21 +34,20 @@ analysis/*
 !analysis/archive/
 !analysis/**/*.md
 
-# --- 5. Infrastructure Volumes ---
+# --- 5. Documentation & Showcase ---
+# Ensure our academic proofs are always tracked
+!docs/showcase/
+
+# --- 6. Infrastructure Volumes ---
 infra/database/data/
 mosquitto/data/
 mosquitto/log/
 influxdb/
 opensearch/
 
-# --- 6. Model Zoo (Future Proofing) ---
+# --- 7. Large Binaries & Models ---
 *.pt
 *.onnx
 *.tflite
 *.tar.gz
 *.zip
-analysis/archive/
-*.tar.gz
-*.zip
-analysis/archive/
-research_data/

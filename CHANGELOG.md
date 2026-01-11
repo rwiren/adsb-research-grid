@@ -1,3 +1,35 @@
+# Changelog
+
+All notable changes to the **ADS-B Research Grid** project will be documented in this file.
+
+## [0.5.0] - 2026-01-12 (The Data Science Release)
+### 🚀 Major Features
+- **Forensic EDA Engine (`academic_eda.py`):**
+  - **Showcase Generator:** Creates comprehensive "Showcase" reports (Markdown + 4x4 Composite Dashboards) for scientific defense.
+  - **Physics Validation:** Implements Inverse-Square Law checks (RSSI vs Distance) and Flight Envelope analysis (Alt vs Speed).
+  - **Fault Tolerance:** Robust handling of missing Squawk/GNSS data without pipeline failure.
+- **Machine Learning Pipeline (`ds_pipeline_master.py`):**
+  - **Anomaly Detection:** Added `IsolationForest` (Unsupervised Learning) to detect spoofing candidates based on 4-dimensional feature vectors.
+  - **Feature Engineering:** Automated calculation of Velocity Discrepancy (Physics vs Reported) and SNR Proxies.
+
+### 🛠️ Infrastructure
+- **Makefile v3.5.0:** Separated `make report` (Forensic Documentation) from `make ml` (AI Training) workflows.
+- **Requirements:** Added `scikit-learn`, `seaborn`, `tabulate` for advanced analytics.
+- **Data Hygiene:** Implemented "Showcase Strategy" to keep Git clean while archiving scientific runs in `docs/showcase/`.
+
+### 🐛 Bug Fixes
+- Fixed `ImportError: tabulate` during report generation.
+- Fixed `ModuleNotFoundError: requests` in health check scripts.
+- Resolved timestamp timezone conflicts (ISO-8601 vs Unix Epoch) across heterogenous sensor logs.
+
+---
+## [0.4.6b] - 2026-01-10 (Scientific Pipeline Release)
+- Added `fetch.yml` for secure log retrieval.
+- Added `consolidate_data.py` for daily master log merging.
+- Refactored legacy recording to `smart_adsb_logger.py`.
+
+
+
 ## [0.4.6b] - 2026-01-10 (Scientific Pipeline Release)
 ### 🚀 Major Features
 - **Scientific Data Pipeline:**

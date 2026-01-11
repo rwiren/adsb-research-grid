@@ -1,19 +1,58 @@
+---
+# ==============================================================================
+# FILE: infra/ansible/inventory/host_vars/sensor-north.yml
+# VERSION: 0.5.6 (Fine Tuning)
+# MAINTAINER: DevOps / Research Team
+# DATE: 2026-01-11
+# ==============================================================================
+# DESCRIPTION:
+#   Host-specific configuration for "Sensor-North", the stationary reference
+#   station and RTK Base.
+#
+# ARCHITECTURAL CONTEXT:
+#   This node serves as the Grid Reference Clock (Stratum 1) using a high-
+#   precision u-blox F9P receiver connected via UART. It provides the "Ground
+#   Truth" for both timing (PPS) and location (Fixed RTK Base).
+# ==============================================================================
+
+# --- SYSTEM IDENTITY ---
 hostname: "sensor-north"
 timezone: "Europe/Helsinki"
-rpi_model: "Raspberry Pi 4B"
-sdr_serial: "00001000"
+rpi_model: "Raspberry Pi 4B (Base Station)"
 
-# RTK HARDWARE
-gnss_device: "/dev/ttyACM0"
-gnss_baudrate: 230400
-
-# RTK SETTINGS (Triggers the Splitter)
-ntrip_caster: "opencaster.nls.fi"
-ntrip_port: 2101
-ntrip_mountpoint: "VRS-FKP"
-ntrip_password: "{{ ntrip_pass }}"
+# --- LOCATION METADATA (Home Base) ---
+# Status: Fixed Reference Station
+# Precision: RTK Surveyed (Centimeter accuracy)
 latitude: "60.319555"
 longitude: "24.830816"
 altitude: "105"
 
+# --- GNSS HARDWARE CONFIGURATION (RTK) ---
+# Hardware: u-blox ZED-F9P (SparkFun HAT)
+# Connection: UART / GPIO (High Bandwidth)
+# ------------------------------------------------------------------------------
+gnss_type: "uart"           # Triggers PPS config in Chrony (Stratum 1)
+gnss_device: "/dev/ttyACM0"
+gnss_baudrate: 230400       # High-speed for Raw RTCM data
+gnss_driver_flags: "-n -G -b" # -b: Read-only (Prevent gpsd from resetting baud)
+
+# --- RTK CASTER SETTINGS ---
+# Upstream NTRIP Caster (Maanmittauslaitos / NLS)
+ntrip_caster: "opencaster.nls.fi"
+ntrip_port: 2101
+ntrip_mountpoint: "VRS-FKP"
+
+# --- SECURITY MAPPING ---
+# We map public role variables to encrypted vault secrets here.
+ntrip_user: "{{ vault_ntrip_user }}"
+ntrip_password: "{{ vault_ntrip_pass }}"
+
+# --- SDR CONFIGURATION ---
+# Hardware: FlightAware Pro Stick Plus (Blue)
+sdr_serial: "00001000"
 enable_raw_recording: false
+
+# SIGNAL OPTIMIZATION (2026-01-11)
+# Optimization: 16.6 dB was borderline (-4.7 dBFS).
+# Target: ~15.7 dB (Adding 1 dB safety margin).
+sdr_gain: "15.7"

@@ -24,17 +24,17 @@ services:
       - READSB_GAIN={{ sdr_gain | default('49.6') }}
 
       # --- LOCATION CONFIGURATION ---
-      # Standardized on 'latitude/longitude' to match host_vars
-      - LAT={{ latitude }}
-      - LONG={{ longitude }}
-      - ALT={{ altitude | default('0') }}
+      # Priority: Use 'fixed_' variables (from host_vars) if defined, else 'latitude' (inventory)
+      - LAT={{ fixed_lat | default(latitude) }}
+      - LONG={{ fixed_lon | default(longitude) }}
+      - ALT={{ fixed_alt | default(altitude) | default('0') }}
 
       # --- VISUALIZATION ---
       - UUID={{ adsb_uuid | default('') }}
       - MLAT_NO_ANON_RESULTS=true
       - UPDATE_TAR1090=true
-      - TAR1090_DEFAULTCENTERLAT={{ latitude }}
-      - TAR1090_DEFAULTCENTERLON={{ longitude }}
+      - TAR1090_DEFAULTCENTERLAT={{ fixed_lat | default(latitude) }}
+      - TAR1090_DEFAULTCENTERLON={{ fixed_lon | default(longitude) }}
       - TAR1090_MESSAGERATEINTITLE=true
 
       # --- SMART PERFORMANCE TUNING (Revision 0.3.6) ---
@@ -45,6 +45,7 @@ services:
     ports:
       - 8080:80        # Tar1090 Web Interface
       - 30005:30005    # Beast Output (Raw Data)
+      - 30003:30003    # SBS/BaseStation Output (REQUIRED FOR PYTHON LOGGER)
 
     tmpfs:
       - /run:exec,size=64M

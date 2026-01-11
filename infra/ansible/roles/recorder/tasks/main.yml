@@ -1,24 +1,33 @@
 ---
 # ==============================================================================
 # FILE: infra/ansible/roles/recorder/tasks/main.yml
-# VERSION: 0.4.5
-# DESCRIPTION: Deploys the Smart Logger to the standardized /opt location.
+# VERSION: 0.5.0
+# DESCRIPTION: Deploys the Smart Logger and manages data persistence paths.
 # ==============================================================================
+
+- name: "[Storage] Ensure Data Persistence Directory Exists"
+  ansible.builtin.file:
+    path: "/var/lib/adsb_storage"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+  become: true
 
 - name: Ensure ADSB Sensor Directory Exists (/opt)
   ansible.builtin.file:
     path: /opt/adsb-sensor
     state: directory
-    owner: pi
-    group: pi
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
     mode: '0755'
 
 - name: Deploy Smart Logger Script (v1.4.0)
   ansible.builtin.copy:
     src: smart_adsb_logger.py
     dest: /opt/adsb-sensor/smart_adsb_logger.py
-    owner: pi
-    group: pi
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
     mode: '0755'
   notify: Restart Smart Logger
 

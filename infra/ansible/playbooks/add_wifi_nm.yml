@@ -1,61 +1,76 @@
 ---
-- hosts: sensor-west
+# ==============================================================================
+# PLAYBOOK: Configure Mission-Critical Wi-Fi Profiles (NetworkManager)
+# VERSION: 1.3.1 (SECURED)
+# DESCRIPTION:
+# Provisions prioritized Wi-Fi connection profiles.
+# SECURITY: Uses no_log to prevent credential leakage in console output.
+# ==============================================================================
+
+- name: "[Net] Provision Mission Wi-Fi Profiles"
+  hosts: sensors
   become: true
+
+  vars:
+    mission_networks:
+      # 1. PRIMARY: SIBBO FIELD SITE (Priority 100)
+      - id: "mission-sibbo"
+        ssid: "{{ (vault_wifi_networks | selectattr('id', 'equalto', 'remote_sibbo') | first).ssid }}"
+        psk:  "{{ (vault_wifi_networks | selectattr('id', 'equalto', 'remote_sibbo') | first).psk }}"
+        prio: 100
+
+      # 2. BACKUP: iPHONE HOTSPOT (Priority 90)
+      - id: "mission-iphone"
+        ssid: "{{ vault_iphone_ssid }}"
+        psk:  "{{ vault_iphone_psk }}"
+        prio: 90
+
+      # 3. LAB: SKY-TESTING (Priority 80)
+      - id: "mission-sky-testing"
+        ssid: "{{ vault_sky_ssid }}"
+        psk:  "{{ vault_sky_psk }}"
+        prio: 80
+
   tasks:
-    # ==========================================================================
-    # 📱 NETWORK 1: iPhone Hotspot (Roaming/Jorvas)
-    # ==========================================================================
-    - name: 🔍 Check if iPhone connection exists
-      shell: nmcli connection show "mission-iphone"
-      register: iphone_check
-      ignore_errors: yes
+    - name: "[Net] Check existing connection profiles"
+      shell: nmcli connection show "{{ item.id }}"
+      loop: "{{ mission_networks }}"
+      register: connection_check
+      # Fix 1: Treat rc=10 (Not Found) as a valid outcome, not a failure.
+      failed_when: connection_check.rc != 0 and connection_check.rc != 10
+      # Fix 2: STRICTLY suppress output to hide 'item' containing passwords
+      no_log: true
       changed_when: false
 
-    - name: 📝 Create iPhone Profile
+    - name: "[Net] Create missing connection profiles"
       command: >
-        nmcli connection add type wifi ifname wlan0 
-        con-name "mission-iphone" 
-        ssid "{{ vault_iphone_ssid }}"
-      when: iphone_check.rc != 0
+        nmcli connection add type wifi ifname wlan0
+        con-name "{{ item.item.id }}"
+        ssid "{{ item.item.ssid }}"
+      loop: "{{ connection_check.results }}"
+      # Create only if the previous check returned 10 (Not Found)
+      when: item.rc == 10
+      no_log: true
+      loop_control:
+        label: "{{ item.item.id }}"
 
-    - name: 🔑 Set iPhone Password
+    - name: "[Net] Secure profiles (WPA-PSK)"
       command: >
-        nmcli connection modify "mission-iphone"
-        wifi-sec.key-mgmt wpa-psk 
-        wifi-sec.psk "{{ vault_iphone_psk }}"
-      when: iphone_check.rc != 0
+        nmcli connection modify "{{ item.item.id }}"
+        wifi-sec.key-mgmt wpa-psk
+        wifi-sec.psk "{{ item.item.psk }}"
+      loop: "{{ connection_check.results }}"
+      when: item.rc == 10
+      no_log: true
+      loop_control:
+        label: "{{ item.item.id }}"
 
-    - name: 🚀 Set iPhone Priority (High)
+    - name: "[Net] Set connection priority and autoconnect"
       command: >
-        nmcli connection modify "mission-iphone"
+        nmcli connection modify "{{ item.item.id }}"
         connection.autoconnect yes
-        connection.autoconnect-priority 100
-
-    # ==========================================================================
-    # ☁️ NETWORK 2: Sky-Testing (Balcony/Local)
-    # ==========================================================================
-    - name: 🔍 Check if Sky-Testing connection exists
-      shell: nmcli connection show "mission-sky-testing"
-      register: sky_check
-      ignore_errors: yes
-      changed_when: false
-
-    - name: 📝 Create Sky-Testing Profile
-      command: >
-        nmcli connection add type wifi ifname wlan0 
-        con-name "mission-sky-testing" 
-        ssid "{{ vault_sky_ssid }}"
-      when: sky_check.rc != 0
-
-    - name: 🔑 Set Sky-Testing Password
-      command: >
-        nmcli connection modify "mission-sky-testing"
-        wifi-sec.key-mgmt wpa-psk 
-        wifi-sec.psk "{{ vault_sky_psk }}"
-      when: sky_check.rc != 0
-
-    - name: 🚀 Set Sky-Testing Priority (Medium)
-      command: >
-        nmcli connection modify "mission-sky-testing"
-        connection.autoconnect yes
-        connection.autoconnect-priority 90
+        connection.autoconnect-priority {{ item.item.prio }}
+      loop: "{{ connection_check.results }}"
+      no_log: true
+      loop_control:
+        label: "{{ item.item.id }}"
