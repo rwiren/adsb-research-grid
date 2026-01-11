@@ -1,7 +1,7 @@
 # Securing the Skies: ADS-B Spoofing Detection Grid
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-v0.3.5-green.svg)](#)
+[![Version](https://img.shields.io/badge/Version-v0.5.0-green.svg)](#)
 [![Status](https://img.shields.io/badge/Status-Phase%203%3A%20Validation-success.svg)](#)
 [![Wiki](https://img.shields.io/badge/Docs-Project%20Wiki-purple?style=flat-square)](https://github.com/rwiren/adsb-research-grid/wiki)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](#)
@@ -19,8 +19,7 @@
 ---
 
 ## 🔬 Research Goal
-To detect and mitigate GNSS spoofing attacks on civilian aviation tracking systems (ADS-B) using a distributed sensor grid and a **Hybrid AI Model Zoo**. This project moves beyond simple signal 
-strength thresholding to a multi-layered defense strategy capable of identifying sophisticated trajectory modification attacks and "ghost" aircraft injections.
+To detect and mitigate GNSS spoofing attacks on civilian aviation tracking systems (ADS-B) using a distributed sensor grid and a **Hybrid AI Model Zoo**. This project moves beyond simple signal strength thresholding to a multi-layered defense strategy capable of identifying sophisticated trajectory modification attacks and "ghost" aircraft injections.
 
 ---
 
@@ -68,9 +67,11 @@ Run these commands from the repository root:
 | Command | Description |
 | :--- | :--- |
 | `make deploy` | Deploy the latest Ansible configuration to the active sensor grid. |
-| `make sync` | **Fetch the latest raw binary data** from `sensor-north` to `data/raw/` (using SCP/Rsync). |
-| `make analyze` | **Run the Scientific Audit (v0.3.0)**. Processes raw Beast Binary data using the "Byte-Seeker" algorithm. |
-| `make clean` | Remove old analysis artifacts and dashboards. |
+| `make fetch` | **Ingest Data:** Securely download and normalize CSV logs from all sensors to `research_data/`. |
+| `make report` | **Forensic Audit:** Generate the Academic Showcase (Markdown Report + 5 Scientific Dashboards). |
+| `make ml` | **AI/ML Prep:** Run the Unsupervised Anomaly Detection pipeline (Isolation Forest). |
+| `make check` | **Health Check:** Real-time query of sensor RF signal quality and thermal status. |
+| `make clean` | Remove temporary build artifacts and cache. |
 
 ### 2. Manual Deployment
 To update the grid infrastructure manually without the Makefile:
@@ -78,31 +79,42 @@ To update the grid infrastructure manually without the Makefile:
 ansible-playbook infra/ansible/playbooks/site.yml
 ```
 
-### 3. Scientific Analysis (The Audit)
+### 3. Scientific Analysis (Forensic Report)
 To run the full physics validation and generate the "Principal Investigator" dashboard:
 
 ```bash
-make analyze
+make report
 ```
 
-**Output (`analysis/latest/`):**
-* **`AUDIT_REPORT.md`**: Executive summary of traffic volume, data quality, and security threats.
-* **`A_Operational.png`**: Grid stability, message rates, and protocol distribution.
-* **`B_Physics.png`**: Vertical rates, ground speed, and track angle distributions (Gaussian checks).
-* **`C_Spatial.png`**: Coverage maps and Altitude vs. Distance radio horizon analysis.
-* **`D_Signals.png`**: RSSI signal strength distribution and correlation matrices (Inverse Square Law validation).
+**Output (`docs/showcase/run_YYYY-MM-DD_HHMM/`):**
+* **`REPORT.md`**: Executive Forensic Report including "Data Health Certificate" and missing value analysis.
+* **`D1_Operational.png`**: Grid stability, message rates, and sensor sensitivity profiles.
+* **`D2_Physics.png`**: Flight Envelopes (Alt vs Speed) and Signal Decay (Inverse-Square Law validation).
+* **`D3_Spatial.png`**: Geospatial coverage maps and sensor geometry.
+* **`D4_Forensics.png`**: Multi-sensor correlation and differential signal histograms.
+
+### 4. Machine Learning (Anomaly Detection)
+To train the unsupervised spoofing detector on fresh data:
+
+```bash
+make ml
+```
+
+**Output:** Generates `research_data/ml_ready/training_dataset_v3.csv` containing:
+* Normalized physics features (Velocity Discrepancy, SNR Proxy).
+* `anomaly_score`: -1 (Potential Spoofer) vs 1 (Normal).
 
 ---
 
 ## 📂 Repository Structure
 * **`infra/`**: Ansible playbooks for Infrastructure as Code (IaC).
-* **`data/raw/`**: Binary recordings from the sensor nodes (Beast format).
+* **`research_data/`**: Local repository for ingested sensor logs (Ignored by Git).
+* **`docs/showcase/`**: Versioned output of scientific runs (The "Evidence").
 * **`scripts/`**: Python analysis tools.
-    * `eda_check.py`: The Master Analysis Suite (v0.3.0).
-    * `archive/`: Deprecated prototype scripts and experiments.
-* **`analysis/`**: Generated charts and reports.
-    * `latest/`: Results from the most recent run.
-    * `archive/`: Historical data validation runs.
+    * `academic_eda.py`: Forensic reporting engine (v0.5.0).
+    * `ds_pipeline_master.py`: Machine Learning pipeline (v3.0).
+    * `check_signal_health.py`: Real-time sensor diagnostics.
+    * `archive/`: Deprecated prototype scripts (v0.1 - v0.4).
 
 ---
 
@@ -135,7 +147,7 @@ We follow a strict DevOps workflow to ensure integrity across Apple Silicon, Int
 ### 2. Workflow
 1.  **Sync:** `git checkout main && git pull origin main`
 2.  **Branch:** `git checkout -b feature/your-feature-name`
-3.  **Test:** Run `make analyze` (Must pass locally!)
+3.  **Test:** Run `make report` (Must pass locally!)
 4.  **Commit:** Use [Conventional Commits](https://www.conventionalcommits.org/) (e.g., `feat:`, `fix:`, `docs:`).
 5.  **Merge:** Open a Pull Request.
 
@@ -144,4 +156,3 @@ We follow a strict DevOps workflow to ensure integrity across Apple Silicon, Int
     - *Action:* Ask the Maintainer for the password, then run:
     - `echo 'THE_PASSWORD' > .vault_pass`
 - **Environment:** Run `make setup` to initialize the Python environment.
-- **Data:** Fetch `.bin` files manually from `sensor-north` (data is not in git).

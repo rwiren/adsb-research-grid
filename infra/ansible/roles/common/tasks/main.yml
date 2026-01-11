@@ -1,8 +1,8 @@
 ---
-# Version: 1.6.0
+# Version: 1.7.0 (Robust Security)
 # Role: common
-# Description: Added 'ufw' to essential tools AND conditional checks for PPS tasks.
 
+# --- PART 1: SYSTEM UPDATES & TOOLS ---
 - name: "[System] Update apt cache"
   apt:
     update_cache: yes
@@ -25,25 +25,11 @@
       - vim
       - net-tools
       - pps-tools
-      - ufw
+      - ufw   # <--- CRITICAL: This must be here!
     state: present
   become: yes
 
-- name: "[Firewall] Set up UFW (Allow SSH)"
-  ufw:
-    rule: allow
-    port: '22'
-    proto: tcp
-  become: yes
-
-- name: "[Firewall] Enable UFW"
-  ufw:
-    state: enabled
-  become: yes
-
-# --- Fix: PPS (Pulse Per Second) Support ---
-# Only run these on nodes that actually have PPS hardware (e.g., Sensor-North)
-
+# --- PART 2: PPS / TIMING (Conditional) ---
 - name: "[System] Enable PPS Support in Kernel (Bookworm)"
   lineinfile:
     path: /boot/firmware/config.txt
@@ -53,7 +39,7 @@
   register: pps_config_bookworm
   ignore_errors: yes
   become: yes
-  when: ntrip_host is defined  # <--- Condition Added
+  when: ntrip_host is defined
 
 - name: "[System] Enable PPS Support in Kernel (Legacy)"
   lineinfile:
@@ -62,7 +48,6 @@
     line: 'dtoverlay=pps-gpio,gpiopin=4'
     state: present
   register: pps_config_legacy
-  # Only run if it's an RTK node AND the previous Bookworm task failed
   when: (ntrip_host is defined) and (pps_config_bookworm.failed | default(false))
   become: yes
 
@@ -71,7 +56,7 @@
     name: pps-gpio
     state: present
   become: yes
-  when: ntrip_host is defined  # <--- Condition Added (Fixes the Timeout)
+  when: ntrip_host is defined
 
 - name: "[System] Add pps-gpio to /etc/modules"
   lineinfile:
@@ -79,4 +64,57 @@
     line: "pps-gpio"
     state: present
   become: yes
-  when: ntrip_host is defined  # <--- Condition Added
+  when: ntrip_host is defined
+
+# --- PART 3: ROBUST FIREWALL (The New Part) ---
+- name: "[Firewall] Deny all incoming by default"
+  ufw:
+    default: deny
+    direction: incoming
+  become: yes
+
+- name: "[Firewall] Allow outgoing by default"
+  ufw:
+    default: allow
+    direction: outgoing
+  become: yes
+
+- name: "[Firewall] Allow SSH (Port 22)"
+  ufw:
+    rule: allow
+    port: '22'
+    proto: tcp
+  become: yes
+
+- name: "[Firewall] Allow ZeroTier Tunnel (9993 UDP)"
+  ufw:
+    rule: allow
+    port: '9993'
+    proto: udp
+  become: yes
+
+- name: "[Firewall] Allow ADS-B Web Map (Port 80)"
+  ufw:
+    rule: allow
+    port: '80'
+    proto: tcp
+  become: yes
+
+- name: "[Firewall] Allow Tar1090 Web Map (Port 8080)"
+  ufw:
+    rule: allow
+    port: '8080'
+    proto: tcp
+  become: yes
+
+- name: "[Firewall] Allow Beast Data Exchange (30005)"
+  ufw:
+    rule: allow
+    port: '30005'
+    proto: tcp
+  become: yes
+
+- name: "[Firewall] Enable UFW"
+  ufw:
+    state: enabled
+  become: yes

@@ -1,37 +1,33 @@
 ---
 # ==============================================================================
 # FILE: infra/ansible/playbooks/fetch.yml
-# VERSION: 0.4.6
+# VERSION: 0.6.1 (Compressed Support Patch)
 # MAINTAINER: DevOps / Research Team
-# DATE: 2026-01-09
+# DATE: 2026-01-11
 # ==============================================================================
 # DESCRIPTION:
 #   Orchestrates the retrieval of scientific datasets from remote sensors.
-#   It supports dynamic filename discovery (timestamped CSVs) to ensure 
-#   no data is overwritten during multi-session research campaigns.
-#
-# OPERATIONS:
-#   1. Identifies latest CSV logs (Aircraft, Stats, GNSS)
-#   2. Downloads them to 'research_data/YYYY-MM-DD/{node}/'
-#   3. Cleans up temporary artifacts
+#   Supports dynamic node discovery (North/East/West).
 #
 # CHANGELOG:
-#   - 0.4.6: Fixed 'dest' path resolution to target project root (research_data)
-#            instead of nesting inside playbook directory. Added playbook_dir anchor.
+#   - 0.6.1: Added support for .csv.gz (compressed) logs to prevent skipping.
+#   - 0.5.0: Removed legacy jinja2 conditional. Now uses {{ inventory_hostname }}
 # ==============================================================================
 
 - name: "📥 Grid Data Retrieval (Scientific Data Pipeline)"
   hosts: sensors
   gather_facts: yes
   become: yes
-   
+    
   tasks:
     # --- 1. DYNAMIC DISCOVERY ---
     - name: "[Discovery] Locate all generated CSV research logs"
       find:
         paths: "/var/lib/adsb_storage/csv_data"
-        patterns: "*.csv"
-        age: "-1d" # Only files modified in the last 24h
+        patterns: 
+          - "*.csv"
+          - "*.csv.gz"   # <--- CRITICAL FIX: Finds compressed logs
+        age: "-1d"       # Only files modified in the last 24h
       register: csv_files
 
     # --- 2. DATA INGESTION ---
@@ -39,10 +35,9 @@
       fetch:
         src: "{{ item.path }}"
         # DEVOPS COMMENT: 
-        # specific 'dest' path resolution to ensure data lands in project root/research_data 
-        # rather than nesting inside infra/ansible/playbooks.
-        # We step back 3 levels: playbooks -> ansible -> infra -> ROOT
-        dest: "{{ playbook_dir }}/../../../research_data/{{ ansible_date_time.date }}/{{ 'west' if 'west' in inventory_hostname else 'north' }}/"
+        # Dynamic path resolution. 
+        # Result: research_data/2026-01-11/sensor-east/filename.csv
+        dest: "{{ playbook_dir }}/../../../research_data/{{ ansible_date_time.date }}/{{ inventory_hostname }}/"
         flat: yes
       with_items: "{{ csv_files.files }}"
       loop_control:
@@ -52,7 +47,7 @@
       fetch:
         src: "/var/lib/adsb_storage/storage_history.csv"
         # DEVOPS COMMENT: 
-        # Matching path logic for consistency with research logs above.
-        dest: "{{ playbook_dir }}/../../../research_data/{{ ansible_date_time.date }}/{{ 'west' if 'west' in inventory_hostname else 'north' }}/"
+        # Downloads individual node history for merging later.
+        dest: "{{ playbook_dir }}/../../../research_data/{{ ansible_date_time.date }}/{{ inventory_hostname }}/storage_history.csv"
         flat: yes
       ignore_errors: yes

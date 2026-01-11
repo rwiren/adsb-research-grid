@@ -1,19 +1,9 @@
 # ==============================================================================
 # 📂 File: infra/ansible/inventory/hosts.prod
-# Version: 0.4.7
+# Version: 0.6.0 (SECURED)
 # Date: 2026-01-10
-#
-# HARDWARE & OS MANIFEST:
-# -----------------------------------------------------------------------------
-# SENSOR-NORTH (RTK Base):
-#   - HW: Raspberry Pi 4B
-#   - OS: Debian 13.2 (Trixie) -> Uses NetworkManager
-#   - GNSS: u-blox F9P (/dev/ttyACM0) @ 230400 baud
-#
-# SENSOR-WEST (Scout):
-#   - HW: Raspberry Pi 4B
-#   - OS: Debian 13.2 (Trixie) -> Uses NetworkManager
-#   - GNSS: G-STAR IV (/dev/ttyUSB0) @ 4800 baud
+# Description: Production Grid Inventory (ZeroTier Enabled)
+# Security Note: Credentials loaded from Vault.
 # ==============================================================================
 
 [controller]
@@ -22,30 +12,22 @@ localhost ansible_connection=local
 [sensors]
 # -----------------------------------------------------------------------------
 # SENSOR-NORTH: RPi 4 + u-blox F9P (USB)
-# ROLE: RTK Base Station
+# ROLE: RTK Base Station (Stratum 1)
 # -----------------------------------------------------------------------------
-# HARDWARE PROFILE:
-# - Interface: /dev/ttyACM0 (Confirmed via Balena script)
-# - Baud Rate: 230400 (Required for F9P high bandwidth)
-# -----------------------------------------------------------------------------
-sensor-north ansible_host=192.168.1.30 gnss_device=/dev/ttyACM0 gnss_baudrate=230400 socat_hub_port=2000 ntrip_caster=192.168.1.30 ntrip_host=opencaster.nls.fi ntrip_port=2101 ntrip_mountpoint=VRS-FKP ntrip_user=rwiren ntrip_password=Riku3404
+sensor-north ansible_host=192.168.192.130 gnss_device=/dev/ttyACM0 gnss_baudrate=230400 socat_hub_port=2000 ntrip_caster=192.168.1.30 ntrip_host=opencaster.nls.fi ntrip_port=2101 ntrip_mountpoint=VRS-FKP
 
 # -----------------------------------------------------------------------------
 # SENSOR-WEST: RPi 4 + G-STAR IV (USB)
-# ROLE: Production Data Collection
+# ROLE: Production Data Collection (Mobile Scout)
 # -----------------------------------------------------------------------------
-#sensor-west ansible_host=192.168.192.110 gnss_device=/dev/ttyUSB0 gnss_baudrate=4800
-sensor-west ansible_host=192.168.192.110 # zt
-# sensor-west ansible_host=192.168.1.8 # local
+sensor-west ansible_host=192.168.192.110 gnss_device=/dev/ttyUSB0 gnss_baudrate=4800 sensor_id=2
 
-#
-# PLANNED Jan 10 / 11 2026
 # -----------------------------------------------------------------------------
 # SENSOR-EAST: RPi 4 + G-STAR IV (USB)
-# ROLE: Triangulation Scout (Planned)
+# ROLE: Triangulation Scout (Sibbo Deployment)
 # -----------------------------------------------------------------------------
-# (Uncomment when online)
-# sensor-east ansible_host=192.168.192.20 gnss_device=/dev/ttyUSB0 gnss_baudrate=4800
+# STATUS: Online via ZeroTier
+sensor-east ansible_host=192.168.192.120 gnss_device=/dev/ttyUSB0 gnss_baudrate=4800 sensor_id=3
 
 [compute]
 # -----------------------------------------------------------------------------
@@ -53,7 +35,7 @@ sensor-west ansible_host=192.168.192.110 # zt
 # ROLE: Data Aggregation & Analysis Node
 # -----------------------------------------------------------------------------
 # (Uncomment when online)
-# tower-core ansible_host=192.168.192.30 ansible_user=pi
+# tower-core ansible_host=192.168.192.100 ansible_user=pi
 
 [sensors:vars]
 # ⚠️ CRITICAL: Ansible must log in as 'pi'

@@ -1,15 +1,20 @@
 ---
 # ==============================================================================
 # 📂 File: infra/ansible/playbooks/health.yml
+# Version: 1.2.0
+# Date: 2026-01-10
 # Description: Scientific Grid Health & Performance Monitor
-# Updates: Added NMEA GGA parsing for precise RTK/Fix mode detection.
+# Context: 
+#   Executes a non-intrusive audit of hardware thermals, GNSS precision, 
+#   and storage metrics. Results are saved locally for the 'fetch' pipeline.
 # ==============================================================================
+
 - name: "🏥 Grid Health & Performance Monitor"
   hosts: sensors
   become: true
   gather_facts: true
   vars:
-    # Thresholds
+    # Operational Thresholds (Safety Limits)
     temp_warn: 70.0
     disk_warn: 80
     
@@ -61,9 +66,9 @@
       register: gpsd_status
 
     - name: "[GNSS] 🛰️ Analyze Precise Signal Mode (NMEA GGA)"
-      # Fetches 20 raw sentences, finds the first GGA, extracts Field 6 (Quality)
-      # NMEA 0183 standard GGA Quality Indicators:
-      # 0=Invalid, 1=GPS(SPS), 2=DGPS, 4=RTK-Fixed, 5=RTK-Float, 6=Dead Reckoning
+      # Methodology: Fetches 20 raw NMEA sentences, filters for GGA (Fix Data),
+      # and extracts Field 6 (Quality Indicator).
+      # Standards: 0=Invalid, 1=GPS, 2=DGPS, 4=RTK-Fixed, 5=RTK-Float
       shell: |
         timeout 5 gpspipe -r -n 20 | grep -m 1 -E "G[N|P]GGA" | awk -F, '{print $7}'
       register: gnss_quality_raw
@@ -78,7 +83,6 @@
           {% elif gnss_quality_raw.stdout == '2' %}3D FIX (DGPS) ✅
           {% elif gnss_quality_raw.stdout == '4' %}RTK FIXED 🎯
           {% elif gnss_quality_raw.stdout == '5' %}RTK FLOAT 🌊
-          {% elif gnss_quality_raw.stdout == '6' %}DEAD RECKONING 💀
           {% else %}2D/SEARCHING ⚠️ (Raw: {{ gnss_quality_raw.stdout }}){% endif %}
 
     - name: "[RTK] Check Splitter Service (North Only)"
@@ -104,7 +108,7 @@
       changed_when: false
 
     # ----------------------------------------------------------------------
-    # 5. DATA LOGGING (APPEND TO HISTORY)
+    # 5. DATA LOGGING (Standardized v2.0 Format)
     # ----------------------------------------------------------------------
     - name: "[History] Ensure Storage History File Exists"
       file:
@@ -112,9 +116,11 @@
         state: touch
         mode: '0644'
 
-    - name: "[History] Append Current Storage Stats"
+    - name: "[History] Append Current Storage Stats (v2.0 Format)"
+      # Format: Timestamp, NodeName, Disk%, NewFilesCount
+      # Improvement: Explicitly includes inventory_hostname to avoid ambiguous sources.
       shell: |
-        echo "$(date -u +%Y-%m-%dT%H:%M:%SZ),{{ disk_usage.stdout }},{{ record_growth.stdout }}" >> /var/lib/adsb_storage/storage_history.csv
+        echo "$(date -u +%Y-%m-%dT%H:%M:%SZ),{{ inventory_hostname }},{{ disk_usage.stdout }},{{ record_growth.stdout }}" >> /var/lib/adsb_storage/storage_history.csv
 
     # ----------------------------------------------------------------------
     # 6. REPORTING
@@ -122,7 +128,7 @@
     - name: "📊 Compile Health Report Data"
       set_fact:
         report:
-          timestamp: "{{ ansible_date_time.iso8601 }}"
+          timestamp: "{{ ansible_facts['date_time']['iso8601'] }}"
           node: "{{ inventory_hostname }}"
           cpu_temp: "{{ cpu_temp.stdout }}"
           disk_usage: "{{ disk_usage.stdout }}"

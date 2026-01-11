@@ -1,52 +1,49 @@
+---
 # ==============================================================================
 # FILE: infra/ansible/inventory/host_vars/sensor-west.yml
-# VERSION: 0.4.5
+# VERSION: 0.5.09 (Identity Fix Applied)
 # MAINTAINER: DevOps / Research Team
-# DATE: 2026-01-09
+# DATE: 2026-01-11
 # ==============================================================================
 # DESCRIPTION:
-# Host-specific configuration for the "Sensor-West" mobile node currently
-# deployed at the Keimola testing site.
-#
-# ARCHITECTURAL CONTEXT:
-# Unlike the stationary 'sensor-north' (which uses UART/GPIO for Stratum 1),
-# this node relies on USB peripherals for both GNSS and SDR functions.
-# This file defines the specific calibration offsets required to normalize
-# data from these USB devices for scientific analysis.
+#   Host-specific configuration for "Sensor-West", the mobile scout node.
+#   PREP: Configuring for data capture before move to Jorvas.
 # ==============================================================================
 
 # --- SYSTEM IDENTITY ---
 hostname: "sensor-west"
+sensor_id: "sensor-west"    # <--- CRITICAL FIX: Ensures correct log filenames
 timezone: "Europe/Helsinki"
-rpi_model: "Raspberry Pi 4B"
+rpi_model: "Raspberry Pi 4B (Mobile Unit)"
 
-# --- LOCATION METADATA (Keimola Testing Site) ---
-# Used by: readsb (decoder) for MLAT synchronization and range plotting.
+# --- LOCATION METADATA (Keimola Test Site) ---
 # Status: Active Field Test Location
-# Precision: ~3 decimal places (approx 100m resolution)
 latitude: "60.319"
 longitude: "24.830"
-altitude: "96"              # Updated from 50 to 96m (GPS HAE/MSL observed 2026-01-09)
+altitude: "96"              # Updated (GPS HAE/MSL observed 2026-01-09)
 
 # --- GNSS HARDWARE CONFIGURATION ---
 # Hardware: GlobalSat G-STAR IV (USB)
-# Driver: gpsd
 # Connection: USB Serial (Prolific PL2303)
-# ------------------------------------------------------------------------------
-gnss_type: "usb"            # Triggers SHM config in Chrony template (vs PPS for UART)
+gnss_type: "usb"            # Triggers SHM config (NMEA Fallback)
 gnss_device: "/dev/ttyUSB0"
-gnss_baudrate: 4800         # VERIFIED: 2026-01-09 via stty command (Standard SiRF IV)
-gnss_driver_flags: "-n -G"  # -n: Instant poll, -G: Network export (Port 2947)
+gnss_baudrate: 4800         # Standard SiRF IV NMEA
+gnss_driver_flags: "-n -G"
 
 # --- TIMING CALIBRATION ---
-# Critical for Time-of-Arrival (TOA) spoofing research.
-# Methodology: Baseline measured against Stratum 2 NTP servers on 2026-01-09.
-# Observation: Raw hardware lag (USB Latency + Driver Jitter) was ~204ms.
-chrony_offset: 0.204        # Compensates for the measured USB latency
+# Methodology: Baseline measured against Stratum 2 NTP servers.
+chrony_offset: 0.204        # Compensates for USB latency
 
 # --- SDR CONFIGURATION ---
-# Hardware: 3x USB Receivers (Silver RTL-SDR, Black Jetvision, Blue FlightAware)
-# TODO: Flash specific serial numbers to dongles to prevent enumeration drift.
-# Currently defaulting to generic until hardware serialization is performed.
+# Hardware: Generic Silver RTL-SDR (Replaced Jetvision 2026-01-11)
 sdr_serial: "00000001"
 enable_raw_recording: false
+
+# --- DATA RECORDING ---
+# ENABLE AIRCRAFT TRACKING FOR SPOOFING RESEARCH
+# This generates 'sensor-west_aircraft_log.csv' snapshots.
+log_aircraft_csv: true
+
+# SIGNAL OPTIMIZATION
+# Optimization: Reduced from Max to alleviate CPU overload.
+sdr_gain: "40.2"

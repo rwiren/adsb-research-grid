@@ -1,22 +1,18 @@
 ---
 # ==============================================================================
 # FILE: infra/ansible/inventory/host_vars/sensor-east.yml
-# VERSION: 0.5.2
+# VERSION: 0.5.09 (Identity Fix Applied)
 # MAINTAINER: DevOps / Research Team
-# DATE: 2026-01-10
+# DATE: 2026-01-11
 # ==============================================================================
 # DESCRIPTION:
-# Host-specific configuration for "Sensor-East", the remote field node
-# deployed to the Sibbo municipality for triangulation.
-#
-# ARCHITECTURAL CONTEXT:
-# This node utilizes recycled hardware (formerly 'sensor-test') re-imaged
-# for production. It connects via ZeroTier SD-WAN and provides a third
-# TDOA (Time Difference of Arrival) anchor point.
+#   Host-specific configuration for "Sensor-East", the remote field node
+#   deployed to the Sibbo municipality for triangulation.
 # ==============================================================================
 
 # --- SYSTEM IDENTITY ---
 hostname: "sensor-east"
+sensor_id: "sensor-east"    # <--- CRITICAL FIX: Ensures correct log filenames
 timezone: "Europe/Helsinki"
 rpi_model: "Raspberry Pi 4B (Recycled Unit)"
 
@@ -31,7 +27,6 @@ altitude: "42"              # 39m (GPS MSL) + 3m (Mast)
 # --- GNSS HARDWARE CONFIGURATION ---
 # Hardware: GlobalSat G-STAR IV (USB)
 # Connection: USB Serial (Prolific PL2303)
-# ------------------------------------------------------------------------------
 gnss_type: "usb"            # Triggers SHM/NMEA config (NMEA Fallback)
 gnss_device: "/dev/ttyUSB0"
 gnss_baudrate: 4800         # Standard SiRF IV NMEA baud rate
@@ -43,6 +38,15 @@ gnss_driver_flags: "-n -G"  # -n: No wait, -G: Export to 0.0.0.0:2947
 chrony_offset: 0.204        # Standard USB latency compensation
 
 # --- SDR CONFIGURATION ---
-# Hardware: Generic RTL-SDR (Subject to replacement)
+# Hardware: FlightAware Pro Stick Plus (Blue)
 sdr_serial: "00000001"
-enable_raw_recording: false # Disabled to prevent SD card saturation
+enable_raw_recording: false
+
+# --- DATA RECORDING ---
+# ENABLE AIRCRAFT TRACKING FOR SPOOFING RESEARCH
+# This generates 'sensor-east_aircraft_log.csv' snapshots.
+log_aircraft_csv: true
+
+# SIGNAL OPTIMIZATION
+# Optimization: Holding at 20.7 dB to stress-test dynamic range.
+sdr_gain: "20.7"
