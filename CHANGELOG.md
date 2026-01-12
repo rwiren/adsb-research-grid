@@ -1,4 +1,5 @@
-# Changelog
+
+# 📝 Project Changelog
 
 All notable changes to the **ADS-B Research Grid** project will be documented in this file.
 
@@ -128,8 +129,6 @@ All notable changes to the **ADS-B Research Grid** project will be documented in
 
 ### Deprecated
 - Legacy NMEA-only recording (replaced by JSON/PPS stream).
-
-# 📝 Project Changelog
 
 
 ## [0.3.3] - 2026-01-07
