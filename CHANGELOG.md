@@ -2,6 +2,21 @@
 
 All notable changes to the **ADS-B Research Grid** project will be documented in this file.
 
+## [0.6.0] - 2026-01-12
+### 🚀 Infrastructure & Stability
+- **Critical Fix:** Deployed NetworkManager configuration to disable WiFi power management on all nodes (prevents "Sleep Coma" on Sensor-East/West).
+- **Refactor:** Moved remote health logic from Ansible tasks to a dedicated script (`/opt/adsb/scripts/health_monitor.sh`) for better version control.
+
+### 🛠️ Diagnostics
+- **Upgrade:** Updated `check_signal_health.py` to v6.1.
+- **Robustness:** Implemented "Best Lock" logic for GNSS. The system now captures raw GPS streams and sorts for the highest quality fix (3D > 2D > No Fix) instead of accepting the first packet.
+- **Reliability:** Added fault tolerance to SSH commands to prevent dashboard crashes during GPS timeouts.
+
+### 🔬 Data Science
+- **Pipeline:** Validated end-to-end execution of `make all` (Fetch -> ML -> Report).
+- **Analysis:** Generated `run_2026-01-12_1342` report showing 5,996 detected anomalies (1.00% contamination rate).
+
+
 ## [0.5.0] - 2026-01-12 (The Data Science Release)
 ### 🚀 Major Features
 - **Forensic EDA Engine (`academic_eda.py`):**

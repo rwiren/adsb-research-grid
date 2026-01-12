@@ -1,0 +1,47 @@
+---
+# ==============================================================================
+# File: infra/ansible/site.yml
+# Description: Master Playbook for ADS-B Research Grid.
+#              Orchestrates configuration across all sensor nodes.
+#
+# Usage: ansible-playbook -i infra/ansible/inventory/hosts.prod site.yml
+# ==============================================================================
+
+- name: 📡 Configure ADS-B Sensor Fleet
+  hosts: sensors
+  become: yes
+  gather_facts: yes
+
+  roles:
+    # 1. BASE SYSTEM (Firewall, Tools, WiFi Stability)
+    - role: common
+      tags: [common, stability, network]
+
+    # 2. NETWORKING (SD-WAN)
+    - role: zerotier
+      tags: [zerotier, network]
+
+    # 3. SENSOR IDENTITY (Hostname, Timezone)
+    - role: sensor_node
+      tags: [config, identity]
+
+    # 4. HARDWARE: GNSS / TIMING
+    - role: gnss-receiver
+      tags: [gnss, gps]
+    
+    - role: strat1_timing
+      tags: [time, chrony]
+      when: inventory_hostname == 'sensor-north'
+
+    # 5. DATA COLLECTION (SDR, Logging)
+    - role: recorder
+      tags: [sdr, recording]
+
+    # 6. HEALTH CHECK (Post-Deployment)
+    - role: grid_health
+      tags: [health, check]
+
+# --- MAINTENANCE & MONITORING PLAYBOOKS ---
+- import_playbook: playbooks/setup_data_manager.yml
+- import_playbook: playbooks/setup_metrics_collector.yml
+- import_playbook: playbooks/monitor_forensics.yml

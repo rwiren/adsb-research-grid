@@ -1,23 +1,22 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import seaborn as sns
 import subprocess
 import os
+import glob
 from datetime import datetime
-from glob import glob
-from math import radians, cos, sin, asin, sqrt
-
-# ==============================================================================
-# CLASS: ADSB_Academic_EDA (v8 - Final Professional)
-# PURPOSE: Publication-ready plots with enforced geospatial zooming.
-# ==============================================================================
+# Import ML Libs for On-Demand Calculation
+from sklearn.ensemble import IsolationForest
 
 SENSORS = {
     "sensor-north": {"lat": 60.319555, "lon": 24.830816, "color": "#003f5c", "name": "North (Ref)", "marker": "^"}, 
-    "sensor-east":  {"lat": 60.250000, "lon": 25.350000, "color": "#bc5090", "name": "East (Sipoo)", "marker": "s"}, 
-    "sensor-west":  {"lat": 60.120000, "lon": 24.400000, "color": "#ffa600", "name": "West (Kirkko)", "marker": "o"} 
+    "sensor-east":  {"lat": 60.3621, "lon": 25.3375, "color": "#bc5090", "name": "East (Sipoo)", "marker": "s"}, 
+    "sensor-west":  {"lat": 60.1478, "lon": 24.5264, "color": "#ffa600", "name": "West (Jorvas)", "marker": "o"} 
 }
+
+ML_DATASET = "research_data/ml_ready/training_dataset_v3.csv"
 
 class ADSB_Academic_EDA:
     def __init__(self, raw_dir="research_data"):
@@ -27,10 +26,10 @@ class ADSB_Academic_EDA:
         self.fig_dir = f"{self.showcase_dir}/figures"
         os.makedirs(self.fig_dir, exist_ok=True)
         self.df_ac = pd.DataFrame()
+        self.df_ml = pd.DataFrame() 
         self.metadata = self._get_git_metadata()
         self.report_path = f"{self.showcase_dir}/REPORT.md"
         
-        # STRICT PROFESSIONAL STYLE
         plt.style.use('seaborn-v0_8-paper')
         plt.rcParams['font.family'] = 'sans-serif'
         plt.rcParams['figure.dpi'] = 150
@@ -39,8 +38,7 @@ class ADSB_Academic_EDA:
         plt.rcParams['grid.alpha'] = 0.3
 
     def _get_git_metadata(self):
-        try:
-            return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).strip().decode()
+        try: return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).strip().decode()
         except: return "LOCAL"
 
     def haversine(self, lat1, lon1, lat2, lon2):
@@ -51,139 +49,207 @@ class ADSB_Academic_EDA:
         return R * 2 * np.arcsin(np.sqrt(a))
 
     def load_data(self, target_date):
-        print(f"[{self.metadata}] 📥 Loading Data...")
-        ac_files = glob(f"{self.raw_dir}/{target_date}/sensor-*/sensor-*_aircraft_log*.csv")
+        print(f"[{self.metadata}] 📥 Loading Raw Data...")
+        ac_files = glob.glob(f"{self.raw_dir}/{target_date}/sensor-*/sensor-*_aircraft_log*.csv*")
+        
         ac_list = []
         for f in ac_files:
             try:
-                sid = f.split('/')[-2]
-                tmp = pd.read_csv(f, on_bad_lines='skip', dtype={'hex': str})
-                tmp['timestamp'] = pd.to_datetime(tmp['timestamp'], format='mixed', utc=True)
+                parts = f.split(os.sep)
+                sid = next((p for p in parts if p.startswith('sensor-')), 'unknown')
+                comp = 'gzip' if f.endswith('.gz') else None
+                tmp = pd.read_csv(f, compression=comp, on_bad_lines='skip', dtype={'hex': str})
+                if 'timestamp' in tmp.columns:
+                    tmp['timestamp'] = pd.to_datetime(tmp['timestamp'], format='mixed', utc=True)
                 tmp['sensor_id'] = sid
-                if 'alt_baro' in tmp.columns: tmp.rename(columns={'alt_baro': 'alt'}, inplace=True)
-                if 'gs' in tmp.columns: tmp.rename(columns={'gs': 'ground_speed'}, inplace=True)
+                rename_map = {'alt_baro': 'alt', 'gs': 'ground_speed'}
+                tmp.rename(columns=rename_map, inplace=True)
                 if sid in SENSORS:
                     tmp['distance_km'] = self.haversine(SENSORS[sid]['lat'], SENSORS[sid]['lon'], tmp['lat'], tmp['lon'])
                 ac_list.append(tmp)
             except: pass
             
-        self.df_ac = pd.concat(ac_list, ignore_index=True)
-        for c in ['rssi', 'alt', 'ground_speed', 'track']: 
-            self.df_ac[c] = pd.to_numeric(self.df_ac[c], errors='coerce')
-        
-        # TIME FILTER (Post-2025)
-        self.df_ac = self.df_ac[self.df_ac['timestamp'] > '2025-01-01']
-        print(f"✅ Valid Rows: {len(self.df_ac):,}")
+        if ac_list:
+            self.df_ac = pd.concat(ac_list, ignore_index=True)
+            for c in ['rssi', 'alt', 'ground_speed', 'track']: 
+                self.df_ac[c] = pd.to_numeric(self.df_ac[c], errors='coerce')
+            self.df_ac = self.df_ac[self.df_ac['timestamp'] > '2026-01-01']
+            print(f"✅ Raw Rows: {len(self.df_ac):,}")
+
+        # --- SELF-HEALING ML LOADER ---
+        if os.path.exists(ML_DATASET):
+            print(f"🧠 Loading ML Data from {ML_DATASET}...")
+            self.df_ml = pd.read_csv(ML_DATASET)
+            
+            # CHECK: Do we have the answers?
+            if 'anomaly' not in self.df_ml.columns:
+                print("⚙️  'anomaly' column missing. Running On-Demand Isolation Forest...")
+                features = ['lat', 'lon', 'alt', 'ground_speed', 'track', 'rssi']
+                # Impute missing values with median
+                X = self.df_ml[features].fillna(self.df_ml[features].median())
+                
+                # Run the Brain
+                iso = IsolationForest(n_estimators=100, contamination=0.01, random_state=42, n_jobs=-1)
+                self.df_ml['anomaly'] = iso.fit_predict(X)
+                self.df_ml['score'] = iso.decision_function(X) # Raw confidence score
+                
+                # Normalize Score to 0-100% (Severity)
+                min_score = self.df_ml['score'].min()
+                self.df_ml['confidence_pct'] = 0.0
+                # Map negative scores (anomalies) to 0-100 scale
+                anom_mask = self.df_ml['score'] < 0
+                if anom_mask.any():
+                    self.df_ml.loc[anom_mask, 'confidence_pct'] = (self.df_ml.loc[anom_mask, 'score'] / min_score) * 100
+                
+                print("✅ AI Analysis Complete (On-Demand).")
+            
+            ghosts = self.df_ml[self.df_ml['anomaly'] == -1]
+            print(f"✅ ML Rows: {len(self.df_ml):,} (Anomalies: {len(ghosts)})")
 
     def generate_dashboards(self):
+        if self.df_ac.empty: return
         print("🎨 Generating Professional Plots...")
         pal = {k: v['color'] for k,v in SENSORS.items()}
         
-        # D1: OPERATIONAL
+        # D1: Ops
         fig, axs = plt.subplots(2, 2, figsize=(12, 8))
         fig.suptitle(f"D1: Network Operations Status ({self.metadata})", fontweight='bold')
-        
-        sns.countplot(data=self.df_ac, x='sensor_id', ax=axs[0,0], palette=pal)
-        axs[0,0].set_title("Packet Volume")
-        
+        sns.countplot(data=self.df_ac, x='sensor_id', hue='sensor_id', ax=axs[0,0], palette=pal, legend=False)
         sns.kdeplot(data=self.df_ac, x='rssi', hue='sensor_id', fill=True, ax=axs[0,1], palette=pal)
-        axs[0,1].set_title("Signal Sensitivity (RSSI)")
-        
-        self.df_ac['min'] = self.df_ac['timestamp'].dt.floor('min')
-        rate = self.df_ac.groupby(['min', 'sensor_id']).size().reset_index(name='count')
-        sns.lineplot(data=rate, x='min', y='count', hue='sensor_id', ax=axs[1,0], palette=pal, linewidth=1)
-        axs[1,0].set_title("Message Rate (Hz)")
-        
-        axs[1,1].text(0.5, 0.5, "Squawk Analysis Omitted", ha='center') # Placeholder
-        
+        self.df_ac['min_bucket'] = self.df_ac['timestamp'].dt.floor('min')
+        rate = self.df_ac.groupby(['min_bucket', 'sensor_id']).size().reset_index(name='count')
+        sns.lineplot(data=rate, x='min_bucket', y='count', hue='sensor_id', ax=axs[1,0], palette=pal, linewidth=1)
+        sns.boxplot(data=self.df_ac, x='sensor_id', y='distance_km', hue='sensor_id', ax=axs[1,1], palette=pal, legend=False)
         plt.tight_layout()
         plt.savefig(f"{self.fig_dir}/D1_Operational.png")
         plt.close()
 
-        # D2: PHYSICS
+        # D2: Physics
         fig, axs = plt.subplots(2, 2, figsize=(12, 8))
         fig.suptitle("D2: Physics Validation", fontweight='bold')
         sample = self.df_ac.sample(n=min(50000, len(self.df_ac)))
-        
         sns.scatterplot(data=sample, x='distance_km', y='rssi', hue='sensor_id', s=10, alpha=0.3, ax=axs[0,0], palette=pal)
-        axs[0,0].set_title("Path Loss (Friis)")
-        axs[0,0].set_ylim(-45, 0)
-        
         sns.scatterplot(data=sample, x='ground_speed', y='alt', hue='sensor_id', s=10, alpha=0.3, ax=axs[0,1], palette=pal)
-        axs[0,1].set_title("Kinematic Envelope")
-        
         sns.histplot(data=self.df_ac, x='alt', hue='sensor_id', element="step", ax=axs[1,0], palette=pal)
-        axs[1,0].set_title("Altitude Distribution")
-        
         sns.kdeplot(data=self.df_ac, x='track', hue='sensor_id', ax=axs[1,1], palette=pal)
-        axs[1,1].set_title("Heading Profile")
-        
         plt.tight_layout()
         plt.savefig(f"{self.fig_dir}/D2_Physics.png")
         plt.close()
 
-        # D3: SPATIAL (ZOOMED)
+        # D3: Spatial
         fig, ax = plt.subplots(figsize=(10, 8))
-        ax.set_title("D3: Sensor Grid Geometry (Zoomed)", fontweight='bold')
-        
-        # Plot Tracks
+        ax.set_title("D3: Sensor Grid Geometry", fontweight='bold')
         sns.scatterplot(data=sample, x='lon', y='lat', hue='sensor_id', s=2, alpha=0.2, palette=pal, ax=ax, legend=False)
-        
-        # Plot Stations
         for sid, meta in SENSORS.items():
-            ax.plot(meta['lon'], meta['lat'], marker=meta['marker'], markersize=15, 
-                    color='black', markeredgecolor='white', markeredgewidth=2, label=meta['name'])
-            # Offset labels to avoid clutter
-            offset_y = 0.02 if sid == 'sensor-north' else -0.03
-            ax.text(meta['lon'], meta['lat'] + offset_y, meta['name'].upper(), 
-                    fontsize=10, fontweight='bold', ha='center',
-                    bbox=dict(facecolor='white', alpha=0.9, edgecolor='black', boxstyle='round,pad=0.2'))
-
-        # FORCE ZOOM on the Triangle
-        ax.set_xlim(24.3, 25.5)  # Longitude Range (Kirkko to Sipoo)
-        ax.set_ylim(60.1, 60.45) # Latitude Range (Sea to Vantaa)
-        ax.grid(True, linestyle='--', alpha=0.5)
-        
+            ax.plot(meta['lon'], meta['lat'], marker=meta['marker'], markersize=15, color='black')
+            ax.text(meta['lon'], meta['lat'] + 0.02, meta['name'].upper(), fontweight='bold', ha='center', bbox=dict(facecolor='white', alpha=0.8))
+        ax.set_xlim(24.3, 25.5); ax.set_ylim(60.1, 60.45)
         plt.savefig(f"{self.fig_dir}/D3_Spatial.png")
         plt.close()
 
-        # D4: FORENSICS
+        # D4: Forensics
         fig, axs = plt.subplots(1, 2, figsize=(12, 5))
         fig.suptitle("D4: Multi-Sensor Correlation", fontweight='bold')
-        
         self.df_ac['bucket'] = self.df_ac['timestamp'].dt.round('30s')
         piv = self.df_ac.pivot_table(index=['hex', 'bucket'], columns='sensor_id', values='rssi', aggfunc='mean')
-        
         valid_cols = [c for c in piv.columns if c in SENSORS]
         if len(valid_cols) >= 2:
             s1, s2 = valid_cols[0], valid_cols[1]
             dat = piv[[s1, s2]].dropna()
-            
             sns.regplot(data=dat, x=s1, y=s2, ax=axs[0], scatter_kws={'s': 5, 'alpha': 0.3}, line_kws={'color': 'red'})
-            axs[0].set_title(f"Correlation: {s1} vs {s2}")
-            
-            diff = dat[s1] - dat[s2]
-            sns.histplot(diff, kde=True, ax=axs[1], color='purple')
-            axs[1].set_title("Signal Delta Distribution")
-        else:
-            axs[0].text(0.5, 0.5, "Insufficient Overlap", ha='center')
-            
+            sns.histplot(dat[s1] - dat[s2], kde=True, ax=axs[1], color='purple')
         plt.tight_layout()
         plt.savefig(f"{self.fig_dir}/D4_Forensics.png")
         plt.close()
 
     def generate_report(self):
+        if self.df_ac.empty: return
+        print("📝 Compiling Markdown Report...")
+        
+        start_ts = self.df_ac['timestamp'].min().strftime('%Y-%m-%d %H:%M UTC')
+        end_ts = self.df_ac['timestamp'].max().strftime('%Y-%m-%d %H:%M UTC')
+        
+        t1 = self.df_ac.groupby('sensor_id').size().reset_index(name='Packets')
+        t1['Share %'] = (t1['Packets'] / t1['Packets'].sum() * 100).round(1)
+        t2 = self.df_ac.groupby('sensor_id')['rssi'].agg(['mean', 'max', 'min', 'std']).round(2)
+        t3 = self.df_ac.groupby('sensor_id').agg({'distance_km': 'max', 'alt': 'mean', 'hex': 'nunique'}).round(1)
+        missing = self.df_ac[['lat', 'lon', 'alt', 'rssi']].isnull().sum()
+        missing_pct = (missing / len(self.df_ac) * 100).round(2)
+        t4 = pd.DataFrame({'Missing Rows': missing, 'Missing %': missing_pct})
+
         with open(self.report_path, "w") as f:
-            f.write(f"# ADS-B Grid Audit: {self.run_id}\n\n")
-            f.write("## Visual Evidence\n")
-            f.write("![D1](figures/D1_Operational.png)\n")
-            f.write("![D2](figures/D2_Physics.png)\n")
-            f.write("![D3](figures/D3_Spatial.png)\n")
-            f.write("![D4](figures/D4_Forensics.png)\n")
+            f.write(f"# 📡 ADS-B Grid Audit: {self.run_id}\n\n")
+            f.write(f"**Metadata:** `Git-SHA: {self.metadata} | Date: {datetime.now().strftime('%Y-%m-%d')}`\n\n")
+            
+            f.write("## 1. 📋 Executive Summary\n")
+            f.write(f"| Metric | Value |\n|---|---|\n")
+            f.write(f"| **Data Start** | `{start_ts}` |\n")
+            f.write(f"| **Data End** | `{end_ts}` |\n")
+            f.write(f"| **Total Valid Samples** | **{len(self.df_ac):,}** |\n")
+            f.write(f"| **Active Sensors** | {len(t1)} |\n")
+            
+            if not self.df_ml.empty:
+                ghosts = self.df_ml[self.df_ml['anomaly'] == -1]
+                ghost_pct = (len(ghosts) / len(self.df_ml)) * 100
+                f.write(f"| **Detected Anomalies** | **{len(ghosts):,}** ({ghost_pct:.2f}%) |\n")
+
+            f.write("\n## 2. 🏥 Data Health Check\n")
+            f.write(t4.to_markdown() + "\n\n")
+
+            f.write("## 3. 📊 Fleet Performance Matrix\n")
+            f.write("### 3.1 Packet Volume\n")
+            f.write(t1.to_markdown(index=False) + "\n\n")
+            f.write("### 3.2 Signal Forensics (RSSI)\n")
+            f.write(t2.to_markdown() + "\n\n")
+            f.write("### 3.3 Spatial Coverage\n")
+            f.write(t3.to_markdown() + "\n\n")
+            
+            f.write("## 4. 🖼️ Visual Evidence\n")
+            f.write("![D1](figures/D1_Operational.png)\n![D2](figures/D2_Physics.png)\n")
+            f.write("![D3](figures/D3_Spatial.png)\n![D4](figures/D4_Forensics.png)\n\n")
+
+            if not self.df_ml.empty:
+                f.write("## 5. 👻 Anomaly Detection (Ghost Hunt)\n")
+                f.write("**Algorithm:** Isolation Forest (n=100, contamination=1%)\n\n")
+                f.write("### 5.1 Top 5 Highest Confidence Anomalies\n")
+                
+                # Check for score column (self-healed or pre-calc)
+                score_col = 'confidence_pct' if 'confidence_pct' in self.df_ml.columns else 'score'
+                
+                if score_col in self.df_ml.columns:
+                    top5 = self.df_ml[self.df_ml['anomaly'] == -1].sort_values(score_col, ascending=False).head(5)
+                    disp = top5[['hex', 'sensor_id', 'alt', 'ground_speed', 'rssi', score_col]].copy()
+                    
+                    if score_col == 'confidence_pct':
+                        disp[score_col] = disp[score_col].apply(lambda x: f"{x:.1f}%")
+                        disp.columns = ['Hex', 'Sensor', 'Alt (ft)', 'Speed (kts)', 'RSSI', 'Confidence']
+                    else:
+                        disp.columns = ['Hex', 'Sensor', 'Alt (ft)', 'Speed (kts)', 'RSSI', 'Raw Score']
+                        
+                    f.write(disp.to_markdown(index=False) + "\n\n")
+                
+                f.write("### 5.2 Forensic Maps\n")
+                f.write("*(See `docs/showcase/ghost_hunt/` for high-res forensic maps generated by `visualize_ghosts.py`)*\n\n")
+
+            f.write("## 6. 📚 Research Data Schema\n")
+            f.write("Comprehensive definition of all collected data fields.\n\n")
+            f.write("### 6.1 Aircraft Telemetry (`aircraft.json`)\n")
+            f.write("| Field | Unit | Description | Relevance |\n| :--- | :--- | :--- | :--- |\n")
+            f.write("| `hex` | 24-bit | Unique ICAO Address | Target ID |\n")
+            f.write("| `flight` | String | Call Sign | Identification |\n")
+            f.write("| `lat`/`lon` | Deg | WGS84 Position | Geolocation |\n")
+            f.write("| `alt_baro` | Feet | Barometric Altitude | Vertical Profile |\n")
+            f.write("| `nic` | 0-11 | Nav Integrity Category | **Spoofing Indicator (Trust)** |\n")
+            f.write("| `rssi` | dBFS | Signal Strength | Receiver Proximity |\n\n")
+            
+            f.write("### 6.2 Hardware Stress (`stats.json`)\n")
+            f.write("| Field | Unit | Description | Criticality |\n| :--- | :--- | :--- | :--- |\n")
+            f.write("| `samples_dropped` | Raw | **Buffer Overflows** | **CPU/USB Saturation** |\n")
+            f.write("| `strong_signals` | Count | Signals > -3dBFS | **LNA Overload** |\n")
 
 if __name__ == "__main__":
     eda = ADSB_Academic_EDA()
-    eda.load_data(target_date="2026-01-12")
+    eda.load_data(target_date=datetime.now().strftime("%Y-%m-%d"))
     eda.generate_dashboards()
     eda.generate_report()
-    print(f"Showcase: {eda.showcase_dir}")
+    print(f"✅ Showcase Generated: {eda.showcase_dir}")

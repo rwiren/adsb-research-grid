@@ -1,14 +1,32 @@
 ---
+# ==============================================================================
+# File: infra/ansible/roles/grid_health/tasks/main.yml
+# Role: grid_health
+# Description: Performs real-time telemetry extraction for the sensor fleet.
+#              Collects Hardware, Network, GNSS, and ADS-B metrics.
+#
+# Version: 0.6.0 (Robust Signal Patch)
+# Last Updated: 2026-01-12
+#
+# REVISION HISTORY:
+# - v0.6.0: Upgraded GNSS detection logic to use 'sort -r' for best-lock selection.
+#           Replaced fragile 'jq' dependencies with standard GNU tools.
+# - v0.5.0: Initial health monitoring role implementation.
+# ==============================================================================
+
+# --- PART 1: HARDWARE METRICS ---
 - name: "[HW] Measure CPU Temperature"
   command: cat /sys/class/thermal/thermal_zone0/temp
   register: cpu_temp
   changed_when: false
+  # Note: Divider is 1000. 45000 = 45.0C
 
 - name: "[HW] Check for Throttling Events"
   command: vcgencmd get_throttled
   register: throttled_status
   changed_when: false
   failed_when: false
+  # 0x0 = Perfect. 0x50005 = Throttling occurred.
 
 - name: "[HW] Check Disk Usage (/data)"
   shell: df -h /var/lib/adsb_storage | awk 'NR==2 {print $5}'
@@ -20,11 +38,13 @@
   register: mem_usage
   changed_when: false
 
+# --- PART 2: NETWORK CONNECTIVITY ---
 - name: "[Net] Check ZeroTier Status"
   command: zerotier-cli info
   register: zerotier_status
   changed_when: false
   failed_when: false
+  # Expected: "200 info [nodeID] [ver] ONLINE"
 
 - name: "[Net] Ping Internet (Google DNS)"
   command: ping -c 1 8.8.8.8
@@ -32,14 +52,20 @@
   ignore_errors: yes
   changed_when: false
 
+# --- PART 3: GNSS / TIMING STATUS ---
 - name: "[GNSS] Check GPSD Service Status"
   command: systemctl is-active gpsd
   register: gpsd_status
   failed_when: false
   changed_when: false
 
-- name: "[GNSS] Query Live GPS Fix Mode (Timeout 5s)"
-  shell: "timeout 5s gpspipe -w -n 10 | grep -m 1 TPV | jq -r '.mode' || echo 0"
+# CRITICAL UPGRADE (v0.6.0):
+# Previous versions simply grabbed the first TPV packet, which was often empty/mode 0.
+# This logic captures 10 packets, filters for 'mode', and sorts numerically reverse.
+# This guarantees that if a "3" (3D Fix) exists in the window, we catch it.
+- name: "[GNSS] Query Live GPS Fix Mode (Robust)"
+  shell: |
+    timeout 4s gpspipe -w -n 10 2>/dev/null | grep -o '"mode":[0-9]*' | cut -d: -f2 | sort -r | head -n1
   register: gnss_fix_mode
   failed_when: false
   changed_when: false
@@ -51,6 +77,7 @@
   changed_when: false
   when: "'sensor-north' in inventory_hostname"
 
+# --- PART 4: ADS-B APPLICATION HEALTH ---
 - name: "[ADS-B] Check Beast Port (30005) Accessibility"
   wait_for:
     port: 30005
@@ -62,7 +89,9 @@
   shell: find /var/lib/adsb_storage -name "raw_*.bin" -mmin -1 | wc -l
   register: recorder_growth
   changed_when: false
+  # Logic: If > 0, the recorder is actively writing new files.
 
+# --- PART 5: HISTORY & REPORTING ---
 - name: "[History] Ensure Storage History File Exists"
   file:
     path: /var/lib/adsb_storage/storage_history.csv
@@ -87,6 +116,7 @@
         internet: "{{ 'ONLINE' if internet_ping.rc == 0 else 'OFFLINE' }}"
       gnss:
         service: "{{ gpsd_status.stdout | upper }}"
+        # Logic: If stdout is empty/fail, default to 0. If >= 3, it is a 3D FIX.
         fix_type: "{{ '3D FIX' if (gnss_fix_mode.stdout | default('0') | int >= 3) else 'NO FIX ❌' }}"
         rtk_splitter: "{{ splitter_status.stdout | default('N/A') | upper }}"
       adsb:
