@@ -1,11 +1,11 @@
 # ==============================================================================
 # PROJECT: ADS-B Spoofing Data Collection (Academic Research)
 # FILE:    Makefile
-# VERSION: 3.6.0 (Restored 'deploy' + Added 'ghosts')
+# VERSION: 3.7.0 (Added Self-Healing Data Pipeline)
 # DATE:    2026-01-12
 # ==============================================================================
 
-.PHONY: help setup deploy check fetch ml ghosts report all clean
+.PHONY: help setup deploy check fetch consolidate ml ghosts report all clean
 
 # --- 1. ENVIRONMENT ---
 VENV_DIR         = venv
@@ -19,16 +19,17 @@ help:
 	@echo "📡 ADS-B Research Grid Control Center"
 	@echo "--------------------------------------------------------"
 	@echo "  --- OPERATIONS (Infra) ---"
-	@echo "  make setup    - 📦 Install dependencies"
-	@echo "  make deploy   - 🚀 Configure all sensors (Ansible)"
-	@echo "  make check    - 🏥 Real-time Sensor Health Dashboard"
+	@echo "  make setup      - 📦 Install dependencies"
+	@echo "  make deploy     - 🚀 Configure all sensors (Ansible)"
+	@echo "  make check      - 🏥 Real-time Sensor Health Dashboard"
 	@echo ""
 	@echo "  --- SCIENCE (Data) ---"
-	@echo "  make fetch    - 📥 Download & Merge logs from grid"
-	@echo "  make ml       - 🧪 Run Anomaly Detection (Isolation Forest)"
-	@echo "  make ghosts   - 👻 Generate Forensic Maps (Ghost Hunt)"
-	@echo "  make report   - 📊 Generate Academic Audit Report"
-	@echo "  make all      - 🔁 Run Full Pipeline (Fetch->ML->Ghosts->Report)"
+	@echo "  make fetch      - 📥 Download, Heal & Merge logs from grid"
+	@echo "  make consolidate- 🧹 Manually fix fragmented logs (1-min -> Daily)"
+	@echo "  make ml         - 🧪 Run Anomaly Detection (Isolation Forest)"
+	@echo "  make ghosts     - 👻 Generate Forensic Maps (Ghost Hunt)"
+	@echo "  make report     - 📊 Generate Academic Audit Report"
+	@echo "  make all        - 🔁 Run Full Pipeline (Fetch->Heal->ML->Report)"
 
 setup:
 	@echo "📦 Syncing venv dependencies..."
@@ -48,8 +49,13 @@ check:
 fetch:
 	@echo "[DATA] 📥 Syncing logs from grid..."
 	$(ANSIBLE_PLAYBOOK) -i $(INVENTORY) infra/ansible/playbooks/fetch.yml --vault-password-file $(VAULT_PASS)
+	@$(MAKE) consolidate
 	@echo "[ETL] 🔄 Merging Storage Logs..."
 	@$(PYTHON) scripts/merge_storage_logs.py
+
+consolidate:
+	@echo "[MAINTENANCE] 🧹 Running Self-Healing on Sensor Logs..."
+	@$(PYTHON) scripts/maintenance/consolidate_fragments.py
 
 ml:
 	@echo "[ML] 🧪 Training Isolation Forest (v3)..."
