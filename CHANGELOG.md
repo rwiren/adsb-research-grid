@@ -54,12 +54,6 @@ All notable changes to the **ADS-B Research Grid** project will be documented in
 - Resolved timestamp timezone conflicts (ISO-8601 vs Unix Epoch) across heterogenous sensor logs.
 
 ---
-## [0.4.6b] - 2026-01-10 (Scientific Pipeline Release)
-- Added `fetch.yml` for secure log retrieval.
-- Added `consolidate_data.py` for daily master log merging.
-- Refactored legacy recording to `smart_adsb_logger.py`.
-
-
 
 ## [0.4.6b] - 2026-01-10 (Scientific Pipeline Release)
 ### 🚀 Major Features
