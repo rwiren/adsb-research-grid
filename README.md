@@ -142,7 +142,7 @@ make report
 * **`D3_Spatial.png`**: Geospatial coverage maps and sensor geometry.
 * **`D4_Forensics.png`**: Multi-sensor correlation and differential signal histograms.
 
-### 4. Machine Learning (Anomaly Detection)
+### 5. Machine Learning (Anomaly Detection)
 To train the unsupervised spoofing detector on fresh data:
 
 ```bash
