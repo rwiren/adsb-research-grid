@@ -1,6 +1,6 @@
-# 📡 ADS-B Grid Audit: 2026-01-12_1106
+# 📡 ADS-B Grid Audit: 2026-01-12_1118
 
-**Metadata:** `Git-SHA: 56fe654 | Date: 2026-01-12`
+**Metadata:** `Git-SHA: c07c876 | Date: 2026-01-12`
 
 ## 1. 📋 Executive Summary
 | Metric | Value |
@@ -67,11 +67,39 @@ Comprehensive definition of all collected data fields.
 | `rssi` | dBFS | Signal Strength | Receiver Proximity |
 
 ### 5.2 Hardware Stress (`stats.json`)
-| Field | Unit | Description | Criticality |
+Detailed SDR and decoder performance metrics.
+| Field | Sub-Field | Description | Criticality |
 | :--- | :--- | :--- | :--- |
-| `samples_processed` | Raw | Total RF Samples | Throughput |
-| `samples_dropped` | Raw | **Buffer Overflows** | **CPU/USB Saturation Warning** |
-| `strong_signals` | Count | Signals > -3dBFS | **LNA Overload Warning** |
-| `cpu.demod` | ms | CPU time demodulating | Processing Load |
-| `cpu.background` | ms | CPU time idle/bg | Overhead |
+| `local` | `samples_processed` | Total RF samples read from SDR. | Throughput |
+| `local` | `samples_dropped` | **Samples lost due to CPU/USB lag.** | **HIGH** (Data Loss) |
+| `local` | `mode_s` | Valid Mode-S preambles detected. | Signal Quality |
+| `local` | `signal` | Mean Signal Level (dBFS). | Gain Tuning |
+| `local` | `noise` | Noise Floor (dBFS). | Environment |
+| `local` | `strong_signals` | Count of signals > -3dBFS. | **LNA Overload** |
+| `remote` | `modes` | Messages received from network neighbors. | Grid Health |
+| `cpr` | `airborne`/`surface` | Compact Position Reports decoded. | Geo-Efficiency |
+| `cpr` | `global_bad` | CPR packets discarded (Ambiguous). | Decoder Stress |
+| `cpu` | `demod` | Time spent demodulating RF. | CPU Load |
+| `cpu` | `background` | Time spent in housekeeping. | Overhead |
 
+### 5.3 GNSS Navigation (`_gnss_log.csv`)
+Precise positioning data from u-blox/SiRF receivers.
+| Field | Unit | Description |
+| :--- | :--- | :--- |
+| `timestamp` | UTC | Time of fix. |
+| `lat`/`lon` | Deg | Sensor WGS84 Position. |
+| `alt` | Meters | Height Above Ellipsoid (HAE). |
+| `fix` | Enum | 0=No Fix, 1=2D, 2=3D, 4=RTK-Fixed. |
+| `sats` | Int | Number of satellites used. |
+| `hdop` | Float | Horizontal Dilution of Precision. |
+
+### 5.4 System Health & Storage (`hardware_health.csv`)
+Forensic logs for diagnosing node crashes and outages.
+| Field | Unit | Description |
+| :--- | :--- | :--- |
+| `timestamp` | ISO | Log time. |
+| `node` | String | Hostname (e.g., sensor-west). |
+| `Temp_C` | Celsius | CPU SoC Temperature. |
+| `Throttled_Hex` | Hex | **0x50000 = Under-Voltage Occurred.** |
+| `Clock_Arm_Hz` | Hz | Current CPU Frequency (Throttling check). |
+| `disk_used_kb` | KB | Storage consumed by logs. |
