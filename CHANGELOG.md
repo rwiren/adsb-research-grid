@@ -2,6 +2,21 @@
 
 All notable changes to the **ADS-B Research Grid** project will be documented in this file.
 
+## [0.6.5] - 2026-01-12
+### Added
+- **Self-Healing Data:** Added `scripts/maintenance/consolidate_fragments.py` to automatically detect and merge fragmented 1-minute sensor logs into daily gzip archives (fixing `sensor-west` instability).
+- **Forensics:** Added "Ghost Hunt" probabilistic heatmaps to `docs/showcase/ghost_hunt/`.
+- **Documentation:** Added robust relative links to the `README.md` for direct access to forensic reports.
+
+### Changed
+- **Pipeline:** Updated `Makefile` to trigger `consolidate` automatically during `fetch` and `all` targets.
+- **Reporting:** Restored **Section 6: Research Data Schema** in `academic_eda.py`, providing full academic definitions for `nic`, `sil`, and `rssi`.
+- **Showcase:** Consolidated all run artifacts into `docs/showcase/latest_audit/`, removing obsolete timestamped folders to reduce repository bloat.
+
+### Verified
+- **Physics:** Validated 6,293 anomalies (0.98% of traffic) in the Jan 12th dataset.
+- **Data Integrity:** Confirmed `sensor-west` is now generating clean ~3KB daily stats logs instead of thousands of fragments.
+
 ## [0.6.0] - 2026-01-12
 ### 🚀 Infrastructure & Stability
 - **Critical Fix:** Deployed NetworkManager configuration to disable WiFi power management on all nodes (prevents "Sleep Coma" on Sensor-East/West).
