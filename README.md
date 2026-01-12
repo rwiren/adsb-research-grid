@@ -5,6 +5,7 @@
 [![Status](https://img.shields.io/badge/Status-Phase%203%3A%20Validation-success.svg)](#)
 [![Wiki](https://img.shields.io/badge/Docs-Project%20Wiki-purple?style=flat-square)](https://github.com/rwiren/adsb-research-grid/wiki)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](#)
+[![Audit Report](https://img.shields.io/badge/View-Latest%20Report-blue?style=for-the-badge&logo=github)](https://github.com/rwiren/adsb-research-grid/blob/main/docs/showcase/latest_audit/REPORT.md)
 ![Last Updated](https://img.shields.io/github/last-commit/rwiren/adsb-research-grid?label=Last%20Updated&color=orange)
 
 ## 📋 Table of Contents
@@ -109,6 +110,8 @@ To perform a complete scientific audit (Ingest data $\rightarrow$ Heal fragmenta
 make all
 ```
 * **Output:** `docs/showcase/latest_audit/REPORT.md` and `research_data/ml_ready/`
+
+  * **[View Latest Forensic Report](docs/showcase/latest_audit/REPORT.md)**
 
 #### **B. Manual Data Repair**
 If `sensor-west` or other nodes generate fragmented 1-minute logs due to instability, run the self-healing utility manually:
