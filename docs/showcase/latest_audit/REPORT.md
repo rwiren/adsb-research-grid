@@ -1,6 +1,6 @@
-# 📡 ADS-B Grid Audit: 2026-01-12_1056
+# 📡 ADS-B Grid Audit: 2026-01-12_1106
 
-**Metadata:** `Git-SHA: e387742 | Date: 2026-01-12`
+**Metadata:** `Git-SHA: 56fe654 | Date: 2026-01-12`
 
 ## 1. 📋 Executive Summary
 | Metric | Value |
@@ -45,27 +45,33 @@
 ![D4](figures/D4_Forensics.png)
 
 ## 5. 📚 Research Data Schema
-Definition of collected data fields across the ADS-B Research Grid.
+Comprehensive definition of all collected data fields.
 
-### 5.1 Aircraft Intercepts (`*_aircraft_log.csv`)
-| Field | Type | Unit | Description |
+### 5.1 Aircraft Telemetry (`aircraft.json`)
+| Field | Unit | Description | Relevance |
 | :--- | :--- | :--- | :--- |
-| `timestamp` | ISO 8601 | UTC | Precise packet arrival time. |
-| `hex` | String | Hex | ICAO 24-bit unique airframe address. |
-| `lat`/`lon` | Float | Deg | WGS84 Position (Null if Mode-S only). |
-| `alt` | Int | Feet | Barometric Altitude. |
-| `rssi` | Float | dBFS | Signal Strength (0 to -49.5). |
-| `category` | String | Enum | Emitter Category. |
+| `hex` | 24-bit | Unique ICAO Address | Target ID |
+| `flight` | String | Call Sign | Identification |
+| `squawk` | Octal | Transponder Code | ATC Assignment |
+| `lat`/`lon` | Deg | WGS84 Position | Geolocation |
+| `alt_baro` | Feet | Barometric Altitude | Vertical Profile |
+| `alt_geom` | Feet | GNSS Altitude | Anti-Spoofing (Check vs Baro) |
+| `gs` | Knots | Ground Speed | Kinematics |
+| `track` | Deg | True Track | Heading Analysis |
+| `baro_rate` | ft/min | Climb/Sink Rate | Vertical Dynamics |
+| `nic` | 0-11 | Nav Integrity Category | **Spoofing Indicator (Trust)** |
+| `sil` | 0-3 | Source Integrity Level | **Spoofing Indicator (Probability)** |
+| `nac_p` | 0-11 | Nav Accuracy Category | **Spoofing Indicator (Precision)** |
+| `rc` | Meters | Radius of Containment | Safety Bubble |
+| `version` | Int | DO-260 Standard | 0=Old, 2=DO-260B |
+| `rssi` | dBFS | Signal Strength | Receiver Proximity |
 
-### 5.2 Receiver Performance (`*_stats_log.csv`)
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| `messages` | Int | Total Mode-S messages decoded. |
-| `msg_rate` | Float | Messages per second (Hz). |
-| `gain_db` | Float | Current Tuner Gain setting. |
-
-### 5.3 Hardware Forensics (`hardware_health.csv`)
-| Field | Type | Unit | Description |
+### 5.2 Hardware Stress (`stats.json`)
+| Field | Unit | Description | Criticality |
 | :--- | :--- | :--- | :--- |
-| `Temp_C` | Float | C | CPU SoC Temperature. |
-| `Throttled_Hex` | Hex | Bitmask | 0x50000 = Under-voltage. |
+| `samples_processed` | Raw | Total RF Samples | Throughput |
+| `samples_dropped` | Raw | **Buffer Overflows** | **CPU/USB Saturation Warning** |
+| `strong_signals` | Count | Signals > -3dBFS | **LNA Overload Warning** |
+| `cpu.demod` | ms | CPU time demodulating | Processing Load |
+| `cpu.background` | ms | CPU time idle/bg | Overhead |
+
