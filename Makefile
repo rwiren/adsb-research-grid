@@ -24,6 +24,10 @@ help:
 	@echo "make check    - 🏥 Real-time Sensor Health Dashboard"
 	@echo "make clean    - 🧹 Cleanup temp files"
 
+setup:
+	@echo "📦 Syncing venv dependencies..."
+	$(VENV_DIR)/bin/pip install -r requirements.txt
+
 # --- 3. DATA PIPELINES ---
 fetch:
 	@echo "[DATA] 📥 Syncing logs from grid..."
