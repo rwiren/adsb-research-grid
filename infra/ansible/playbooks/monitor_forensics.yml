@@ -1,0 +1,100 @@
+---
+# ==============================================================================
+# File: infra/ansible/playbooks/monitor_forensics.yml
+# Description: Node Stability & Forensics Setup.
+#              1. Enables persistent system logs (survives reboots).
+#              2. Installs 'monitor_hardware.py' to log Voltage/Temp every minute.
+#
+# Version: 1.1.0
+# Author: DevOps / Research Team
+# ==============================================================================
+
+- name: 🛡️ Configure System Stability & Forensics
+  hosts: sensors
+  become: true
+  vars:
+    monitor_script_path: /opt/adsb-sensor/monitor_hardware.py
+    monitor_log_path: /var/lib/adsb_storage/hardware_health.csv
+
+  tasks:
+    # --- PART 1: ENABLE PERSISTENT LOGGING (CRITICAL) ---
+    - name: "[Log] Create persistent journal directory"
+      ansible.builtin.file:
+        path: /var/log/journal
+        state: directory
+        mode: '2755'
+        owner: root
+        group: systemd-journal
+
+    - name: "[Log] Configure journald.conf for persistence"
+      ansible.builtin.lineinfile:
+        path: /etc/systemd/journald.conf
+        regexp: '^#?Storage='
+        line: 'Storage=persistent'
+        state: present
+      notify: Restart journald
+
+    # --- PART 2: INSTALL VOLTAGE & TEMP MONITOR ---
+    - name: "[Monitor] Install Hardware Health Script"
+      ansible.builtin.copy:
+        dest: "{{ monitor_script_path }}"
+        mode: '0755'
+        content: |
+          #!/usr/bin/env python3
+          # ------------------------------------------------------------------
+          # Script: Hardware Health Logger
+          # Description: Logs Temp, Frequency, and Throttling (Voltage) status
+          #              to CSV for crash analysis.
+          # ------------------------------------------------------------------
+          import subprocess
+          import time
+          import os
+          import datetime
+
+          LOG_FILE = "{{ monitor_log_path }}"
+
+          def get_cmd_output(cmd):
+              try:
+                  return subprocess.check_output(cmd, shell=True).decode().strip()
+              except:
+                  return "N/A"
+
+          def init_log():
+              if not os.path.exists(LOG_FILE):
+                  with open(LOG_FILE, "w") as f:
+                      f.write("Timestamp,Temp_C,Throttled_Hex,Clock_Arm_Hz,Uptime\n")
+
+          def log_health():
+              ts = datetime.datetime.now().isoformat()
+              # Temperature
+              temp_raw = get_cmd_output("vcgencmd measure_temp")
+              temp = temp_raw.replace("temp=", "").replace("'C", "") if temp_raw else "0"
+              
+              # Throttled State (0x50000 means under-voltage occurred)
+              throttled = get_cmd_output("vcgencmd get_throttled").replace("throttled=", "")
+              
+              # Clock Speed
+              clock = get_cmd_output("vcgencmd measure_clock arm").replace("frequency(48)=", "")
+              
+              # Uptime
+              uptime = get_cmd_output("uptime -p")
+
+              with open(LOG_FILE, "a") as f:
+                  f.write(f"{ts},{temp},{throttled},{clock},{uptime}\n")
+
+          if __name__ == "__main__":
+              init_log()
+              log_health()
+
+    - name: "[Monitor] Schedule Health Monitor (Every Minute)"
+      ansible.builtin.cron:
+        name: "Log Hardware Health"
+        minute: "*"
+        job: "{{ monitor_script_path }}"
+        user: root
+
+  handlers:
+    - name: Restart journald
+      ansible.builtin.service:
+        name: systemd-journald
+        state: restarted

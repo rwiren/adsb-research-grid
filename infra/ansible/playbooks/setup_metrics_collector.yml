@@ -1,4 +1,10 @@
 ---
+# ==============================================================================
+# File: infra/ansible/playbooks/setup_metrics_collector.yml
+# Description: Deploys the Storage Metrics agent.
+#              Collects disk usage/growth stats for the health dashboard.
+# ==============================================================================
+
 - name: 📊 Setup Storage Metrics Collector
   hosts: sensors
   become: true
@@ -7,13 +13,13 @@
     remote_script_dir: "/home/{{ ansible_user }}/scripts"
 
   tasks:
-    - name: 📜 Copy Collector Script
+    - name: "[Deploy] Copy Collector Script"
       ansible.builtin.copy:
         src: "{{ local_script }}"
         dest: "{{ remote_script_dir }}/collect_storage_metrics.py"
         mode: '0755'
 
-    - name: ⏱️ Schedule Collector (Every 5 mins)
+    - name: "[Schedule] Run Metrics Collector (Every 5 mins)"
       ansible.builtin.cron:
         name: "Run Storage Metrics Collector"
         minute: "*/5"
