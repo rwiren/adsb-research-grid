@@ -1,7 +1,7 @@
 # Securing the Skies: ADS-B Spoofing Detection Grid
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-v0.5.0-green.svg)](#)
+[![Version](https://img.shields.io/badge/Version-v0.6.5-green.svg)](#)
 [![Status](https://img.shields.io/badge/Status-Phase%203%3A%20Validation-success.svg)](#)
 [![Wiki](https://img.shields.io/badge/Docs-Project%20Wiki-purple?style=flat-square)](https://github.com/rwiren/adsb-research-grid/wiki)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](#)
@@ -79,34 +79,63 @@ The detection engine utilizes a comparative ensemble of 12 distinct methods, lay
 ---
 
 ## 🧪 Research Workflow (Usage)
-This repository includes automated tooling (`Makefile`) for infrastructure management, data ingestion, and scientific analysis.
+This repository includes an automated "Control Center" (`Makefile`) for infrastructure management, data ingestion, self-healing maintenance, and scientific analysis.
 
-### 1. Quick Start
-Run these commands from the repository root:
+### 1. Command Reference
+To see the full list of available commands, run `make help` from the repository root:
 
-| Command | Description |
-| :--- | :--- |
-| `make deploy` | Deploy the latest Ansible configuration to the active sensor grid. |
-| `make fetch` | **Ingest Data:** Securely download and normalize CSV logs from all sensors to `research_data/`. |
-| `make report` | **Forensic Audit:** Generate the Academic Showcase (Markdown Report + 5 Scientific Dashboards). |
-| `make ml` | **AI/ML Prep:** Run the Unsupervised Anomaly Detection pipeline (Isolation Forest). |
-| `make check` | **Health Check:** Real-time query of sensor RF signal quality and thermal status. |
-| `make clean` | Remove temporary build artifacts and cache. |
+```text
+📡 ADS-B Research Grid Control Center
+--------------------------------------------------------
+  --- OPERATIONS (Infra) ---
+  make setup      - 📦 Install dependencies
+  make deploy     - 🚀 Configure all sensors (Ansible)
+  make check      - 🏥 Real-time Sensor Health Dashboard
 
-### 2. Manual Deployment
+  --- SCIENCE (Data) ---
+  make fetch      - 📥 Download, Heal & Merge logs from grid
+  make consolidate- 🧹 Manually fix fragmented logs (1-min -> Daily)
+  make ml         - 🧪 Run Anomaly Detection (Isolation Forest)
+  make ghosts     - 👻 Generate Forensic Maps (Ghost Hunt)
+  make report     - 📊 Generate Academic Audit Report
+  make all        - 🔁 Run Full Pipeline (Fetch->Heal->ML->Report)
+```
+
+### 2. Scientific Workflows
+
+#### **A. The "Gold Standard" Run**
+To perform a complete scientific audit (Ingest data $\rightarrow$ Heal fragmentation $\rightarrow$ Detect Anomalies $\rightarrow$ Generate Report):
+```bash
+make all
+```
+* **Output:** `docs/showcase/latest_audit/REPORT.md` and `research_data/ml_ready/`
+
+#### **B. Manual Data Repair**
+If `sensor-west` or other nodes generate fragmented 1-minute logs due to instability, run the self-healing utility manually:
+```bash
+make consolidate
+```
+
+#### **C. Forensic Mapping (Ghost Hunt)**
+To generate probabilistic heatmaps of potential spoofing sources without running the full pipeline:
+```bash
+make ghosts
+```
+
+### 3. Manual Deployment
 To update the grid infrastructure manually without the Makefile:
 ```bash
 ansible-playbook infra/ansible/playbooks/site.yml
 ```
 
-### 3. Scientific Analysis (Forensic Report)
+### 4. Scientific Analysis (Forensic Report)
 To run the full physics validation and generate the "Principal Investigator" dashboard:
 
 ```bash
 make report
 ```
 
-**Output (`docs/showcase/run_YYYY-MM-DD_HHMM/`):**
+**Output (`docs/showcase/latest_audit/REPORT.md`):**
 * **`REPORT.md`**: Executive Forensic Report including "Data Health Certificate" and missing value analysis.
 * **`D1_Operational.png`**: Grid stability, message rates, and sensor sensitivity profiles.
 * **`D2_Physics.png`**: Flight Envelopes (Alt vs Speed) and Signal Decay (Inverse-Square Law validation).
