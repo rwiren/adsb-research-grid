@@ -1,35 +1,41 @@
-# ==============================================================================
-# 🙈 File: .gitignore
-# Version: 0.5.0 (Data Science Release)
-# Description: Defines build artifacts and data exclusions for the repository.
-# ==============================================================================
+# ------------------------------------------------------------------
+# [FILE] .gitignore
+# [VERSION] 1.0.0 (Academic/Data Science Release)
+# [DESCRIPTION] Defines build artifacts, secrets, and large data 
+#               exclusions to keep the academic repository clean.
+# ------------------------------------------------------------------
 
-# --- 1. Python & System Artifacts ---
+# --- 1. Python & Virtual Environments (The Noise) ---
 __pycache__/
-*.pyc
-*.pyo
-.DS_Store
+*.py[cod]
+*$py.class
 venv/
 .pytest_cache/
+.coverage
+.ipynb_checkpoints/
 
-# --- 2. Secrets & Ansible ---
-# CRITICAL: Never commit passwords or keys
+# --- 2. System Artifacts ---
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+
+# --- 3. Secrets & Security (CRITICAL) ---
+# [SECURITY] Never commit the vault password or unencrypted secrets
 .vault_pass
+.ansible_vault_password
 .env
 *.retry
 infra/ansible/inventory/host_vars/secret_*.yml
 
-# --- 3. Research Data (Excluded) ---
-# Raw logs are too big for Git. We track the 'docs/showcase' summaries instead.
+# --- 4. Research Data (The Bloat) ---
+# Raw logs are too big for Git. We track the generated reports instead.
 research_data/
 data/
 storage_history.csv
 
-# --- 4. Analysis & Reports ---
-# Ignore intermediate working files...
+# [DATA SCIENCE] Ignore intermediate ML outputs, keep "Gold Standard"
 analysis/*
-
-# ... BUT explicitly track these valuable summary reports:
 !analysis/daily_reports/
 !analysis/archive/
 !analysis/**/*.md
@@ -37,6 +43,8 @@ analysis/*
 # --- 5. Documentation & Showcase ---
 # Ensure our academic proofs are always tracked
 !docs/showcase/
+# Optional: Ignore specific automated run folders if they get too numerous
+# docs/showcase/run_*/
 
 # --- 6. Infrastructure Volumes ---
 infra/database/data/
