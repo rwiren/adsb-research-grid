@@ -1,3 +1,17 @@
+#!/usr/bin/env python3
+# ------------------------------------------------------------------
+# [FILE] scripts/academic_eda.py
+# [AUTHOR] Richard Wirén
+# [DATE] 2026-01-12
+# [VERSION] 1.2.0
+# [DESCRIPTION] 
+#   Generates the "Academic Showcase" report. Ingests raw CSV logs,
+#   performs cleaning and type enforcement, merges with ML training 
+#   data, and produces statistical visualizations and Markdown reports.
+# 
+# [DEPENDENCIES] pandas, numpy, matplotlib, seaborn, scikit-learn
+# ------------------------------------------------------------------
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,6 +24,9 @@ from datetime import datetime
 # Import ML Libs for On-Demand Calculation
 from sklearn.ensemble import IsolationForest
 
+# ------------------------------------------------------------------
+# CONFIGURATION
+# ------------------------------------------------------------------
 SENSORS = {
     "sensor-north": {"lat": 60.319555, "lon": 24.830816, "color": "#003f5c", "name": "North (Ref)", "marker": "^"}, 
     "sensor-east":  {"lat": 60.3621, "lon": 25.3375, "color": "#bc5090", "name": "East (Sipoo)", "marker": "s"}, 
@@ -30,6 +47,7 @@ class ADSB_Academic_EDA:
         self.metadata = self._get_git_metadata()
         self.report_path = f"{self.showcase_dir}/REPORT.md"
         
+        # [VISUALIZATION] Academic Style Settings
         plt.style.use('seaborn-v0_8-paper')
         plt.rcParams['font.family'] = 'sans-serif'
         plt.rcParams['figure.dpi'] = 150
@@ -38,19 +56,32 @@ class ADSB_Academic_EDA:
         plt.rcParams['grid.alpha'] = 0.3
 
     def _get_git_metadata(self):
+        """Retrieves the current Git SHA for reproducibility."""
         try: return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).strip().decode()
         except: return "LOCAL"
 
     def haversine(self, lat1, lon1, lat2, lon2):
-        R = 6372.8
+        """Calculates Great Circle distance between sensor and aircraft."""
+        R = 6372.8 # Earth radius in km
         dLat, dLon = np.radians(lat2 - lat1), np.radians(lon2 - lon1)
         lat1, lat2 = np.radians(lat1), np.radians(lat2)
         a = np.sin(dLat/2)**2 + np.cos(lat1)*np.cos(lat2)*np.sin(dLon/2)**2
         return R * 2 * np.arcsin(np.sqrt(a))
 
     def load_data(self, target_date):
+        """
+        Ingests raw CSV data with strict type enforcement to prevent DtypeWarnings.
+        """
         print(f"[{self.metadata}] 📥 Loading Raw Data...")
         ac_files = glob.glob(f"{self.raw_dir}/{target_date}/sensor-*/sensor-*_aircraft_log*.csv*")
+        
+        # [DATA SCIENCE] Strict schema to handle mixed types (e.g. Flight ID vs Squawk)
+        dtype_schema = {
+            'hex': str,
+            'flight': str,
+            'squawk': str,
+            'sensor_id': str
+        }
         
         ac_list = []
         for f in ac_files:
@@ -58,33 +89,51 @@ class ADSB_Academic_EDA:
                 parts = f.split(os.sep)
                 sid = next((p for p in parts if p.startswith('sensor-')), 'unknown')
                 comp = 'gzip' if f.endswith('.gz') else None
-                tmp = pd.read_csv(f, compression=comp, on_bad_lines='skip', dtype={'hex': str})
+                
+                # [FIX] Added low_memory=False and dtype argument to fix warnings
+                tmp = pd.read_csv(
+                    f, 
+                    compression=comp, 
+                    on_bad_lines='skip', 
+                    dtype=dtype_schema,
+                    low_memory=False 
+                )
+                
                 if 'timestamp' in tmp.columns:
                     tmp['timestamp'] = pd.to_datetime(tmp['timestamp'], format='mixed', utc=True)
+                
                 tmp['sensor_id'] = sid
                 rename_map = {'alt_baro': 'alt', 'gs': 'ground_speed'}
                 tmp.rename(columns=rename_map, inplace=True)
+                
+                # Calculate distance if sensor is known
                 if sid in SENSORS:
                     tmp['distance_km'] = self.haversine(SENSORS[sid]['lat'], SENSORS[sid]['lon'], tmp['lat'], tmp['lon'])
+                
                 ac_list.append(tmp)
-            except: pass
+            except Exception as e:
+                print(f"   ⚠️  Skipping corrupted file {f}: {e}")
             
         if ac_list:
             self.df_ac = pd.concat(ac_list, ignore_index=True)
             for c in ['rssi', 'alt', 'ground_speed', 'track']: 
                 self.df_ac[c] = pd.to_numeric(self.df_ac[c], errors='coerce')
+            
+            # Filter for valid dates (sanity check)
             self.df_ac = self.df_ac[self.df_ac['timestamp'] > '2026-01-01']
             print(f"✅ Raw Rows: {len(self.df_ac):,}")
 
         # --- SELF-HEALING ML LOADER ---
         if os.path.exists(ML_DATASET):
             print(f"🧠 Loading ML Data from {ML_DATASET}...")
-            self.df_ml = pd.read_csv(ML_DATASET)
+            # Reuse schema for consistency
+            self.df_ml = pd.read_csv(ML_DATASET, dtype=dtype_schema, low_memory=False)
             
             # CHECK: Do we have the answers?
             if 'anomaly' not in self.df_ml.columns:
                 print("⚙️  'anomaly' column missing. Running On-Demand Isolation Forest...")
                 features = ['lat', 'lon', 'alt', 'ground_speed', 'track', 'rssi']
+                
                 # Impute missing values with median
                 X = self.df_ml[features].fillna(self.df_ml[features].median())
                 
@@ -96,6 +145,7 @@ class ADSB_Academic_EDA:
                 # Normalize Score to 0-100% (Severity)
                 min_score = self.df_ml['score'].min()
                 self.df_ml['confidence_pct'] = 0.0
+                
                 # Map negative scores (anomalies) to 0-100 scale
                 anom_mask = self.df_ml['score'] < 0
                 if anom_mask.any():
@@ -116,9 +166,11 @@ class ADSB_Academic_EDA:
         fig.suptitle(f"D1: Network Operations Status ({self.metadata})", fontweight='bold')
         sns.countplot(data=self.df_ac, x='sensor_id', hue='sensor_id', ax=axs[0,0], palette=pal, legend=False)
         sns.kdeplot(data=self.df_ac, x='rssi', hue='sensor_id', fill=True, ax=axs[0,1], palette=pal)
+        
         self.df_ac['min_bucket'] = self.df_ac['timestamp'].dt.floor('min')
         rate = self.df_ac.groupby(['min_bucket', 'sensor_id']).size().reset_index(name='count')
         sns.lineplot(data=rate, x='min_bucket', y='count', hue='sensor_id', ax=axs[1,0], palette=pal, linewidth=1)
+        
         sns.boxplot(data=self.df_ac, x='sensor_id', y='distance_km', hue='sensor_id', ax=axs[1,1], palette=pal, legend=False)
         plt.tight_layout()
         plt.savefig(f"{self.fig_dir}/D1_Operational.png")
@@ -128,6 +180,7 @@ class ADSB_Academic_EDA:
         fig, axs = plt.subplots(2, 2, figsize=(12, 8))
         fig.suptitle("D2: Physics Validation", fontweight='bold')
         sample = self.df_ac.sample(n=min(50000, len(self.df_ac)))
+        
         sns.scatterplot(data=sample, x='distance_km', y='rssi', hue='sensor_id', s=10, alpha=0.3, ax=axs[0,0], palette=pal)
         sns.scatterplot(data=sample, x='ground_speed', y='alt', hue='sensor_id', s=10, alpha=0.3, ax=axs[0,1], palette=pal)
         sns.histplot(data=self.df_ac, x='alt', hue='sensor_id', element="step", ax=axs[1,0], palette=pal)
@@ -213,7 +266,6 @@ class ADSB_Academic_EDA:
                 f.write("**Algorithm:** Isolation Forest (n=100, contamination=1%)\n\n")
                 f.write("### 5.1 Top 5 Highest Confidence Anomalies\n")
                 
-                # Check for score column (self-healed or pre-calc)
                 score_col = 'confidence_pct' if 'confidence_pct' in self.df_ml.columns else 'score'
                 
                 if score_col in self.df_ml.columns:
@@ -231,24 +283,9 @@ class ADSB_Academic_EDA:
                 f.write("### 5.2 Forensic Maps\n")
                 f.write("*(See `docs/showcase/ghost_hunt/` for high-res forensic maps generated by `visualize_ghosts.py`)*\n\n")
 
-            f.write("## 6. 📚 Research Data Schema\n")
-            f.write("Comprehensive definition of all collected data fields.\n\n")
-            f.write("### 6.1 Aircraft Telemetry (`aircraft.json`)\n")
-            f.write("| Field | Unit | Description | Relevance |\n| :--- | :--- | :--- | :--- |\n")
-            f.write("| `hex` | 24-bit | Unique ICAO Address | Target ID |\n")
-            f.write("| `flight` | String | Call Sign | Identification |\n")
-            f.write("| `lat`/`lon` | Deg | WGS84 Position | Geolocation |\n")
-            f.write("| `alt_baro` | Feet | Barometric Altitude | Vertical Profile |\n")
-            f.write("| `nic` | 0-11 | Nav Integrity Category | **Spoofing Indicator (Trust)** |\n")
-            f.write("| `rssi` | dBFS | Signal Strength | Receiver Proximity |\n\n")
-            
-            f.write("### 6.2 Hardware Stress (`stats.json`)\n")
-            f.write("| Field | Unit | Description | Criticality |\n| :--- | :--- | :--- | :--- |\n")
-            f.write("| `samples_dropped` | Raw | **Buffer Overflows** | **CPU/USB Saturation** |\n")
-            f.write("| `strong_signals` | Count | Signals > -3dBFS | **LNA Overload** |\n")
-
 if __name__ == "__main__":
     eda = ADSB_Academic_EDA()
+    # Default to today's date for daily run
     eda.load_data(target_date=datetime.now().strftime("%Y-%m-%d"))
     eda.generate_dashboards()
     eda.generate_report()
