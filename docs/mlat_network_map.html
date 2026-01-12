@@ -2,11 +2,13 @@
 <html>
 <head>
     <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
-    <title>ADS-B Research Grid: 3D MLAT Topology</title>
+    <title>ADS-B Research Grid: Dynamic Topology</title>
+    
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
@@ -15,75 +17,167 @@
     <style>
         html, body { width: 100%; height: 100%; margin: 0; padding: 0; }
         #map { position: absolute; top: 0; bottom: 0; right: 0; left: 0; }
+        
+        /* Dashboard Panel */
         .panel { 
-            position: fixed; bottom: 20px; left: 20px; width: 280px; 
+            position: fixed; bottom: 20px; left: 20px; width: 320px; 
             background: rgba(255, 255, 255, 0.95); padding: 15px; 
-            border-radius: 8px; border: 1px solid #ccc; font-family: sans-serif; 
+            border-radius: 8px; border: 1px solid #ccc; 
+            font-family: 'Segoe UI', sans-serif; 
             z-index: 9999; box-shadow: 0 5px 15px rgba(0,0,0,0.2); 
+            max-height: 90vh; overflow-y: auto;
         }
-        h4 { margin: 0 0 10px 0; color: #2c3e50; font-size: 1.1em; font-weight: bold; }
+        h4 { margin: 0 0 10px 0; color: #2c3e50; font-size: 1.1em; font-weight: bold; display: flex; align-items: center; gap: 10px;}
+        
+        /* Metric List */
+        #metric-list { margin-bottom: 15px; }
         .metric { display: flex; justify-content: space-between; font-size: 0.9em; border-bottom: 1px solid #eee; padding: 4px 0; }
+        .metric span { color: #666; }
+        .metric b { color: #333; }
+        
+        /* Input Form */
+        .add-sensor-form { background: #f8f9fa; padding: 10px; border-radius: 5px; border: 1px solid #e9ecef; }
+        .form-control-sm { margin-bottom: 5px; }
+        .btn-sm { width: 100%; }
+        
+        .status-ok { color: #27ae60; font-weight: bold; font-size: 0.9em; }
     </style>
 </head>
 <body>
+    
     <div class="panel">
-        <h4>📡 Sensor Grid Geometry</h4>
-        <div style="font-size: 0.8em; color: #555; margin-bottom: 10px;">
-            <b>Triangle Topology:</b><br>
-            Three synchronized nodes forming a coverage triangle around Helsinki-Vantaa.
+        <h4><i class="fa-solid fa-network-wired"></i> Grid Topology</h4>
+        
+        <div id="metric-list">
+            </div>
+
+        <div class="metric" style="border:none; margin-bottom: 10px;">
+            <span>Geometry Status:</span>
+            <span class="status-ok">ACTIVE <i class="fa-solid fa-check-circle"></i></span>
         </div>
-        <div class="metric"><span>West ↔ North</span><b>29.6 km</b></div>
-        <div class="metric"><span>North ↔ East</span><b>29.1 km</b></div>
-        <div class="metric"><span>East ↔ West</span><b>54.2 km</b></div>
-        <div class="metric" style="margin-top:5px; border:none; color:green;"><b>Status: OPTIMAL</b></div>
+
+        <hr>
+
+        <div class="add-sensor-form">
+            <h6 style="font-size: 0.9em; font-weight: bold; margin-bottom: 8px;">Test New Sensor Node</h6>
+            <input type="text" id="newLabel" class="form-control form-control-sm" placeholder="Name (e.g. South)">
+            <div class="d-flex gap-1">
+                <input type="number" id="newLat" class="form-control form-control-sm" placeholder="Lat (60.xxx)" step="0.0001">
+                <input type="number" id="newLon" class="form-control form-control-sm" placeholder="Lon (24.xxx)" step="0.0001">
+            </div>
+            <button onclick="addSensor()" class="btn btn-primary btn-sm mt-1">
+                <i class="fa-solid fa-plus"></i> Add to Grid
+            </button>
+        </div>
     </div>
     
     <div id="map"></div>
 
     <script>
-        // 1. Initialize Map centered on the Triangle
-        var map = L.map("map").setView([60.25, 24.9], 10);
+        // 1. Initialize Map
+        var map = L.map("map").setView([60.25, 24.95], 9);
+        
         L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            attribution: '&copy; OpenStreetMap &copy; CARTO'
         }).addTo(map);
 
-        // 2. Define Nodes
+        // Layer Groups to manage updates easily
+        var markerLayer = L.layerGroup().addTo(map);
+        var polyLayer = L.layerGroup().addTo(map);
+
+        // 2. Initial Data State (Accurate coords, no address descriptions)
         var nodes = [
-            { name: "RX1: West (Kirkkonummi)", lat: 60.120000, lon: 24.400000, color: "orange" },
-            { name: "RX2: North (Vantaa Ref)", lat: 60.319555, lon: 24.830816, color: "blue" },
-            { name: "RX3: East (Sipoo)",       lat: 60.250000, lon: 25.350000, color: "purple" }
+            { id: "west",  name: "West: Jorvas",  lat: 60.1478, lon: 24.5264, color: "orange" },
+            { id: "north", name: "North: Keimola", lat: 60.3065, lon: 24.8149, color: "blue" },
+            { id: "east",  name: "East: Sibbo",   lat: 60.3621, lon: 25.3375, color: "purple" }
         ];
 
-        // 3. Plot Nodes & Triangle
-        var latlngs = [];
-        
-        nodes.forEach(function(n) {
-            // Add Marker
-            var icon = L.AwesomeMarkers.icon({
-                icon: 'tower-broadcast', prefix: 'fa', markerColor: n.color, iconColor: 'white'
+        // 3. Render Function (Draws everything based on 'nodes' array)
+        function renderGrid() {
+            // Clear existing layers
+            markerLayer.clearLayers();
+            polyLayer.clearLayers();
+            document.getElementById('metric-list').innerHTML = "";
+
+            var latlngs = [];
+
+            // Plot Markers
+            nodes.forEach(function(n) {
+                // Marker Icon
+                var icon = L.AwesomeMarkers.icon({
+                    icon: 'tower-broadcast', prefix: 'fa', markerColor: n.color || 'cadetblue', iconColor: 'white'
+                });
+
+                // Add Pin
+                L.marker([n.lat, n.lon], {icon: icon})
+                    .addTo(markerLayer)
+                    .bindTooltip(`<b>${n.name}</b>`, {direction: 'top', offset: [0, -20]}); // Clean tooltip
+                
+                // Add Text Label on map
+                var label = L.divIcon({
+                    className: 'label',
+                    html: `<div style="background:white; padding:1px 4px; border:1px solid #999; border-radius:3px; font-weight:bold; white-space:nowrap; font-size:10px;">${n.name}</div>`,
+                    iconSize: [100, 20], iconAnchor: [50, -10]
+                });
+                L.marker([n.lat, n.lon], {icon: label}).addTo(markerLayer);
+
+                latlngs.push(L.latLng(n.lat, n.lon));
             });
-            L.marker([n.lat, n.lon], {icon: icon}).addTo(map).bindTooltip(n.name, {sticky: true});
-            
-            // Add Label
-            var label = L.divIcon({
-                className: 'label',
-                html: `<div style="background:white; padding:2px 5px; border:1px solid black; border-radius:3px; font-weight:bold; white-space:nowrap;">${n.name}</div>`,
-                iconSize: [100, 20], iconAnchor: [-10, 10]
+
+            // Draw Polygon (Connect all points + close loop)
+            if (latlngs.length > 0) {
+                var polyPoints = [...latlngs, latlngs[0]]; // Close the loop
+                L.polyline(polyPoints, {
+                    color: '#27ae60', weight: 3, opacity: 0.8, dashArray: '10, 10'
+                }).addTo(polyLayer);
+            }
+
+            // Calculate & Render Metrics
+            var html = "";
+            for (let i = 0; i < nodes.length; i++) {
+                let current = nodes[i];
+                let next = nodes[(i + 1) % nodes.length]; // Wrap around to start
+                
+                let dist = (L.latLng(current.lat, current.lon).distanceTo(L.latLng(next.lat, next.lon)) / 1000).toFixed(2);
+                
+                // Shorten names for the panel
+                let n1 = current.name.split(":")[0];
+                let n2 = next.name.split(":")[0];
+
+                html += `<div class="metric"><span>${n1} ↔ ${n2}</span><b>${dist} km</b></div>`;
+            }
+            document.getElementById('metric-list').innerHTML = html;
+        }
+
+        // 4. Add Sensor Function (Called by Button)
+        function addSensor() {
+            var name = document.getElementById('newLabel').value || "New Sensor";
+            var lat = parseFloat(document.getElementById('newLat').value);
+            var lon = parseFloat(document.getElementById('newLon').value);
+
+            if (isNaN(lat) || isNaN(lon)) {
+                alert("Please enter valid Latitude and Longitude.");
+                return;
+            }
+
+            // Add new node to state
+            nodes.push({
+                id: "dynamic_" + nodes.length,
+                name: name,
+                lat: lat,
+                lon: lon,
+                color: "green" // Color for new nodes
             });
-            L.marker([n.lat, n.lon], {icon: label}).addTo(map);
 
-            latlngs.push([n.lat, n.lon]);
-        });
+            // Re-render
+            renderGrid();
+        }
 
-        // Close the loop for the polygon
-        latlngs.push(latlngs[0]);
+        // Initial Render
+        renderGrid();
 
-        // Draw Triangle
-        L.polyline(latlngs, {
-            color: '#27ae60', weight: 3, opacity: 0.8, dashArray: '10, 10'
-        }).addTo(map);
+        console.log("Grid System Loaded. Ready for dynamic topology testing.");
 
-        L.control.scale().addTo(map);
     </script>
 </body>
 </html>
