@@ -61,17 +61,19 @@ The detection engine utilizes a comparative ensemble of 12 distinct methods, lay
 * **Sensor North (Reference Node)**
     * **Hostname:** `sensor-north`
     * **Hardware:** Raspberry Pi 4 (4GB) + 32GB SD
-    * **Radio/GNSS:** 3x USB SDRs (FlightAware Blue/Jetvision/RTL-SDR) + SimpleRTK2B (PPS)
+    * **Radio/GNSS:** USB SDRs (FlightAware Blue/Jetvision/RTL-SDR) + SimpleRTK2B (PPS)
     * **Role:** Stratum-1 Precision Timing & Reference Geolocation.
 
 * **Sensor West (Remote Node)**
     * **Hostname:** `sensor-west`
     * **Hardware:** Raspberry Pi 4 (4GB) + 64GB SD
+    * **Radio/GNSS:** USB SDRs (RTL-SDR "silver") + G-STAR IV GNSS
     * **Location:** Jorvas (Currently acting as hw verification).
 
 * **Sensor East (Remote Node)**
     * **Hostname:** `sensor-east`
     * **Hardware:** Raspberry Pi 4 (4GB) + 16GB SD
+    * **Radio/GNSS:** USB SDRs (FlightAware Blue) + G-STAR IV GNSS
     * **Location:** Sibbo.
       
 ---
