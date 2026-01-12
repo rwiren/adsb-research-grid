@@ -46,16 +46,34 @@ The detection engine utilizes a comparative ensemble of 12 distinct methods, lay
 
 ---
 
-## 🏗 Architecture (Distributed Sensor Grid)
-* **Controller:** Research Workstation (MacOS/Ansible).
-* **Tower Core (Aggregation Node):** Raspberry Pi 5. Hostname: `tower-core`.
-    * *Role:* Central InfluxDB storage and Grafana visualization.
-* **Sensor North (Reference Node):** Raspberry Pi 4. Hostname: `sensor-north`.
-    * *Role:* **Stratum-1 Precision Timing**.
-    * *Hardware:* **FlightAware Pro Stick (Blue)** + SimpleRTK2B (PPS).
-* **Sensor East (Remote Node):** Raspberry Pi 4. Hostname: `sensor-east`.
-* **Sensor West (Remote Node):** Raspberry Pi 4. Hostname: `sensor-west`.
+## 📡 Grid Infrastructure
+> For detailed hardware specifications, wiring diagrams, and GNSS benchmarks, please consult the **[Project Wiki](https://github.com/rwiren/adsb-research-grid/wiki)**.
 
+* **Controller: Research Workstation**
+    * **OS:** MacOS / Ansible Control Node
+    * **Role:** Orchestration, Playbook deployment, and Data Analysis.
+
+* **Tower Core (Aggregation Node)**
+    * **Hostname:** `tower-core`
+    * **Hardware:** Raspberry Pi 5 (16GB) + 1TB NVMe
+    * **Role:** Central InfluxDB storage, Grafana visualization, and signal correlation.
+
+* **Sensor North (Reference Node)**
+    * **Hostname:** `sensor-north`
+    * **Hardware:** Raspberry Pi 4 (4GB) + 32GB SD
+    * **Radio/GNSS:** 3x USB SDRs (FlightAware Blue/Jetvision/RTL-SDR) + SimpleRTK2B (PPS)
+    * **Role:** Stratum-1 Precision Timing & Reference Geolocation.
+
+* **Sensor West (Remote Node)**
+    * **Hostname:** `sensor-west`
+    * **Hardware:** Raspberry Pi 4 (4GB) + 64GB SD
+    * **Location:** Jorvas (Currently acting as hw verification).
+
+* **Sensor East (Remote Node)**
+    * **Hostname:** `sensor-east`
+    * **Hardware:** Raspberry Pi 4 (4GB) + 16GB SD
+    * **Location:** Sibbo.
+      
 ---
 
 ## 🧪 Research Workflow (Usage)
