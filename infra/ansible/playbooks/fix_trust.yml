@@ -1,0 +1,59 @@
+---
+# ------------------------------------------------------------------
+# [Playbook] Fix Trust & Connectivity
+# [Target] All Nodes
+# [Purpose] Establishes passwordless SSH from Tower -> Sensors
+# ------------------------------------------------------------------
+
+# 1. Generate SSH Key on Tower & Configure DNS/SSH
+- hosts: core
+  become: yes
+  tasks:
+    - name: "[DNS] Add Sensors to /etc/hosts"
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ hostvars[item].ansible_host }} {{ item }}"
+        state: present
+      loop: "{{ groups['sensors'] }}"
+
+    - name: "[SSH] Generate Keypair for Admin"
+      user:
+        name: admin
+        generate_ssh_key: yes
+        ssh_key_type: ed25519
+        ssh_key_file: /home/admin/.ssh/id_ed25519
+
+    - name: "[SSH] Fetch Public Key to Mac (Temporary)"
+      fetch:
+        src: /home/admin/.ssh/id_ed25519.pub
+        dest: /tmp/tower_key.pub
+        flat: yes
+
+    - name: "[SSH] Create Client Config (Handle 'pi' user)"
+      blockinfile:
+        path: /home/admin/.ssh/config
+        create: yes
+        owner: admin
+        group: admin
+        mode: '0600'
+        block: |
+          Host *
+            StrictHostKeyChecking no
+
+          Host sensor-north
+            User pi
+            IdentityFile /home/admin/.ssh/id_ed25519
+
+          Host sensor-east sensor-west
+            User admin
+            IdentityFile /home/admin/.ssh/id_ed25519
+
+# 2. Distribute Tower's Key to Sensors
+- hosts: sensors
+  become: yes
+  tasks:
+    - name: "[Trust] Authorize Tower Public Key"
+      authorized_key:
+        user: "{{ ansible_user }}"
+        state: present
+        key: "{{ lookup('file', '/tmp/tower_key.pub') }}"

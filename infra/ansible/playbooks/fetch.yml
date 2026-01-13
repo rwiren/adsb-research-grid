@@ -1,53 +1,52 @@
 ---
 # ==============================================================================
-# FILE: infra/ansible/playbooks/fetch.yml
-# VERSION: 0.6.1 (Compressed Support Patch)
-# MAINTAINER: DevOps / Research Team
-# DATE: 2026-01-11
-# ==============================================================================
-# DESCRIPTION:
-#   Orchestrates the retrieval of scientific datasets from remote sensors.
-#   Supports dynamic node discovery (North/East/West).
-#
-# CHANGELOG:
-#   - 0.6.1: Added support for .csv.gz (compressed) logs to prevent skipping.
-#   - 0.5.0: Removed legacy jinja2 conditional. Now uses {{ inventory_hostname }}
+# 📥 PROJECT: ADS-B Spoofing Data Collection
+# 📂 FILE:    infra/ansible/playbooks/fetch.yml
+# 🔢 VERSION: 0.7.2 (Expanded Data Scope: GNSS + Health)
+# 📅 DATE:    2026-01-13
+# ✍️ AUTHOR:  Gemini / ADSB Team
 # ==============================================================================
 
 - name: "📥 Grid Data Retrieval (Scientific Data Pipeline)"
   hosts: sensors
   gather_facts: yes
-  become: yes
-    
+  vars:
+    local_data_dir: "research_data/raw"
+    remote_data_dir: "/opt/adsb-grid/data"
+
   tasks:
-    # --- 1. DYNAMIC DISCOVERY ---
     - name: "[Discovery] Locate all generated CSV research logs"
       find:
-        paths: "/var/lib/adsb_storage/csv_data"
+        paths: "{{ remote_data_dir }}"
+        # REFINED v0.7.2: Capture ALL scientific log types
         patterns: 
-          - "*.csv"
-          - "*.csv.gz"   # <--- CRITICAL FIX: Finds compressed logs
-        age: "-1d"       # Only files modified in the last 24h
-      register: csv_files
+          - "*_aircraft_log_*.csv"     # Primary Flight Tracks
+          - "*_stats_log_*.csv"        # SDR/Decoder Hardware Stats
+          - "*_gnss_log_*.csv"         # [NEW] GPS/RTK Position Fixes
+          - "*hardware_health*.csv"    # [NEW] System Crash/Throttling Logs
+          - "*storage_*.csv"           # [NEW] Disk Usage History
+          - "*.csv.gz"                 # Archived/Compressed Logs
+        recurse: yes
+      register: found_logs
 
-    # --- 2. DATA INGESTION ---
     - name: "[Ingest] Transfer CSV logs to Local Research Repository"
       fetch:
         src: "{{ item.path }}"
-        # DEVOPS COMMENT: 
-        # Dynamic path resolution. 
-        # Result: research_data/2026-01-11/sensor-east/filename.csv
-        dest: "{{ playbook_dir }}/../../../research_data/{{ ansible_date_time.date }}/{{ inventory_hostname }}/"
+        dest: "{{ local_data_dir }}/{{ inventory_hostname }}/"
         flat: yes
-      with_items: "{{ csv_files.files }}"
+      loop: "{{ found_logs.files }}"
       loop_control:
         label: "{{ item.path | basename }}"
+      when: found_logs.matched > 0
 
     - name: "[Ingest] Retrieve Storage History (Metrics)"
-      fetch:
-        src: "/var/lib/adsb_storage/storage_history.csv"
-        # DEVOPS COMMENT: 
-        # Downloads individual node history for merging later.
-        dest: "{{ playbook_dir }}/../../../research_data/{{ ansible_date_time.date }}/{{ inventory_hostname }}/storage_history.csv"
-        flat: yes
-      ignore_errors: yes
+      shell: "du -sk /opt/adsb-grid/data | awk '{print $1}'"
+      register: storage_usage
+      changed_when: false
+
+    - name: "[Meta] Save Storage Metrics"
+      local_action: 
+        module: lineinfile
+        path: "data/storage_history.csv"
+        line: "{{ ansible_date_time.iso8601 }},{{ inventory_hostname }},{{ storage_usage.stdout }}"
+        create: yes
