@@ -43,19 +43,53 @@
 [[inputs.temp]]
 
 # 📡 INPUTS: The Nervous System (MQTT)
-# Monitors your Drone Telemetry & Sensor Data Flow
+# Monitors your Sensor Node Heartbeats
 [[inputs.mqtt_consumer]]
   servers = ["tcp://mosquitto:1883"]
   topics = [
-    "sensors/+/health",      # Watch Sensor North/West/East heartbeats
-    "drones/+/telemetry"     # Autel Drone data (Future)
+    "sensors/+/health"       # Watch Sensor North/West/East heartbeats
   ]
   data_format = "json"
-  tag_keys = ["host", "sensor_id", "drone_id"]
+  tag_keys = ["host", "sensor_id"]
+
+# ------------------------------------------------------------------
+# [Input] OwnTracks (Samsung Z7 Fold - Agent RW)
+# [Transport] ZeroTier Tunnel (Anonymous / No Auth)
+# ------------------------------------------------------------------
+[[inputs.mqtt_consumer]]
+  servers = ["tcp://mosquitto:1883"]
+  topics = ["owntracks/#"]
+  name_override = "owntracks"
+
+  # Data Parsing
+  data_format = "json"
+  
+  # [UPDATED] Added 't' (trigger) to tags for filtering events
+  tag_keys = ["tid", "_type", "_id", "conn", "t"]
+  
+  # Treat these as text strings
+  json_string_fields = ["source", "created_at"]
+  
+  # Use phone timestamp
+  json_time_key = "tst"
+  json_time_format = "unix"
+
+# ------------------------------------------------------------------
+# [Input] Autel Robotics (Controller & Drone)
+# [Status] Controller: Active | Drone: Pending
+# ------------------------------------------------------------------
+[[inputs.mqtt_consumer]]
+  servers = ["tcp://mosquitto:1883"]
+  topics = [
+    "autel/controller/#",
+    "autel/drone/#"
+  ]
+  name_override = "autel_telemetry"
+  data_format = "json"
+  tag_keys = ["device_type", "serial_number", "flight_mode"]
 
 # 🐳 INPUTS: Docker Health (Container Watchdog)
 [[inputs.docker]]
   endpoint = "unix:///var/run/docker.sock"
   gather_services = false
-#  container_names = ["influxdb-core", "grafana-core", "mqtt-broker", "syslog-core"]
   source_tag = false

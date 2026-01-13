@@ -1,36 +1,83 @@
 #!/bin/bash
-# ------------------------------------------------------------------
-# [File] /opt/adsb-grid/scripts/fetch_logs.sh
-# [Version] 1.0.0 (2026-01-13)
-# [Purpose] Aggregates daily logs from all sensor nodes for analysis.
-# [Zone] HQ (Tower Core)
-# ------------------------------------------------------------------
+# ==============================================================================
+# 📡 PROJECT: ADS-B Spoofing Data Collection
+# 📂 FILE:    /opt/adsb-grid/scripts/fetch_logs.sh
+# 🔢 VERSION: 0.7.2 (Added GNSS & Health Logs)
+# 📅 DATE:    {{ ansible_date_time.date }}
+# ------------------------------------------------------------------------------
+# DESCRIPTION: Aggregates raw CSV research data from all Sensor Nodes to Tower.
+#              Designed to run via Cron (04:00 AM) or manual trigger.
+# SOURCE:      /opt/adsb-grid/data/ (On Sensors)
+# DESTINATION: /opt/adsb-grid/data/raw/ (On Tower)
+# ==============================================================================
 
-# Configuration
+# --- Configuration ---
+DEST_ROOT="/opt/adsb-grid/data/raw"
+LOG_FILE="/var/log/adsb-fetch.log"
 DATE=$(date +%Y-%m-%d)
-DATA_DIR="/opt/adsb-grid/data/$DATE"
-LOG_FILE="/var/log/adsb-collector.log"
-SENSORS=("sensor-north" "sensor-east" "sensor-west")
 
-# Ensure daily directory exists
-mkdir -p "$DATA_DIR"
+# Sensor Definitions (Hostname:IP)
+# We use explicit IPs to avoid DNS dependency failures during early morning runs
+declare -A SENSORS=( 
+    ["sensor-north"]="192.168.192.130" 
+    ["sensor-west"]="192.168.192.110" 
+    ["sensor-east"]="192.168.192.120" 
+)
 
-echo "[ $(date) ] Starting Log Collection for $DATE" >> "$LOG_FILE"
+# --- Functions ---
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+}
 
-# Iterate through sensors
-for SENSOR in "${SENSORS[@]}"; do
-    echo "  > Fetching from $SENSOR..." >> "$LOG_FILE"
+# --- Execution ---
+log "🚀 Starting Daily Science Data Ingest (v0.7.2) for $DATE"
+
+# Ensure destination exists
+mkdir -p "$DEST_ROOT"
+
+for SENSOR_NAME in "${!SENSORS[@]}"; do
+    SENSOR_IP="${SENSORS[$SENSOR_NAME]}"
+    TARGET_DIR="$DEST_ROOT/$SENSOR_NAME"
     
-    # Attempt to fetch logs (assuming SSH keys are set, otherwise this skips)
-    # Using specific rsync flags to preserve timestamps and compress
-    rsync -avz -e "ssh -o StrictHostKeyChecking=no"         admin@$SENSOR:/var/log/syslog         "$DATA_DIR/$SENSOR-syslog.log" >> "$LOG_FILE" 2>&1
+    mkdir -p "$TARGET_DIR"
+    
+    log "📡 Probing $SENSOR_NAME ($SENSOR_IP)..."
+    
+    # 1. Connectivity Check (Ping with 2s timeout)
+    if ping -c 1 -W 2 "$SENSOR_IP" &> /dev/null; then
         
-    if [ $? -eq 0 ]; then
-        echo "    [OK] $SENSOR successfully synced." >> "$LOG_FILE"
+        # 2. RSYNC Operation
+        # -a: Archive mode (preserve times/perms)
+        # -v: Verbose
+        # -z: Compress during transfer
+        # --include: Explicitly grab ALL research CSVs (GNSS, Health, Tracks)
+        # --exclude: Ignore everything else to save bandwidth
+        
+        log "   > Syncing Science CSV datasets..."
+        
+        if rsync -avz --timeout=30 \
+           --include="*_aircraft_log_*.csv" \
+           --include="*_stats_log_*.csv" \
+           --include="*_gnss_log_*.csv" \
+           --include="*hardware_health*.csv" \
+           --include="*storage_*.csv" \
+           --include="*.csv.gz" \
+           --exclude="*" \
+           -e "ssh -o StrictHostKeyChecking=no -i /home/admin/.ssh/id_rsa" \
+           "pi@$SENSOR_IP:/opt/adsb-grid/data/" "$TARGET_DIR/"; then
+            
+            log "   ✅ Success: Data synced for $SENSOR_NAME"
+        else
+            log "   ❌ Error: Rsync failed for $SENSOR_NAME"
+        fi
+        
     else
-        echo "    [ERROR] $SENSOR failed to sync. Check SSH keys." >> "$LOG_FILE"
+        log "⚠️ Warning: $SENSOR_NAME is unreachable (Ping failed)"
     fi
 done
 
-echo "[ $(date) ] Collection Complete." >> "$LOG_FILE"
-echo "---------------------------------------------------" >> "$LOG_FILE"
+# --- Maintenance ---
+# Compress any raw CSVs locally on Tower that are older than 24h to save space
+find "$DEST_ROOT" -type f -name "*.csv" -mtime +1 -exec gzip {} \;
+
+log "🏁 Ingest Cycle Complete."

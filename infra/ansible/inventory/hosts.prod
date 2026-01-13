@@ -34,7 +34,7 @@ sensor-east ansible_host=192.168.192.120 gnss_device=/dev/ttyUSB0 gnss_driver=nm
 
 # --- 🧠 TOWER-CORE ---
 # Location: Keimola Lab | Hardware: RPi 5 + 1TB NVMe
-tower-core ansible_host=192.168.1.100
+tower-core ansible_host=192.168.192.100
 
 # ==============================================================================
 # 🛠️ GROUP VARIABLES

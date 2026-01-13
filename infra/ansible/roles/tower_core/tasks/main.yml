@@ -1,7 +1,7 @@
 # -----------------------------------------------------------------------------
 # [FILE] infra/ansible/roles/tower_core/tasks/main.yml
 # [DESCRIPTION] Main task list for configuring the Tower Core node
-# [VERSION] v1.0.0 (Added TCP Syslog Support for Reliable Logging)
+# [VERSION] v1.1.0 (Added OwnTracks Dashboard Provisioning)
 # [DATE] 2026-01-13
 # -----------------------------------------------------------------------------
 
@@ -17,6 +17,7 @@
       - rsyslog  # CRITICAL: Required for centralized logging server
     state: present
     update_cache: yes
+  tags: [system, common]
 
 - name: "[System] Future-Proofing Kernel (Prepare for OpenSearch)"
   sysctl:
@@ -24,6 +25,7 @@
     value: '262144'
     state: present
     reload: yes
+  tags: [system, kernel]
 
 # --- 2. Docker & User Config ---
 - name: "[Docker] Ensure Docker service is active"
@@ -31,12 +33,14 @@
     name: docker
     state: started
     enabled: yes
+  tags: [docker]
 
 - name: "[Users] Add admin to docker group"
   user:
     name: "{{ ansible_user }}"
     groups: docker
     append: yes
+  tags: [user, docker]
 
 # --- 3. Directory Structure ---
 - name: "[Storage] Create service volume directories"
@@ -56,6 +60,7 @@
     - /opt/tower/syslog_config
     - /opt/tower/influxdb
     - /opt/tower/grafana
+  tags: [storage, setup]
 
 - name: "[Grafana] Create provisioning directories"
   file:
@@ -68,6 +73,7 @@
     - /opt/tower/grafana/provisioning
     - /opt/tower/grafana/provisioning/dashboards
     - /opt/tower/grafana/provisioning/datasources
+  tags: [grafana, storage]
 
 # --- 4. Configuration Deployment ---
 - name: "[Config] Deploy Mosquitto Config"
@@ -75,30 +81,43 @@
     src: mosquitto/mosquitto.conf.j2
     dest: /opt/tower/mosquitto/config/mosquitto.conf
     mode: '0644'
+  tags: [mosquitto, config]
 
 - name: "[Config] Deploy Telegraf Config"
   template:
     src: telegraf.conf.j2
     dest: /opt/tower/telegraf/telegraf.conf
     mode: '0644'
+  tags: [telegraf, config]
 
 - name: "[Grafana] Deploy Datasource Provisioning"
   template:
     src: grafana/provisioning/datasources/datasource.yml.j2
     dest: /opt/tower/grafana/provisioning/datasources/datasource.yml
     mode: '0644'
+  tags: [grafana, config]
 
 - name: "[Grafana] Deploy Dashboard Provisioning"
   template:
     src: grafana/provisioning/dashboards/dashboard.yml.j2
     dest: /opt/tower/grafana/provisioning/dashboards/dashboard.yml
     mode: '0644'
+  tags: [grafana, config]
 
 - name: "[Grafana] Deploy System Overview Dashboard JSON"
   template:
     src: grafana/provisioning/dashboards/system_overview.json.j2
     dest: /opt/tower/grafana/provisioning/dashboards/system_overview.json
     mode: '0644'
+  tags: [grafana, dashboard]
+
+# [NEW v1.1.0] Added missing task for OwnTracks Dashboard
+- name: "[Grafana] Deploy OwnTracks Field Agent Dashboard JSON"
+  template:
+    src: grafana/provisioning/dashboards/owntracks.json.j2
+    dest: /opt/tower/grafana/provisioning/dashboards/owntracks.json
+    mode: '0644'
+  tags: [grafana, dashboard]
 
 # --- 5. Syslog Server Configuration ---
 - name: "[Syslog] Enable UDP and TCP Reception (Port 514)"
@@ -116,6 +135,7 @@
     - { regexp: '^#input\(type="imtcp"',    line: 'input(type="imtcp" port="514")' }
   become: yes
   register: rsyslog_config
+  tags: [syslog, config]
 
 - name: "[Syslog] Create dedicated remote log rule"
   copy:
@@ -130,6 +150,7 @@
     mode: '0644'
   become: yes
   notify: Restart Syslog
+  tags: [syslog, config]
 
 - name: "[Syslog] Restart Rsyslog to apply changes"
   service:
@@ -137,6 +158,7 @@
     state: restarted
   become: yes
   when: rsyslog_config.changed
+  tags: [syslog]
 
 # --- 6. Firewall Configuration ---
 - name: "[Firewall] Allow MQTT (1883) for Autel/Sensors"
@@ -145,6 +167,7 @@
     port: '1883'
     proto: tcp
   become: yes
+  tags: [firewall, security]
 
 - name: "[Firewall] Allow Syslog UDP (Standard)"
   community.general.ufw:
@@ -152,6 +175,7 @@
     port: '514'
     proto: udp
   become: yes
+  tags: [firewall, security]
 
 - name: "[Firewall] Allow Syslog TCP (Reliable Delivery)"
   community.general.ufw:
@@ -159,6 +183,7 @@
     port: '514'
     proto: tcp
   become: yes
+  tags: [firewall, security]
 
 # --- 7. Service Deployment ---
 - name: "[Stack] Deploy Docker Compose Manifest"
@@ -166,18 +191,18 @@
     src: docker-compose.yml.j2
     dest: /opt/tower/docker-compose.yml
     mode: '0644'
+  tags: [stack, docker]
 
 - name: "[Launch] Spin up Tower Stack (TIG + MQTT + Syslog)"
   community.docker.docker_compose_v2:
     project_src: /opt/tower
     state: present
     pull: missing
+  tags: [stack, docker]
 
-# --- 7. ANALYTICS STACK ---
+# --- 8. ANALYTICS STACK ---
 - import_tasks: opensearch.yml
   tags: [opensearch, arkime]
-
-# ---------------------------------------------------
 
 # ---------------------------------------------------
 # [Collector] Setup Data Aggregation & Storage
@@ -193,6 +218,7 @@
     - /opt/adsb-grid
     - /opt/adsb-grid/data
     - /opt/adsb-grid/scripts
+  tags: [storage, collector]
 
 - name: "[Collector] Deploy Fetch Script"
   template:
@@ -201,6 +227,7 @@
     owner: admin
     group: admin
     mode: '0755'
+  tags: [collector, scripts]
 
 - name: "[Cron] Schedule Daily Log Collection (04:00 AM)"
   cron:
@@ -208,3 +235,4 @@
     minute: "0"
     hour: "4"
     job: "/opt/adsb-grid/scripts/fetch_logs.sh"
+  tags: [cron, collector]

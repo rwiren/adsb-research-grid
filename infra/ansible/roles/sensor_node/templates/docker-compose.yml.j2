@@ -1,84 +1,17 @@
-# -----------------------------------------------------------------------------
-# [FILE] infra/ansible/roles/sensor_node/templates/docker-compose.yml.j2
-# [DESCRIPTION] Sensor Node Service Stack (Ultrafeeder + Telegraf)
-# [VERSION] v0.7.0 (Fixed SDR Driver Type for Stability)
-# [DATE] 2026-01-12
-# [AUTHOR] ADSB Research Grid Team
-# -----------------------------------------------------------------------------
-
 version: '3.8'
 
 services:
-  # 📡 Ultrafeeder (ADS-B Receiver & Decoder)
-  # Core logic for receiving 1090MHz signals and decoding them.
-  ultrafeeder:
-    image: ghcr.io/sdr-enthusiasts/docker-adsb-ultrafeeder:latest
-    container_name: ultrafeeder
-    hostname: ultrafeeder
-    restart: always
-    device_cgroup_rules:
-      - 'c 189:* rwm'   # Grant access to all USB devices (for SDR stick)
-    volumes:
-      - /dev:/dev:ro
-      # Persistence for Heatmaps and Range Graphs
-      - /opt/adsb-grid/data/ultrafeeder/globe_history:/var/globe_history
-      - /opt/adsb-grid/data/ultrafeeder/graphs1090:/var/lib/collectd/rrd
-      - /proc/diskstats:/proc/diskstats:ro
-    environment:
-      # --- GENERAL SETTINGS ---
-      - LOGLEVEL=error
-      - TZ={{ timezone | default('Europe/Helsinki') }}
-
-      # --- HARDWARE CONFIGURATION ---
-      # [FIX v0.7.0] Hardcoded to 'rtlsdr' to prevent container crash.
-      # The container does not support descriptive names like 'flightaware-blue'.
-      - READSB_DEVICE_TYPE=rtlsdr
-      - READSB_GAIN={{ sdr_gain | default('49.6') }}
-
-      # --- LOCATION CONFIGURATION ---
-      # Precision coordinates for MLAT calculations
-      - LAT={{ fixed_lat | default(latitude) | default('0') }}
-      - LONG={{ fixed_lon | default(longitude) | default('0') }}
-      - ALT={{ fixed_alt | default(altitude) | default('0') }}
-
-      # --- VISUALIZATION ---
-      - UUID={{ adsb_uuid | default('') }}
-      - MLAT_NO_ANON_RESULTS=true
-      - UPDATE_TAR1090=true
-      - TAR1090_DEFAULTCENTERLAT={{ fixed_lat | default(latitude) | default('0') }}
-      - TAR1090_DEFAULTCENTERLON={{ fixed_lon | default(longitude) | default('0') }}
-      - TAR1090_MESSAGERATEINTITLE=true
-
-      # --- SMART PERFORMANCE TUNING ---
-      # Simplified for RPi 4 Fleet: Always enable write-state and heatmaps for research data
-      - READSB_EXTRA_ARGS=--net-connector=127.0.0.1,30005,beast_in --write-state=/var/globe_history --heatmap-dir=/var/globe_history
-
-    ports:
-      - 8080:80         # Tar1090 Web Interface (Map)
-      - 30005:30005     # Beast Output (Raw Data Feed)
-      - 30003:30003     # SBS Output (Required for Python Data Logger)
-    tmpfs:
-      - /run:exec,size=64M
-      - /var/log:size=32M
-
-  # 🩺 Telegraf (Telemetry Agent)
-  # Collects system metrics (Temp, Disk, CPU) and pushes to Tower Core.
   telegraf:
     image: telegraf:latest
-    container_name: telegraf-local
+    container_name: telegraf
     restart: unless-stopped
-    user: "root"        # Run as root to access host filesystem stats
-    environment:
-      - INFLUX_TOKEN={{ tower_influx_token }}
-      - HOST_MOUNT_PREFIX=/hostfs
-      - HOST_PROC=/hostfs/proc
-      - HOST_SYS=/hostfs/sys
-      - HOST_ETC=/hostfs/etc
+    user: "0:0"
     volumes:
       - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /sys:/rootfs/sys:ro
-      - /proc:/rootfs/proc:ro
-      - /etc:/rootfs/etc:ro
-      # [CRITICAL] Mount host root to allow monitoring of actual disk usage
       - /:/hostfs:ro
+    environment:
+      - HOST_PROC=/hostfs/proc
+      - HOST_SYS=/hostfs/sys
+      - HOST_ETC=/hostfs/etc
+    network_mode: "host"

@@ -1,12 +1,15 @@
----
 # ==============================================================================
-# MASTER PLAYBOOK: Site Configuration
+# 📜 File: infra/ansible/playbooks/site.yml
+# Version: v0.7.2 (Added Granular Tags for TIG Stack & Monitoring)
+# Date: 2026-01-13
+# Author: ADSB Research Grid Team
+# Description: Master Playbook for Sensor Grid & Tower Core Deployment
 # ==============================================================================
 
 - name: "[sensors] Configure Sensor Nodes"
   hosts: sensors
   become: true
-  
+
   # Global variables usually go in group_vars, but we can ensure defaults here
   vars:
     pip_install_packages: []
@@ -26,7 +29,8 @@
     # 3. Hardware: SDR & Decoder (The "Ears")
     # (Only run if variables are defined for the host)
     - role: sensor_node
-      tags: [sdr, adsb, decoder]
+      # [UPDATED v0.7.2] Added 'telegraf' and 'monitoring' to allow targeted config updates
+      tags: [sdr, adsb, decoder, telegraf, monitoring]
 
     # 4. Data Recording (The "Brain")
     - role: recorder
@@ -42,7 +46,7 @@
 - name: "[core] Configure Tower Node"
   hosts: core
   become: true
-  
+
   vars:
     # Override install path for the Tower
     install_path: /opt/tower
@@ -57,11 +61,12 @@
 
     # 2. The Stack (TIG + MQTT + Syslog)
     - role: tower_core
-      tags: [stack, docker, core]
+      # [UPDATED v0.7.2] Added specific component tags for granular maintenance
+      tags: [stack, docker, core, grafana, influxdb, telegraf]
 
-
-# Add these lines at the bottom:
+# ==============================================================================
+# [IMPORTS] Operational Support Playbooks
+# ==============================================================================
 - import_playbook: health.yml
 - import_playbook: setup_data_manager.yml
 - import_playbook: setup_metrics_collector.yml
-
