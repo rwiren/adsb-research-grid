@@ -1,0 +1,23 @@
+---
+# -----------------------------------------------------------------------------
+# [FILE] infra/ansible/roles/tower_core/handlers/main.yml
+# [DESCRIPTION] Handlers for the Tower Core role
+# [VERSION] v1.0.0
+# -----------------------------------------------------------------------------
+
+- name: Restart Tower Stack
+  community.docker.docker_compose_v2:
+    project_src: /opt/tower
+    state: restarted
+
+- name: Restart Syslog
+  ansible.builtin.service:
+    name: rsyslog
+    state: restarted
+  become: yes
+
+- name: Restart OpenSearch Stack
+  community.docker.docker_compose_v2:
+    project_src: /opt/adsb-grid/opensearch
+    state: restarted
+  become: yes

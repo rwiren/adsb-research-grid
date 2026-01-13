@@ -1,0 +1,48 @@
+# -----------------------------------------------------------------------------
+# [FILE] telegraf.conf.j2 (Universal Sensor Config)
+# [DESCRIPTION] Pushes metrics to Tower Core
+# -----------------------------------------------------------------------------
+
+[global_tags]
+  grid_zone = "Field"
+  host = "{{ inventory_hostname }}"
+  role = "sensor-node"
+  sdr_type = "{{ sdr_type | default('unknown') }}"
+  gnss_driver = "{{ gnss_driver | default('unknown') }}"
+
+[agent]
+  interval = "15s"
+  round_interval = true
+  metric_batch_size = 1000
+  metric_buffer_limit = 10000
+  collection_jitter = "2s"
+  flush_interval = "15s"
+  hostname = "{{ inventory_hostname }}"
+
+# 📤 OUTPUT: Send to Tower Core (InfluxDB)
+[[outputs.influxdb_v2]]
+  urls = ["{{ influx_url }}"]
+  token = "$INFLUX_TOKEN"
+  organization = "research_grid"
+  bucket = "telegraf"
+
+# 📥 INPUTS: System Health
+[[inputs.cpu]]
+  percpu = false
+  totalcpu = true
+  collect_cpu_time = false
+
+[[inputs.disk]]
+  # [FIX] Look at the host filesystem mounted at /hostfs
+  mount_points = ["/hostfs"]
+  ignore_fs = ["tmpfs", "devtmpfs", "overlay", "aufs", "squashfs"]
+
+[[inputs.diskio]]
+[[inputs.mem]]
+[[inputs.system]]
+[[inputs.temp]] 
+  # Detects RPi CPU Thermal
+
+[[inputs.docker]]
+  endpoint = "unix:///var/run/docker.sock"
+  gather_services = false

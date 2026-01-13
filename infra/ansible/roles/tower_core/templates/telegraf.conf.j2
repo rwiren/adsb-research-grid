@@ -1,0 +1,61 @@
+# 🏗️ TOWER CORE: Telegraf Configuration
+# Role: Central Metrics Collector & Self-Health Monitor
+
+[global_tags]
+  role = "tower-core"
+  grid_zone = "HQ"
+
+[agent]
+  interval = "10s"
+  round_interval = true
+  metric_batch_size = 1000
+  metric_buffer_limit = 10000
+  collection_jitter = "0s"
+  flush_interval = "10s"
+  flush_jitter = "0s"
+  hostname = "tower-core"
+
+# 📤 OUTPUTS: Send data to local InfluxDB
+[[outputs.influxdb_v2]]
+  urls = ["http://influxdb:8086"]
+  token = "{{ tower_influx_token }}"
+  organization = "research_grid"
+  bucket = "telegraf"
+
+# 📥 INPUTS: Hardware Health (NVMe & CPU)
+[[inputs.cpu]]
+  percpu = true
+  totalcpu = true
+  collect_cpu_time = false
+  report_active = false
+
+[[inputs.disk]]
+  # [FIX] Look at the mapped host path
+  mount_points = ["/hostfs"]
+  ignore_fs = ["tmpfs", "devtmpfs", "overlay", "aufs", "squashfs"]
+
+[[inputs.diskio]]
+  # Monitor NVMe wear and throughput
+  devices = ["nvme0n1"]
+
+[[inputs.mem]]
+[[inputs.system]]
+[[inputs.temp]]
+
+# 📡 INPUTS: The Nervous System (MQTT)
+# Monitors your Drone Telemetry & Sensor Data Flow
+[[inputs.mqtt_consumer]]
+  servers = ["tcp://mosquitto:1883"]
+  topics = [
+    "sensors/+/health",      # Watch Sensor North/West/East heartbeats
+    "drones/+/telemetry"     # Autel Drone data (Future)
+  ]
+  data_format = "json"
+  tag_keys = ["host", "sensor_id", "drone_id"]
+
+# 🐳 INPUTS: Docker Health (Container Watchdog)
+[[inputs.docker]]
+  endpoint = "unix:///var/run/docker.sock"
+  gather_services = false
+#  container_names = ["influxdb-core", "grafana-core", "mqtt-broker", "syslog-core"]
+  source_tag = false

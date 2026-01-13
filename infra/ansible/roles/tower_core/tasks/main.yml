@@ -1,0 +1,210 @@
+# -----------------------------------------------------------------------------
+# [FILE] infra/ansible/roles/tower_core/tasks/main.yml
+# [DESCRIPTION] Main task list for configuring the Tower Core node
+# [VERSION] v1.0.0 (Added TCP Syslog Support for Reliable Logging)
+# [DATE] 2026-01-13
+# -----------------------------------------------------------------------------
+
+# --- 1. System Setup ---
+- name: "[System] Install core dependencies"
+  apt:
+    name:
+      - curl
+      - git
+      - htop
+      - iotop
+      - jq
+      - rsyslog  # CRITICAL: Required for centralized logging server
+    state: present
+    update_cache: yes
+
+- name: "[System] Future-Proofing Kernel (Prepare for OpenSearch)"
+  sysctl:
+    name: vm.max_map_count
+    value: '262144'
+    state: present
+    reload: yes
+
+# --- 2. Docker & User Config ---
+- name: "[Docker] Ensure Docker service is active"
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: "[Users] Add admin to docker group"
+  user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: yes
+
+# --- 3. Directory Structure ---
+- name: "[Storage] Create service volume directories"
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: "{{ ansible_user }}"
+    group: "docker"
+  loop:
+    - /opt/tower
+    - /opt/tower/mosquitto/config
+    - /opt/tower/mosquitto/data
+    - /opt/tower/mosquitto/log
+    - /opt/tower/telegraf
+    - /opt/tower/syslog_data
+    - /opt/tower/syslog_config
+    - /opt/tower/influxdb
+    - /opt/tower/grafana
+
+- name: "[Grafana] Create provisioning directories"
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: "{{ ansible_user }}"
+    group: "docker"
+  loop:
+    - /opt/tower/grafana/provisioning
+    - /opt/tower/grafana/provisioning/dashboards
+    - /opt/tower/grafana/provisioning/datasources
+
+# --- 4. Configuration Deployment ---
+- name: "[Config] Deploy Mosquitto Config"
+  template:
+    src: mosquitto/mosquitto.conf.j2
+    dest: /opt/tower/mosquitto/config/mosquitto.conf
+    mode: '0644'
+
+- name: "[Config] Deploy Telegraf Config"
+  template:
+    src: telegraf.conf.j2
+    dest: /opt/tower/telegraf/telegraf.conf
+    mode: '0644'
+
+- name: "[Grafana] Deploy Datasource Provisioning"
+  template:
+    src: grafana/provisioning/datasources/datasource.yml.j2
+    dest: /opt/tower/grafana/provisioning/datasources/datasource.yml
+    mode: '0644'
+
+- name: "[Grafana] Deploy Dashboard Provisioning"
+  template:
+    src: grafana/provisioning/dashboards/dashboard.yml.j2
+    dest: /opt/tower/grafana/provisioning/dashboards/dashboard.yml
+    mode: '0644'
+
+- name: "[Grafana] Deploy System Overview Dashboard JSON"
+  template:
+    src: grafana/provisioning/dashboards/system_overview.json.j2
+    dest: /opt/tower/grafana/provisioning/dashboards/system_overview.json
+    mode: '0644'
+
+# --- 5. Syslog Server Configuration ---
+- name: "[Syslog] Enable UDP and TCP Reception (Port 514)"
+  ansible.builtin.lineinfile:
+    path: /etc/rsyslog.conf
+    regexp: '{{ item.regexp }}'
+    line: '{{ item.line }}'
+    state: present
+  loop:
+    # Enable UDP (Standard)
+    - { regexp: '^#module\(load="imudp"\)', line: 'module(load="imudp")' }
+    - { regexp: '^#input\(type="imudp"',    line: 'input(type="imudp" port="514")' }
+    # Enable TCP (Reliable - For Distant Sensors)
+    - { regexp: '^#module\(load="imtcp"\)', line: 'module(load="imtcp")' }
+    - { regexp: '^#input\(type="imtcp"',    line: 'input(type="imtcp" port="514")' }
+  become: yes
+  register: rsyslog_config
+
+- name: "[Syslog] Create dedicated remote log rule"
+  copy:
+    dest: /etc/rsyslog.d/10-remote.conf
+    content: |
+      # Save remote logs to a separate file based on IP ADDRESS (Safer)
+      $template RemoteLogs,"/var/log/remote-%FROMHOST-IP%.log"
+      
+      # If the message is NOT from localhost, use the RemoteLogs template
+      if ($fromhost-ip != "127.0.0.1") then ?RemoteLogs
+      & stop
+    mode: '0644'
+  become: yes
+  notify: Restart Syslog
+
+- name: "[Syslog] Restart Rsyslog to apply changes"
+  service:
+    name: rsyslog
+    state: restarted
+  become: yes
+  when: rsyslog_config.changed
+
+# --- 6. Firewall Configuration ---
+- name: "[Firewall] Allow MQTT (1883) for Autel/Sensors"
+  community.general.ufw:
+    rule: allow
+    port: '1883'
+    proto: tcp
+  become: yes
+
+- name: "[Firewall] Allow Syslog UDP (Standard)"
+  community.general.ufw:
+    rule: allow
+    port: '514'
+    proto: udp
+  become: yes
+
+- name: "[Firewall] Allow Syslog TCP (Reliable Delivery)"
+  community.general.ufw:
+    rule: allow
+    port: '514'
+    proto: tcp
+  become: yes
+
+# --- 7. Service Deployment ---
+- name: "[Stack] Deploy Docker Compose Manifest"
+  template:
+    src: docker-compose.yml.j2
+    dest: /opt/tower/docker-compose.yml
+    mode: '0644'
+
+- name: "[Launch] Spin up Tower Stack (TIG + MQTT + Syslog)"
+  community.docker.docker_compose_v2:
+    project_src: /opt/tower
+    state: present
+    pull: missing
+
+# --- 7. ANALYTICS STACK ---
+- import_tasks: opensearch.yml
+  tags: [opensearch, arkime]
+
+# ---------------------------------------------------
+
+# ---------------------------------------------------
+# [Collector] Setup Data Aggregation & Storage
+# ---------------------------------------------------
+- name: "[Storage] Create Data Directories"
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: admin
+    group: admin
+    mode: '0755'
+  loop:
+    - /opt/adsb-grid
+    - /opt/adsb-grid/data
+    - /opt/adsb-grid/scripts
+
+- name: "[Collector] Deploy Fetch Script"
+  template:
+    src: scripts/fetch_logs.sh.j2
+    dest: /opt/adsb-grid/scripts/fetch_logs.sh
+    owner: admin
+    group: admin
+    mode: '0755'
+
+- name: "[Cron] Schedule Daily Log Collection (04:00 AM)"
+  cron:
+    name: "ADSB Daily Log Collection"
+    minute: "0"
+    hour: "4"
+    job: "/opt/adsb-grid/scripts/fetch_logs.sh"

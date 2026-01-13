@@ -1,0 +1,101 @@
+# -----------------------------------------------------------------------------
+# [FILE] infra/ansible/roles/tower_core/templates/docker-compose.yml.j2
+# [DESCRIPTION] Tower Core Service Stack (TIG + MQTT + Syslog)
+# [VERSION] v0.9.0 (Added Grafana Provisioning & Finalized Permissions)
+# [DATE] 2026-01-12
+# [AUTHOR] ADSB Research Grid Team
+# -----------------------------------------------------------------------------
+
+services:
+  # 🦟 MQTT Broker (The Nervous System)
+  # Shared by ADS-B grid and Autel Drone Telemetry.
+  # Handles all asynchronous message passing between sensors and tower.
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mqtt-broker
+    restart: unless-stopped
+    ports:
+      - "1883:1883"   # Standard MQTT (TCP)
+      - "9001:9001"   # WebSockets (for Web Clients)
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+
+  # 🗄️ InfluxDB (Time-Series Metrics)
+  # Stores 30-day retention of all sensor health data.
+  # [CRITICAL] Admin Token is injected to match Telegraf's configuration.
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb-core
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME={{ tower_influx_user }}
+      - DOCKER_INFLUXDB_INIT_PASSWORD={{ tower_influx_pass }}
+      - DOCKER_INFLUXDB_INIT_ORG=research_grid
+      - DOCKER_INFLUXDB_INIT_BUCKET=telegraf
+      # [SECURITY] Inject Vault Token so Telegraf can auth immediately
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN={{ tower_influx_token }}
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+      - influxdb_config:/etc/influxdb2
+
+  # 📊 Grafana (Visualization Dashboard)
+  # Frontend for real-time monitoring of Grid Status.
+  # Includes automated dashboard provisioning from Ansible.
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: grafana-core
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER={{ tower_grafana_user }}
+      - GF_SECURITY_ADMIN_PASSWORD={{ tower_grafana_pass }}
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-worldmap-panel,grafana-mqtt-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      # [AUTOMATION] Map provisioning directory to auto-load dashboards
+      - ./grafana/provisioning:/etc/grafana/provisioning
+
+  # 🩺 Telegraf (Self-Monitoring Watchdog)
+  # Collects Docker stats, system heat, and disk usage.
+  # [NOTE] Uses GID 105 to access /var/run/docker.sock on this specific RPi.
+  telegraf:
+    image: telegraf:latest
+    container_name: telegraf-local
+    user: "0:105"        # <--- 0=Root User, 105=Docker Group (Hardware specific)
+    restart: unless-stopped
+    volumes:
+      - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /:/hostfs:ro
+    environment:
+      - INFLUX_TOKEN={{ tower_influx_token }}
+      - DOCKER_HOST=unix:///var/run/docker.sock
+
+  # 📜 Syslog Server (Centralized Logging)
+  # Receives logs from sensors (UDP 514) and writes to local storage.
+  # [NOTE] Uses LinuxServer.io image for ARM64 compatibility.
+  syslog-ng:
+    image: lscr.io/linuxserver/syslog-ng:latest
+    container_name: syslog-core
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Helsinki
+    volumes:
+      - ./syslog_data:/var/log/syslog-ng
+      - ./syslog_config:/config
+    ports:
+     # - "514:514/udp"
+      - "601:601/tcp"
+
+volumes:
+  influxdb_data:
+  influxdb_config:
+  grafana_data:
