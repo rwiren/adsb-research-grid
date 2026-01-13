@@ -1,7 +1,7 @@
 # -----------------------------------------------------------------------------
 # [FILE] infra/ansible/roles/tower_core/tasks/main.yml
 # [DESCRIPTION] Main task list for configuring the Tower Core node
-# [VERSION] v1.1.0 (Added OwnTracks Dashboard Provisioning)
+# [VERSION] v1.3.1 (Dual Dashboard Deployment: Chase & Overview)
 # [DATE] 2026-01-13
 # -----------------------------------------------------------------------------
 
@@ -111,12 +111,17 @@
     mode: '0644'
   tags: [grafana, dashboard]
 
-# [NEW v1.1.0] Added missing task for OwnTracks Dashboard
-- name: "[Grafana] Deploy OwnTracks Field Agent Dashboard JSON"
+# [UPDATED v1.3.1] Deploys BOTH 'Chase' (Fast) and 'Overview' (Slow) dashboards
+- name: "[Grafana] Deploy OwnTracks Dashboards (Chase & Overview)"
   template:
-    src: grafana/provisioning/dashboards/owntracks.json.j2
-    dest: /opt/tower/grafana/provisioning/dashboards/owntracks.json
-    mode: '0644'
+    src: "{{ item.src }}"
+    dest: "/opt/tower/grafana/provisioning/dashboards/{{ item.dest }}"
+    owner: "{{ ansible_user }}"
+    group: "docker"
+    mode: "0644"
+  loop:
+    - { src: "grafana/provisioning/dashboards/owntracks_chase.json.j2", dest: "owntracks_chase.json" }
+    - { src: "grafana/provisioning/dashboards/owntracks_overview.json.j2", dest: "owntracks_overview.json" }
   tags: [grafana, dashboard]
 
 # --- 5. Syslog Server Configuration ---

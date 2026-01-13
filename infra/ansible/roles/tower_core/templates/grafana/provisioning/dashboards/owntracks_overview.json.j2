@@ -1,0 +1,122 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "gridPos": { "h": 20, "w": 18, "x": 0, "y": 0 },
+      "title": "STRATEGIC: Agent History (Overview)",
+      "type": "geomap",
+      "datasource": "InfluxDB-Core",
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "flux",
+          "query": "from(bucket: \"telegraf\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"owntracks\")\n  |> filter(fn: (r) => r[\"tid\"] == \"${tid}\")\n  |> filter(fn: (r) => r[\"_field\"] == \"lat\" or r[\"_field\"] == \"lon\" or r[\"_field\"] == \"batt\")\n  |> pivot(rowKey:[\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group(columns: [\"tid\"])\n  |> sort(columns: [\"_time\"], desc: false)"
+        }
+      ],
+      "options": {
+        "view": { "id": "fit", "lat": 0, "lon": 0, "zoom": 1 },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "End Point",
+            "config": {
+              "style": { "size": { "fixed": 8 }, "color": { "fixed": "#3274D9" }, "symbol": { "fixed": "circle" } },
+              "showLegend": true
+            },
+            "location": { "mode": "coords", "latitude": "lat", "longitude": "lon" },
+            "tooltip": { "mode": "details", "primary": "tid" }
+          },
+          {
+            "type": "route",
+            "name": "Historical Path",
+            "config": {
+              "style": { "color": { "fixed": "#A333C8" }, "width": 3, "opacity": 0.5 }
+            },
+            "location": { "mode": "coords", "latitude": "lat", "longitude": "lon" }
+          }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+      "title": "Battery Trend",
+      "type": "timeseries",
+      "datasource": "InfluxDB-Core",
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "flux",
+          "query": "from(bucket: \"telegraf\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"owntracks\")\n  |> filter(fn: (r) => r[\"tid\"] == \"${tid}\")\n  |> filter(fn: (r) => r[\"_field\"] == \"batt\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)"
+        }
+      ],
+      "fieldConfig": { "defaults": { "min": 0, "max": 100, "unit": "percent", "color": { "mode": "thresholds" } } }
+    },
+    {
+      "id": 3,
+      "gridPos": { "h": 7, "w": 6, "x": 18, "y": 6 },
+      "title": "Altitude Profile",
+      "type": "timeseries",
+      "datasource": "InfluxDB-Core",
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "flux",
+          "query": "from(bucket: \"telegraf\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"owntracks\")\n  |> filter(fn: (r) => r[\"tid\"] == \"${tid}\")\n  |> filter(fn: (r) => r[\"_field\"] == \"alt\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "lengthm", "color": { "mode": "palette-classic" } } }
+    },
+    {
+      "id": 4,
+      "gridPos": { "h": 7, "w": 6, "x": 18, "y": 13 },
+      "title": "Velocity Profile",
+      "type": "timeseries",
+      "datasource": "InfluxDB-Core",
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "flux",
+          "query": "from(bucket: \"telegraf\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"owntracks\")\n  |> filter(fn: (r) => r[\"tid\"] == \"${tid}\")\n  |> filter(fn: (r) => r[\"_field\"] == \"vel\")\n  |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "velocitykmh" } }
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 30,
+  "style": "dark",
+  "tags": ["Tracking", "GIS", "History"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": false, "text": "RW", "value": "RW" },
+        "definition": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"telegraf\", tag: \"tid\")",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Tracker ID",
+        "multi": false,
+        "name": "tid",
+        "options": [],
+        "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"telegraf\", tag: \"tid\")",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query",
+        "datasource": "InfluxDB-Core"
+      }
+    ]
+  },
+  "time": { "from": "now-6h", "to": "now" },
+  "title": "OwnTracks (History Overview)",
+  "uid": "owntracks-overview",
+  "version": 1,
+  "weekStart": ""
+}
