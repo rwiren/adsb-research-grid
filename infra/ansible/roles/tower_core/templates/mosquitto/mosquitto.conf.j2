@@ -1,0 +1,25 @@
+# -----------------------------------------------------------------------------
+# [FILE] mosquitto.conf.j2
+# [DESCRIPTION] Main configuration for the Eclipse Mosquitto MQTT Broker
+# [VERSION] v1.0
+# -----------------------------------------------------------------------------
+
+# 📂 Persistence (Save messages to disk so they survive restarts)
+persistence true
+persistence_location /mosquitto/data/
+
+# 📝 Logging
+log_dest file /mosquitto/log/mosquitto.log
+log_type error
+log_type warning
+log_type notice
+log_type information
+
+# 🔌 Listener 1: Standard MQTT (Used by Sensors & Telegraf)
+listener 1883
+allow_anonymous true
+
+# 🌐 Listener 2: WebSockets (Used by Grafana & Web Dashboards)
+listener 9001
+protocol websockets
+allow_anonymous true

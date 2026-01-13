@@ -36,6 +36,30 @@
     - role: strat1_timing
       tags: [chrony, time, pps]
 
+# ==============================================================================
+# [PLAY] TOWER CORE: Central Nervous System
+# ==============================================================================
+- name: "[core] Configure Tower Node"
+  hosts: core
+  become: true
+  
+  vars:
+    # Override install path for the Tower
+    install_path: /opt/tower
+
+  roles:
+    # 1. Base System & Network
+    - role: common
+      tags: [common, system]
+
+    - role: zerotier
+      tags: [zerotier, network]
+
+    # 2. The Stack (TIG + MQTT + Syslog)
+    - role: tower_core
+      tags: [stack, docker, core]
+
+
 # Add these lines at the bottom:
 - import_playbook: health.yml
 - import_playbook: setup_data_manager.yml

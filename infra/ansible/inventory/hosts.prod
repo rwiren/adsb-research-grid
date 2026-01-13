@@ -1,44 +1,58 @@
 # ==============================================================================
 # 📂 File: infra/ansible/inventory/hosts.prod
-# Version: 0.6.0 (SECURED)
-# Date: 2026-01-10
-# Description: Production Grid Inventory (ZeroTier Enabled)
-# Security Note: Credentials loaded from Vault.
+# Version: v1.1.0 (Unified Sensor User 'pi')
+# Date: 2026-01-12
+# Description: Single Source of Truth for ADSB Research Grid Hardware
 # ==============================================================================
 
 [controller]
 localhost ansible_connection=local
 
+# ==============================================================================
+# 📡 SENSORS (The Edge Fleet)
+# User: pi (Legacy OS)
+# ==============================================================================
 [sensors]
-# -----------------------------------------------------------------------------
-# SENSOR-NORTH: RPi 4 + u-blox F9P (USB)
-# ROLE: RTK Base Station (Stratum 1)
-# -----------------------------------------------------------------------------
-sensor-north ansible_host=192.168.192.130 gnss_device=/dev/ttyACM0 gnss_baudrate=230400 socat_hub_port=2000 ntrip_caster=192.168.1.30 ntrip_host=opencaster.nls.fi ntrip_port=2101 ntrip_mountpoint=VRS-FKP
 
-# -----------------------------------------------------------------------------
-# SENSOR-WEST: RPi 4 + G-STAR IV (USB)
-# ROLE: Production Data Collection (Mobile Scout)
-# -----------------------------------------------------------------------------
-sensor-west ansible_host=192.168.192.110 gnss_device=/dev/ttyUSB0 gnss_baudrate=4800 sensor_id=2
+# --- 🛰️ SENSOR-NORTH (Reference Node) ---
+# Location: Keimola (Lab Roof) | Hardware: RPi 4 + u-blox F9P + FlightAware Blue
+sensor-north ansible_host=192.168.192.130 gnss_device=/dev/ttyACM0 gnss_driver=ublox gnss_baudrate=230400 sdr_type=flightaware-blue sdr_gain=15.7
 
-# -----------------------------------------------------------------------------
-# SENSOR-EAST: RPi 4 + G-STAR IV (USB)
-# ROLE: Triangulation Scout (Sibbo Deployment)
-# -----------------------------------------------------------------------------
-# STATUS: Online via ZeroTier
-sensor-east ansible_host=192.168.192.120 gnss_device=/dev/ttyUSB0 gnss_baudrate=4800 sensor_id=3
+# --- 🧪 SENSOR-WEST (Hardware Verification) ---
+# Location: Jorvas | Hardware: RPi 4 + G-STAR IV + RTL-SDR Silver
+sensor-west ansible_host=192.168.192.110 gnss_device=/dev/ttyUSB0 gnss_driver=nmea gnss_baudrate=4800 sdr_type=rtlsdr-v3 sdr_gain=40.2
 
-[compute]
-# -----------------------------------------------------------------------------
-# TOWER-CORE: RPi 5 + 1TB NVMe
-# ROLE: Data Aggregation & Analysis Node
-# -----------------------------------------------------------------------------
-# (Uncomment when online)
-# tower-core ansible_host=192.168.192.100 ansible_user=pi
+# --- 🔭 SENSOR-EAST (Remote Monitor) ---
+# Location: Sibbo | Hardware: RPi 4 + G-STAR IV + FlightAware Blue
+sensor-east ansible_host=192.168.192.120 gnss_device=/dev/ttyUSB0 gnss_driver=nmea gnss_baudrate=4800 sdr_type=flightaware-blue sdr_gain=20.7
+
+# ==============================================================================
+# 🗼 CORE (The Aggregator)
+# User: admin (Modern OS)
+# ==============================================================================
+[core]
+
+# --- 🧠 TOWER-CORE ---
+# Location: Keimola Lab | Hardware: RPi 5 + 1TB NVMe
+tower-core ansible_host=192.168.1.100
+
+# ==============================================================================
+# 🛠️ GROUP VARIABLES
+# ==============================================================================
 
 [sensors:vars]
-# ⚠️ CRITICAL: Ansible must log in as 'pi'
+# ⚠️ All sensors use the legacy 'pi' user
 ansible_user=pi
+# We can set the password here for bootstrapping, or rely on SSH keys (Recommended)
+# ansible_password=SecureSkies2026! 
+
 install_path=/opt/adsb-grid
-sensor_id={{ inventory_hostname }}
+docker_network_name=sensor_net
+influx_url=http://192.168.192.100:8086
+mqtt_broker=192.168.192.100
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+
+[core:vars]
+# ⚠️ Tower uses the secure 'admin' user
+ansible_user=admin
+install_path=/opt/tower

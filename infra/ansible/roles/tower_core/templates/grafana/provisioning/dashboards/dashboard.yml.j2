@@ -1,0 +1,16 @@
+# -----------------------------------------------------------------------------
+# [FILE] infra/ansible/roles/tower_core/templates/grafana/provisioning/dashboards/dashboard.yml.j2
+# [DESCRIPTION] Tells Grafana where to look for dashboard JSON files
+# [VERSION] v1.0
+# -----------------------------------------------------------------------------
+apiVersion: 1
+
+providers:
+  - name: 'Tower Dashboards'
+    orgId: 1
+    folder: ''
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    options:
+      path: /etc/grafana/provisioning/dashboards

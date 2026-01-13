@@ -1,0 +1,36 @@
+#!/bin/bash
+# ------------------------------------------------------------------
+# [File] /opt/adsb-grid/scripts/fetch_logs.sh
+# [Version] 1.0.0 (2026-01-13)
+# [Purpose] Aggregates daily logs from all sensor nodes for analysis.
+# [Zone] HQ (Tower Core)
+# ------------------------------------------------------------------
+
+# Configuration
+DATE=$(date +%Y-%m-%d)
+DATA_DIR="/opt/adsb-grid/data/$DATE"
+LOG_FILE="/var/log/adsb-collector.log"
+SENSORS=("sensor-north" "sensor-east" "sensor-west")
+
+# Ensure daily directory exists
+mkdir -p "$DATA_DIR"
+
+echo "[ $(date) ] Starting Log Collection for $DATE" >> "$LOG_FILE"
+
+# Iterate through sensors
+for SENSOR in "${SENSORS[@]}"; do
+    echo "  > Fetching from $SENSOR..." >> "$LOG_FILE"
+    
+    # Attempt to fetch logs (assuming SSH keys are set, otherwise this skips)
+    # Using specific rsync flags to preserve timestamps and compress
+    rsync -avz -e "ssh -o StrictHostKeyChecking=no"         admin@$SENSOR:/var/log/syslog         "$DATA_DIR/$SENSOR-syslog.log" >> "$LOG_FILE" 2>&1
+        
+    if [ $? -eq 0 ]; then
+        echo "    [OK] $SENSOR successfully synced." >> "$LOG_FILE"
+    else
+        echo "    [ERROR] $SENSOR failed to sync. Check SSH keys." >> "$LOG_FILE"
+    fi
+done
+
+echo "[ $(date) ] Collection Complete." >> "$LOG_FILE"
+echo "---------------------------------------------------" >> "$LOG_FILE"

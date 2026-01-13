@@ -5,12 +5,12 @@
 # Description: Base system configuration, Firewall, and Hardware Stability fixes.
 #              Applied to ALL nodes in the grid.
 #
-# Version: 0.5.6 (Bookworm Fix)
+# Version: 0.5.7 (Firewall Safety Fix)
 # Last Updated: 2026-01-12
 #
 # REVISION HISTORY:
-# - v0.5.6: Replaced legacy rc.local WiFi fix with NetworkManager config (Bookworm support).
-# - v0.5.5: Added WiFi Power Management disable fix.
+# - v0.5.7: Reordered UFW rules to allow SSH *before* defaulting to deny (prevents lockout).
+# - v0.5.6: Replaced legacy rc.local WiFi fix with NetworkManager config.
 # ==============================================================================
 
 # --- PART 1: SYSTEM UPDATES & TOOLS ---
@@ -47,7 +47,7 @@
   lineinfile:
     path: /boot/firmware/config.txt
     regexp: '^dtoverlay=pps-gpio'
-    line: 'dtoverlay=pps-gpio,gpiopin=18' # Standard GPIO 18 for most HATs (adjust if 4)
+    line: 'dtoverlay=pps-gpio,gpiopin=18' # Standard GPIO 18 for most HATs
     state: present
   register: pps_config_bookworm
   ignore_errors: yes
@@ -80,9 +80,6 @@
   when: inventory_hostname == 'sensor-north'
 
 # --- PART 3: HARDWARE STABILITY (Critical Fixes) ---
-# FIX: Replaced rc.local (deprecated in Bookworm) with NetworkManager config.
-# Prevents RPi 4 from turning off WiFi radio during low traffic (Sleep Coma).
-
 - name: "[Stability] Disable WiFi Power Management (Immediate)"
   ansible.builtin.shell: /sbin/iw dev wlan0 set power_save off
   changed_when: false
@@ -102,19 +99,9 @@
   become: yes
   tags: [network, stability]
 
-# --- PART 4: ROBUST FIREWALL ---
-- name: "[Firewall] Deny all incoming by default"
-  ufw:
-    default: deny
-    direction: incoming
-  become: yes
+# --- PART 4: ROBUST FIREWALL (Safety First Order) ---
 
-- name: "[Firewall] Allow outgoing by default"
-  ufw:
-    default: allow
-    direction: outgoing
-  become: yes
-
+# 1. CRITICAL: Allow SSH before ANY other rules to prevent lockout
 - name: "[Firewall] Allow SSH (Port 22)"
   ufw:
     rule: allow
@@ -122,6 +109,7 @@
     proto: tcp
   become: yes
 
+# 2. Allow Infrastructure & Applications
 - name: "[Firewall] Allow ZeroTier Tunnel (9993 UDP)"
   ufw:
     rule: allow
@@ -150,6 +138,20 @@
     proto: tcp
   become: yes
 
+# 3. Apply Default Policies (Now safe to Deny Incoming)
+- name: "[Firewall] Deny all incoming by default"
+  ufw:
+    default: deny
+    direction: incoming
+  become: yes
+
+- name: "[Firewall] Allow outgoing by default"
+  ufw:
+    default: allow
+    direction: outgoing
+  become: yes
+
+# 4. Activate
 - name: "[Firewall] Enable UFW"
   ufw:
     state: enabled

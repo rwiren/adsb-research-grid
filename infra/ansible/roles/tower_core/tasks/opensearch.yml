@@ -1,0 +1,46 @@
+---
+# ==============================================================================
+# Task: OpenSearch & Dashboards Deployment
+# Description: Deploys the search engine and visualization UI.
+# RAM Allocation: 4GB Heap for OpenSearch (Safe on your 16GB Pi)
+# ==============================================================================
+
+# --- 1. SYSTEM TUNING (CRITICAL) ---
+# OpenSearch uses mmapfs to store indices. The default OS limit (65530) is too low.
+# If this is not set, OpenSearch will crash immediately on startup.
+- name: "[System] Increase vm.max_map_count for OpenSearch"
+  ansible.posix.sysctl:
+    name: vm.max_map_count
+    value: '262144'
+    state: present
+    reload: yes
+  become: yes
+
+# --- 2. DIRECTORIES ---
+- name: "[Storage] Create OpenSearch Data Directories"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0777' # OpenSearch runs as UID 1000 inside container, strict permissions often fail
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  loop:
+    - /opt/adsb-grid/opensearch
+    - /opt/adsb-grid/opensearch/data
+  become: yes
+
+# --- 3. CONFIGURATION ---
+- name: "[Config] Deploy OpenSearch Docker Compose"
+  ansible.builtin.template:
+    src: opensearch/docker-compose.yml.j2
+    dest: /opt/adsb-grid/opensearch/docker-compose.yml
+    mode: '0644'
+  become: yes
+  notify: Restart OpenSearch Stack
+
+# --- 4. DEPLOYMENT ---
+- name: "[Stack] Start OpenSearch Containers"
+  community.docker.docker_compose_v2:
+    project_src: /opt/adsb-grid/opensearch
+    state: present
+  become: yes

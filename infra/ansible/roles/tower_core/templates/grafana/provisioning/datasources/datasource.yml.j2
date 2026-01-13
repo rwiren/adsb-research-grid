@@ -1,0 +1,21 @@
+# -----------------------------------------------------------------------------
+# [FILE] infra/ansible/roles/tower_core/templates/grafana/provisioning/datasources/datasource.yml.j2
+# [DESCRIPTION] Automates the connection between Grafana and InfluxDB
+# [VERSION] v1.0
+# -----------------------------------------------------------------------------
+apiVersion: 1
+
+datasources:
+  - name: InfluxDB-Core
+    type: influxdb
+    access: proxy
+    url: http://influxdb-core:8086
+    jsonData:
+      version: Flux
+      organization: research_grid
+      defaultBucket: telegraf
+      tlsSkipVerify: true
+    secureJsonData:
+      token: "{{ tower_influx_token }}"
+    isDefault: true
+    editable: true

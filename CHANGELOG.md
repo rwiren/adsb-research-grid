@@ -3,6 +3,37 @@
 
 All notable changes to the **ADS-B Research Grid** project will be documented in this file.
 
+## [0.7.1] - 2026-01-13
+### Added
+- **Log Aggregation:** Implemented \`fetch_logs.sh\` on Tower Core with a daily Cron job (04:00 AM) to harvest and archive sensor logs.
+- **Real-Time Logging:** Verified active Rsyslog streaming from all three sensors (North, East, West) to Tower Core storage.
+
+### Changed
+- **Grafana Dashboard:** Overhauled "System Overview" (V4) with universal Flux queries, "Smart Disk" detection (handling both \`/\` and \`/hostfs\`), and improved 2x2 layout with sparklines.
+- **Sensor Provisioning:** Updated Telegraf Docker permissions to allow access to \`/var/run/docker.sock\` for container metrics on all nodes.
+
+### Fixed
+- **Connectivity:** Opened port 8086 on \`sensor-north\` UFW, resolving "Connection Refused" errors to the InfluxDB tower.
+- **Ansible Templates:** Fixed empty Flux queries and YAML syntax errors in the \`tower_core\` role that prevented dashboard provisioning.
+
+
+## [0.7.0] - 2026-01-12
+### Added
+- **Tower Core:** Full deployment of TIG Stack (Telegraf, InfluxDB v2, Grafana) and Mosquitto MQTT Broker on Raspberry Pi 5.
+- **Observability:** Automated provisioning of "System Overview" Dashboard in Grafana with dynamic host filtering.
+- **Universal Sensor Role:** New Ansible role (`sensor_node`) that dynamically configures North/West/East based on inventory variables.
+- **Hardware Abstraction:** Moved all hardware-specific settings (SDR Gain, GNSS Driver, Serial Paths) into `inventory/hosts.prod` as the Single Source of Truth.
+
+### Changed
+- **Inventory:** Refactored `hosts.prod` to support mixed-user fleets (Legacy `pi` user for North, `admin` for Core).
+- **Telegraf:** Standardized configuration across all nodes; added `/hostfs` mounting to correctly monitor host storage from within Docker containers.
+- **Dashboard:** Refined "System Overview" layout (increased panel height to 14, moved legends to table view) to accommodate multi-sensor NVMe data.
+
+### Fixed
+- **Docker Race Condition:** Fixed an issue where Docker created a directory instead of a file for `telegraf.conf` by ensuring config generation happens before container startup.
+- **Disk Monitoring:** Solved "No Data" in Disk Usage graphs by explicitly mapping `/:/hostfs:ro` in Docker Compose.
+
+
 ## [0.6.5] - 2026-01-12
 ### Added
 - **Self-Healing Data:** Added `scripts/maintenance/consolidate_fragments.py` to automatically detect and merge fragmented 1-minute sensor logs into daily gzip archives (fixing `sensor-west` instability).
