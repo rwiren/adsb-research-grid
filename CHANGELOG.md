@@ -3,6 +3,17 @@
 
 All notable changes to the **ADS-B Research Grid** project will be documented in this file.
 
+## [0.7.6] - 2026-01-14
+### Added
+- **GNSS Certification (D12):** New analysis module (`gnss_analysis.py`) to validate sensor hardware precision (Jitter & CEP).
+- **Multi-Path Discovery:** Analysis scripts now automatically locate logs in both `research_data/` and Ansible staging areas.
+- **Auto-Documentation:** `make report` now updates a `docs/showcase/latest` symlink-style folder for permanent README linking.
+
+### Fixed
+- **Path Logic:** Fixed `make gnss` target to output correctly to the report figures directory.
+- **Zero-Coordinate Bug:** Filtered invalid `0.0` lat/lon fixes that were skewing centroid calculations for East/West sensors.
+- **Sensor North Audit:** Confirmed Sensor North is currently outputting status-only (GNTXT) logs; pipeline now handles "0 position" scenarios gracefully.
+
 ## [0.7.5] - 2026-01-14
 ### Added
 - **Infrastructure Dashboard (D5):** Now includes Avg/Max temperature statistics in the legend and a visual "Nominal Range" (green band) for thermal health.

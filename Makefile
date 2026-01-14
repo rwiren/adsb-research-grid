@@ -1,10 +1,10 @@
 # ==============================================================================
 # 🏛️ PROJECT: ADS-B Research Grid
 # 📂 FILE:    Makefile
-# 🔢 VERSION: 5.2.0 (Auto-Clean & Full Ops)
+# 🔢 VERSION: 5.5.0 (Latest Link & Path Fixes)
 # ==============================================================================
 
-.PHONY: help report clean-docs check all setup deploy
+.PHONY: help report clean-docs check all setup deploy gnss
 
 VENV_DIR = venv
 PYTHON   = $(VENV_DIR)/bin/python3
@@ -16,17 +16,17 @@ help:
 	@echo "📡 ADS-B Research Grid Control Center"
 	@echo "--------------------------------------------------------"
 	@echo "  --- OPERATIONS (Infra) ---"
-	@echo "  make setup      - 📦 Install dependencies (Python/Ansible)"
-	@echo "  make deploy     - 🚀 Configure all sensors (Ansible)"
-	@echo "  make check      - 🏥 Check Node Reachability (Ping)"
+	@echo "  make setup      - 📦 Install dependencies"
+	@echo "  make deploy     - 🚀 Configure all sensors"
+	@echo "  make check      - 🏥 Check Connectivity"
 	@echo ""
 	@echo "  --- SCIENCE (Data) ---"
-	@echo "  make fetch      - 📥 Download, Heal & Merge logs from grid"
-	@echo "  make consolidate- 🧹 Manually fix fragmented logs (1-min -> Daily)"
-	@echo "  make ml         - 🧪 Run Anomaly Detection (Isolation Forest)"
-	@echo "  make ghosts     - 👻 Generate Forensic Maps (Clean & Rebuild)"
+	@echo "  make fetch      - 📥 Download & Heal logs"
+	@echo "  make ml         - 🧪 Run Anomaly Detection"
+	@echo "  make ghosts     - 👻 Generate Forensic Maps"
+	@echo "  make gnss       - 🛰️  Run Hardware Certification (D12)"
 	@echo "  make report     - 📊 Generate Academic Audit Report"
-	@echo "  make all        - 🔁 Run Full Pipeline (Fetch->Heal->ML->Report)"
+	@echo "  make all        - 🔁 Run Full Pipeline"
 	@echo "--------------------------------------------------------"
 
 setup:
@@ -66,9 +66,12 @@ ml:
 
 ghosts:
 	@echo "[VIS] 👻 Generating Forensic Maps..."
-	@# Clean old maps to prevent duplicates (e.g. old D11 vs new D10)
 	@rm -f docs/showcase/ghost_hunt/D*.png
 	$(PYTHON) scripts/visualize_ghosts.py
+
+gnss:
+	@echo "[GNSS] 🛰️  Analyzing Sensor Precision (D12)..."
+	@$(PYTHON) scripts/gnss_analysis.py --out-dir docs/showcase/gnss_audit
 
 report:
 	@echo "[PIPELINE] 🚀 Starting Modular Analysis Pipeline..."
@@ -77,14 +80,21 @@ report:
 	@mkdir -p $(OUT_DIR)/figures
 	@echo "[PIPELINE] 📂 Output Directory: $(OUT_DIR)"
 	
-	@# 1. Run Infra Health (D5 Combined)
+	@# 1. Run Infra Health (D5)
 	@$(PYTHON) scripts/infra_health.py --out-dir $(OUT_DIR)
 	
-	@# 2. Run Science EDA (D1-D4, D6, Report)
+	@# 2. Run GNSS Precision (D12) - Output directly to figures
+	@$(PYTHON) scripts/gnss_analysis.py --out-dir $(OUT_DIR)/figures
+	
+	@# 3. Run Science EDA (D1-D4, D6, Report Compiler)
 	@$(PYTHON) scripts/academic_eda.py --out-dir $(OUT_DIR)
 	
-	@# 3. Copy Ghost Maps (D7-D10)
+	@# 4. Copy Ghost Maps (D7-D10)
 	@cp docs/showcase/ghost_hunt/D*.png $(OUT_DIR)/figures/ 2>/dev/null || echo "[PIPELINE] ⚠️  No ghost maps to attach."
+	
+	@# 5. Update 'latest' link for README
+	@rm -rf docs/showcase/latest
+	@cp -r $(OUT_DIR) docs/showcase/latest
 	
 	@echo "[PIPELINE] ✅ Full Report Compilation Complete."
 
