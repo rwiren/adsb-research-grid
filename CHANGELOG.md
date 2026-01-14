@@ -3,6 +3,18 @@
 
 All notable changes to the **ADS-B Research Grid** project will be documented in this file.
 
+## [0.7.5] - 2026-01-14
+### Added
+- **Infrastructure Dashboard (D5):** Now includes Avg/Max temperature statistics in the legend and a visual "Nominal Range" (green band) for thermal health.
+- **Report Enhancements:** Added "Data Window" (Start/End times) and automated "Missing Sensor" warnings to `REPORT.md`.
+- **Ghost Hunt:** Renumbered forensic maps (D7-D10) for logical flow.
+- **Makefile:** Added `make help`, `setup`, and `deploy` targets; added auto-cleaning for ghost maps.
+
+### Changed
+- **Visuals:** Tightened D3 Spatial Zoom to focus strictly on sensor geometry.
+- **Health:** Merged Thermal and Storage plots into a single synchronized dashboard.
+
+
 ## [0.7.1] - 2026-01-13
 ### Added
 - **Log Aggregation:** Implemented \`fetch_logs.sh\` on Tower Core with a daily Cron job (04:00 AM) to harvest and archive sensor logs.
