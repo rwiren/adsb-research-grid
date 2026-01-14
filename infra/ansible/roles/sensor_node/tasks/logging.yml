@@ -1,0 +1,54 @@
+# [FILE] infra/ansible/roles/sensor_node/tasks/logging.yml
+- name: "[Logging] Install Fluent Bit Key"
+  get_url:
+    url: https://packages.fluentbit.io/fluentbit.key
+    dest: /usr/share/keyrings/fluentbit-keyring.gpg
+    mode: '0644'
+
+- name: "[Logging] Add Repo"
+  apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/fluentbit-keyring.gpg] https://packages.fluentbit.io/debian/bookworm bookworm main"
+    state: present
+    filename: fluent-bit
+
+- name: "[Logging] Install Package"
+  apt:
+    name: fluent-bit
+    state: present
+    update_cache: yes
+
+- name: "[Logging] Configure Fluent Bit (HTTP Mode - Fixed Auth)"
+  copy:
+    dest: /etc/fluent-bit/fluent-bit.conf
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      [SERVICE]
+          Flush        1
+          Log_Level    info
+          Parsers_File /etc/fluent-bit/parsers.conf
+
+      [INPUT]
+          Name            systemd
+          Tag             host.{{ inventory_hostname }}
+          Read_From_Tail  On
+          Strip_Underscores On
+
+      [OUTPUT]
+          Name            es
+          Match           *
+          Host            192.168.192.100
+          Port            9200
+          Index           logs-sensors-%Y.%m.%d
+          HTTP_User       admin
+          HTTP_Passwd     {{ vault_opensearch_password }}
+          Tls             Off
+          Suppress_Type_Name On
+  notify: Restart Fluent Bit
+
+- name: "[Logging] Start Service"
+  service:
+    name: fluent-bit
+    state: started
+    enabled: yes

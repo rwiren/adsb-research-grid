@@ -32,7 +32,7 @@ altitude: "105"
 # Connection: UART / GPIO (High Bandwidth)
 # ------------------------------------------------------------------------------
 gnss_type: "uart"           # Triggers PPS config in Chrony (Stratum 1)
-gnss_device: "/dev/ttyACM0"
+gnss_device: "tcp://localhost:2000"
 gnss_baudrate: 230400       # High-speed for Raw RTCM data
 gnss_driver_flags: "-n -G -b" # -b: Read-only (Prevent gpsd from resetting baud)
 

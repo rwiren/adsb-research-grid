@@ -1,7 +1,7 @@
 # ==============================================================================
 # 📜 File: infra/ansible/playbooks/site.yml
-# Version: v0.7.2 (Added Granular Tags for TIG Stack & Monitoring)
-# Date: 2026-01-13
+# Version: v0.8.0 (Added Centralized Logging & Fluent Bit Support)
+# Date: 2026-01-14
 # Author: ADSB Research Grid Team
 # Description: Master Playbook for Sensor Grid & Tower Core Deployment
 # ==============================================================================
@@ -29,8 +29,8 @@
     # 3. Hardware: SDR & Decoder (The "Ears")
     # (Only run if variables are defined for the host)
     - role: sensor_node
-      # [UPDATED v0.7.2] Added 'telegraf' and 'monitoring' to allow targeted config updates
-      tags: [sdr, adsb, decoder, telegraf, monitoring]
+      # [UPDATED v0.8.0] Added 'logging' to deploy Fluent Bit
+      tags: [sdr, adsb, decoder, telegraf, monitoring, logging]
 
     # 4. Data Recording (The "Brain")
     - role: recorder
@@ -59,10 +59,10 @@
     - role: zerotier
       tags: [zerotier, network]
 
-    # 2. The Stack (TIG + MQTT + Syslog)
+    # 2. The Stack (TIG + MQTT + Syslog + OpenSearch)
     - role: tower_core
-      # [UPDATED v0.7.2] Added specific component tags for granular maintenance
-      tags: [stack, docker, core, grafana, influxdb, telegraf]
+      # [UPDATED v0.8.0] Added 'logging' for Fluent Bit Aggregator
+      tags: [stack, docker, core, grafana, influxdb, telegraf, logging]
 
 # ==============================================================================
 # [IMPORTS] Operational Support Playbooks

@@ -1,0 +1,132 @@
+# ==============================================================================
+# 📂 File: infra/ansible/roles/tower_core/tasks/logging.yml
+# [DESCRIPTION] Orchestrates the transition from legacy Fluent Bit to the
+#               Enterprise-grade Logstash ingestion pipeline.
+# [VERSION] v1.3.0 (Security Hardening & Crash Fix)
+# [DATE] 2026-01-14
+# [AUTHOR] ADSB Research Grid Automation Team
+# ==============================================================================
+# [CHANGELOG]
+# v1.3.0: SECURITY FIX - Restricted pipeline config permissions to 0640 (root:logstash)
+#         to prevent clear-text credential leakage.
+# v1.2.0: Added 'failed_when: false' to legacy cleanup to prevent pipeline failure.
+#         Shifted Logstash input to 5514 to avoid conflict with Rsyslog.
+# ------------------------------------------------------------------------------
+
+# ==============================================================================
+# PHASE 1: LEGACY STACK DECOMMISSIONING
+# ==============================================================================
+
+- name: "[Logging] Stop Fluent Bit Service (Legacy)"
+  service:
+    name: fluent-bit
+    state: stopped
+    enabled: no
+  # CRITICAL: Prevent playbook failure if service is already uninstalled
+  ignore_errors: yes
+  failed_when: false
+  tags: [logging, cleanup]
+
+- name: "[Logging] Remove Fluent Bit Package"
+  apt:
+    name: fluent-bit
+    state: absent
+    purge: yes
+  tags: [logging, cleanup]
+
+- name: "[Logging] Remove Fluent Bit Configuration Artifacts"
+  file:
+    path: /etc/fluent-bit
+    state: absent
+  tags: [logging, cleanup]
+
+# ==============================================================================
+# PHASE 2: LOGSTASH DEPLOYMENT
+# ==============================================================================
+
+- name: "[Logging] Install Logstash Prerequisites (Java/GPG)"
+  apt:
+    name:
+      - default-jre-headless
+      - apt-transport-https
+      - gnupg
+    state: present
+    update_cache: yes
+  tags: [logging, install]
+
+- name: "[Logging] Add Elastic Artifact Signing Key"
+  get_url:
+    url: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+    dest: /usr/share/keyrings/elastic-keyring.gpg
+    mode: '0644'
+  tags: [logging, install]
+
+- name: "[Logging] Add Logstash APT Repository (8.x)"
+  apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/elastic-keyring.gpg] https://artifacts.elastic.co/packages/8.x/apt stable main"
+    state: present
+    filename: elastic-8.x
+  tags: [logging, install]
+
+- name: "[Logging] Install Logstash Engine"
+  apt:
+    name: logstash
+    state: present
+  tags: [logging, install]
+
+# ==============================================================================
+# PHASE 3: CONFIGURATION
+# ==============================================================================
+
+- name: "[Logging] Install OpenSearch Output Plugin"
+  command: /usr/share/logstash/bin/logstash-plugin install logstash-output-opensearch
+  register: plugin_install
+  changed_when: "'Installation successful' in plugin_install.stdout"
+  failed_when: false
+  tags: [logging, config]
+
+- name: "[Logging] Deploy Logstash Pipeline Configuration"
+  # SECURITY: We use '0640' and group 'logstash' so only the service can read the password.
+  copy:
+    dest: /etc/logstash/conf.d/main-pipeline.conf
+    owner: root
+    group: logstash
+    mode: '0640'
+    content: |
+      input {
+        # Using 5514 to avoid conflict with system rsyslog (514)
+        udp {
+          port => 5514
+          type => "syslog"
+          tags => ["research-grid"]
+        }
+      }
+
+      filter {
+        if [type] == "syslog" {
+          grok {
+            match => { "message" => "%{SYSLOGTIMESTAMP:syslog_timestamp} %{SYSLOGHOST:syslog_hostname} %{DATA:syslog_program}(?:\[%{POSINT:syslog_pid}\])?: %{GREEDYDATA:syslog_message}" }
+          }
+        }
+      }
+
+      output {
+        opensearch {
+          hosts => ["http://localhost:9200"]
+          user => "admin"
+          password => "{{ vault_opensearch_password }}"
+          # Index pattern matches the 'Grid Health' dashboard requirements
+          index => "logs-sensors-%{+YYYY.MM.dd}"
+          ssl => false
+          ssl_certificate_verification => false
+        }
+      }
+  notify: Restart Logstash
+  tags: [logging, config]
+
+- name: "[Logging] Enable and Start Logstash Service"
+  service:
+    name: logstash
+    state: started
+    enabled: yes
+  tags: [logging, service]

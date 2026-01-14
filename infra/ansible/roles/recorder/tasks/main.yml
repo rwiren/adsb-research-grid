@@ -1,20 +1,32 @@
 ---
 # ==============================================================================
 # FILE: infra/ansible/roles/recorder/tasks/main.yml
-# VERSION: 0.5.0
-# DESCRIPTION: Deploys the Smart Logger and manages data persistence paths.
+# VERSION: 0.8.0 (Added GNSS Recorder & Dependencies)
+# DESCRIPTION: Deploys Smart Logger (ADS-B) AND GNSS Recorder (GPS).
 # ==============================================================================
 
+# --- 1. Dependencies ---
+- name: "[System] Install Python GPS libraries"
+  apt:
+    name:
+      - python3-gps
+      - python3-serial
+    state: present
+    update_cache: yes
+  tags: [recorder, dependencies]
+
+# --- 2. Storage Setup ---
 - name: "[Storage] Ensure Data Persistence Directory Exists"
   ansible.builtin.file:
-    path: "/var/lib/adsb_storage"
+    path: "/var/lib/adsb_storage/csv_data"
     state: directory
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: '0755'
+    recurse: yes
   become: true
 
-- name: Ensure ADSB Sensor Directory Exists (/opt)
+- name: "[Storage] Ensure ADS-B Sensor Directory Exists (/opt)"
   ansible.builtin.file:
     path: /opt/adsb-sensor
     state: directory
@@ -22,7 +34,8 @@
     group: "{{ ansible_user }}"
     mode: '0755'
 
-- name: Deploy Smart Logger Script (v1.4.0)
+# --- 3. Smart Logger (ADS-B Data) ---
+- name: "[ADS-B] Deploy Smart Logger Script (v1.4.0)"
   ansible.builtin.copy:
     src: smart_adsb_logger.py
     dest: /opt/adsb-sensor/smart_adsb_logger.py
@@ -31,7 +44,7 @@
     mode: '0755'
   notify: Restart Smart Logger
 
-- name: Deploy Service Definition
+- name: "[ADS-B] Deploy Service Definition"
   ansible.builtin.template:
     src: smart-logger.service.j2
     dest: /etc/systemd/system/smart-logger.service
@@ -40,9 +53,35 @@
     mode: '0644'
   notify: Restart Smart Logger
 
-- name: Ensure Smart Logger is Running and Enabled
+- name: "[ADS-B] Ensure Smart Logger is Running"
   ansible.builtin.systemd:
     name: smart-logger
+    enabled: yes
+    state: started
+    daemon_reload: yes
+
+# --- 4. GNSS Recorder (GPS Data) - NEW ---
+- name: "[GNSS] Deploy Recorder Script (Hybrid/Verbose)"
+  ansible.builtin.template:
+    src: gnss_record.sh.j2
+    dest: /usr/local/bin/gnss_record.sh
+    owner: root
+    group: root
+    mode: '0755'
+  notify: Restart GNSS Recorder
+
+- name: "[GNSS] Deploy Service Definition"
+  ansible.builtin.template:
+    src: gnss-recorder.service.j2
+    dest: /etc/systemd/system/gnss-recorder.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart GNSS Recorder
+
+- name: "[GNSS] Ensure GNSS Recorder is Running"
+  ansible.builtin.systemd:
+    name: gnss-recorder
     enabled: yes
     state: started
     daemon_reload: yes

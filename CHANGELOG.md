@@ -3,6 +3,35 @@
 
 All notable changes to the **ADS-B Research Grid** project will be documented in this file.
 
+
+## [0.8.0] - 2026-01-15: The "Panopticon" Update
+**Major Feature Release: Full Observability, Ensemble ML, and DevOps Automation**
+
+### 🚀 Infrastructure & DevOps
+* **Makefile "Control Center":** Added shortcuts (`make dashboard`, `make logging`) for rapid iteration.
+* **Ansible Dashboarding:** Grafana dashboards are now provisioned via Ansible code (IaC).
+* **Logging Overhaul:** Replaced Fluent Bit with **Logstash (v8)** on port 5514 for robust syslog parsing.
+* **Security:** Hardened pipeline configuration permissions (`0640`) to prevent credential leakage.
+
+### 📊 Visualization (Grafana)
+* **Grid Health V4:** Real-time sensor activity stream with `syslog_hostname` filtering.
+* **OwnTracks Chase:** 1s refresh rate tactical map for field agents.
+* **System Overview:** Universal TIG stack monitoring (CPU/RAM/Temp/Disk).
+
+### 🧪 Data Science (Tier 1)
+* **Ensemble Detection:** Upgraded anomaly detection to a voting system:
+    * *Model A:* Isolation Forest (Global geometric anomalies).
+    * *Model B:* Local Outlier Factor (LOF) (Local density/cluster anomalies).
+* **Windowed Reporting:** Added `--window` argument to EDA pipeline. Reports can now slice data by "Last 24h", "48h", or "Total History".
+* **Training Export:** Pipeline now auto-generates `training_dataset_v4_ensemble.csv` for future Supervised Learning (XGBoost).
+
+### 🐛 Fixes
+* **Data Ingestion:** Fixed pipeline crash caused by mismatched paths (`infra/ansible` vs root) and GZIP handling.
+* **Robustness:** Added fault tolerance to `infra_health.py` to skip corrupted CSV lines instead of crashing.
+* **Dashboard Mappings:** Fixed "No Data" bug in Grafana by aligning `host` tag to `syslog_hostname`.
+
+
+
 ## [0.7.6] - 2026-01-14
 ### Added
 - **GNSS Certification (D12):** New analysis module (`gnss_analysis.py`) to validate sensor hardware precision (Jitter & CEP).

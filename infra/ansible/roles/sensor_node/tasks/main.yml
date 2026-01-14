@@ -132,3 +132,4 @@
     mode: '0644'
   become: yes
   notify: Restart Sensor Stack
+- import_tasks: logging.yml

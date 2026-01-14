@@ -1,25 +1,38 @@
 # -----------------------------------------------------------------------------
 # [FILE] infra/ansible/roles/tower_core/tasks/main.yml
-# [DESCRIPTION] Main task list for configuring the Tower Core node
-# [VERSION] v1.3.1 (Dual Dashboard Deployment: Chase & Overview)
-# [DATE] 2026-01-13
+# [DESCRIPTION] Main provisioning logic for the Central Aggregation Node (Tower)
+# [VERSION] v1.5.0 (Grid Health Dashboard Integration)
+# [DATE] 2026-01-14
+# [AUTHOR] ADSB Research Grid Automation Team
+# -----------------------------------------------------------------------------
+# [CHANGELOG]
+# v1.5.0: Integrated 'Grid Health Center' dashboard for OpenSearch log analytics.
+# v1.4.1: Adjusted ingestion schedule to xx:30 to mitigate zero-minute congestion.
+# v1.4.0: Implemented Root-level execution for ingestion to resolve permission faults.
+# v1.3.1: Added Dual-Dashboard deployment (Chase/Overview) for Owntracks.
 # -----------------------------------------------------------------------------
 
-# --- 1. System Setup ---
+# ==============================================================================
+# PHASE 1: SYSTEM PRE-REQUISITES
+# ==============================================================================
+# [RATIONALE] The Tower Core requires specific kernel parameters for ElasticSearch/OpenSearch
+# and standard system utilities for monitoring (htop/iotop) and data processing (jq).
+
 - name: "[System] Install core dependencies"
   apt:
     name:
       - curl
       - git
       - htop
-      - iotop
-      - jq
-      - rsyslog  # CRITICAL: Required for centralized logging server
+      - iotop       # I/O monitoring for NVMe throughput analysis
+      - jq          # JSON processor for parsing API responses
+      - rsyslog     # CRITICAL: Required for centralized logging aggregation
     state: present
     update_cache: yes
   tags: [system, common]
 
 - name: "[System] Future-Proofing Kernel (Prepare for OpenSearch)"
+  # OpenSearch uses mmapfs to store indices. The default OS limit is too low.
   sysctl:
     name: vm.max_map_count
     value: '262144'
@@ -27,7 +40,12 @@
     reload: yes
   tags: [system, kernel]
 
-# --- 2. Docker & User Config ---
+# ==============================================================================
+# PHASE 2: DOCKER & USER PERMISSIONS
+# ==============================================================================
+# [RATIONALE] The container stack runs under the 'docker' group. The administrative
+# user must be added to this group to manage the stack without sudo escalation.
+
 - name: "[Docker] Ensure Docker service is active"
   service:
     name: docker
@@ -42,7 +60,12 @@
     append: yes
   tags: [user, docker]
 
-# --- 3. Directory Structure ---
+# ==============================================================================
+# PHASE 3: STORAGE HIERARCHY
+# ==============================================================================
+# [RATIONALE] Persistent storage is mapped to host directories to ensure data
+# survival across container rebuilds. Structure follows the FHS where applicable.
+
 - name: "[Storage] Create service volume directories"
   file:
     path: "{{ item }}"
@@ -63,6 +86,7 @@
   tags: [storage, setup]
 
 - name: "[Grafana] Create provisioning directories"
+  # Structured provisioning allows "Infrastructure as Code" management of Dashboards.
   file:
     path: "{{ item }}"
     state: directory
@@ -75,7 +99,12 @@
     - /opt/tower/grafana/provisioning/datasources
   tags: [grafana, storage]
 
-# --- 4. Configuration Deployment ---
+# ==============================================================================
+# PHASE 4: CONFIGURATION INJECTION
+# ==============================================================================
+# [RATIONALE] Configuration files are templated (Jinja2) to inject environment-specific
+# variables (IPs, credentials) at runtime, preventing hardcoded secrets.
+
 - name: "[Config] Deploy Mosquitto Config"
   template:
     src: mosquitto/mosquitto.conf.j2
@@ -111,8 +140,11 @@
     mode: '0644'
   tags: [grafana, dashboard]
 
-# [UPDATED v1.3.1] Deploys BOTH 'Chase' (Fast) and 'Overview' (Slow) dashboards
-- name: "[Grafana] Deploy OwnTracks Dashboards (Chase & Overview)"
+- name: "[Grafana] Deploy Analytical Dashboards"
+  # Consolidated deployment loop for all operational dashboards.
+  # - Chase: Real-time (1s refresh) for active tracking.
+  # - Overview: Historical (1m refresh) for pattern analysis.
+  # - Grid Health: Log analytics (OpenSearch) for system debugging.
   template:
     src: "{{ item.src }}"
     dest: "/opt/tower/grafana/provisioning/dashboards/{{ item.dest }}"
@@ -122,9 +154,16 @@
   loop:
     - { src: "grafana/provisioning/dashboards/owntracks_chase.json.j2", dest: "owntracks_chase.json" }
     - { src: "grafana/provisioning/dashboards/owntracks_overview.json.j2", dest: "owntracks_overview.json" }
+    # v1.5.0: Added Grid Health Center
+    - { src: "grafana/provisioning/dashboards/grid_health.json.j2", dest: "grid_health.json" }
   tags: [grafana, dashboard]
 
-# --- 5. Syslog Server Configuration ---
+# ==============================================================================
+# PHASE 5: SYSLOG SERVER (Aggregator)
+# ==============================================================================
+# [RATIONALE] The Tower acts as the centralized log sink. We enable both UDP (fast, standard)
+# and TCP (reliable) listeners on port 514 to accommodate different network conditions.
+
 - name: "[Syslog] Enable UDP and TCP Reception (Port 514)"
   ansible.builtin.lineinfile:
     path: /etc/rsyslog.conf
@@ -143,6 +182,8 @@
   tags: [syslog, config]
 
 - name: "[Syslog] Create dedicated remote log rule"
+  # This rule separates logs by Source IP, preventing the "Needle in a Haystack" problem
+  # when debugging a specific sensor node.
   copy:
     dest: /etc/rsyslog.d/10-remote.conf
     content: |
@@ -165,7 +206,12 @@
   when: rsyslog_config.changed
   tags: [syslog]
 
-# --- 6. Firewall Configuration ---
+# ==============================================================================
+# PHASE 6: FIREWALL SECURITY (UFW)
+# ==============================================================================
+# [RATIONALE] We explicitly allow only the necessary ingestion ports.
+# Port 1883: MQTT (Telemetry) | Port 514: Syslog (Logs)
+
 - name: "[Firewall] Allow MQTT (1883) for Autel/Sensors"
   community.general.ufw:
     rule: allow
@@ -190,7 +236,12 @@
   become: yes
   tags: [firewall, security]
 
-# --- 7. Service Deployment ---
+# ==============================================================================
+# PHASE 7: STACK DEPLOYMENT (Docker Compose)
+# ==============================================================================
+# [RATIONALE] The core visualization stack (TIG) is deployed via Docker Compose
+# for modularity and ease of updates.
+
 - name: "[Stack] Deploy Docker Compose Manifest"
   template:
     src: docker-compose.yml.j2
@@ -205,13 +256,18 @@
     pull: missing
   tags: [stack, docker]
 
-# --- 8. ANALYTICS STACK ---
+# ==============================================================================
+# PHASE 8: ADVANCED ANALYTICS (OpenSearch)
+# ==============================================================================
 - import_tasks: opensearch.yml
   tags: [opensearch, arkime]
 
-# ---------------------------------------------------
-# [Collector] Setup Data Aggregation & Storage
-# ---------------------------------------------------
+# ==============================================================================
+# PHASE 9: DATA COLLECTOR & AUTOMATION
+# ==============================================================================
+# [RATIONALE] This section manages the scientific data ingestion pipeline.
+# It ensures scripts are deployed and scheduled to run reliably.
+
 - name: "[Storage] Create Data Directories"
   file:
     path: "{{ item }}"
@@ -234,10 +290,41 @@
     mode: '0755'
   tags: [collector, scripts]
 
-- name: "[Cron] Schedule Daily Log Collection (04:00 AM)"
+# ------------------------------------------------------------------------------
+# [CRON] AUTOMATED INGESTION SCHEDULING
+# ------------------------------------------------------------------------------
+# NOTE: We shifted the hourly schedule to xx:30 to avoid network congestion at the
+# top of the hour. We also enforce 'root' execution to ensure write permissions
+# to the /var/log/ directory.
+
+- name: "[Cron] REMOVE Legacy Admin Job (Prevent Duplicate Run)"
+  # CRITICAL FIX: Removes the old job running as 'admin' which caused race conditions.
+  cron:
+    name: "ADSB Hourly Log Sync"
+    user: admin
+    state: absent
+  tags: [cron, cleanup]
+
+- name: "[Cron] Schedule Hourly Science Data Sync (Root)"
+  # Runs at 30 minutes past every hour.
+  cron:
+    name: "ADSB Hourly Log Sync"
+    minute: "5"
+    hour: "*"
+    user: root
+    job: "/opt/adsb-grid/scripts/fetch_logs.sh >> /var/log/adsb-fetch.log 2>&1"
+    state: present
+  tags: [cron, collector]
+
+- name: "[Cron] Schedule Daily Full Backup (Root)"
+  # Runs once a day at 04:00 AM.
   cron:
     name: "ADSB Daily Log Collection"
     minute: "0"
     hour: "4"
+    user: root
     job: "/opt/adsb-grid/scripts/fetch_logs.sh"
+    state: present
   tags: [cron, collector]
+
+- import_tasks: logging.yml

@@ -1,55 +1,126 @@
 #!/bin/bash
 # ==============================================================================
-# PROJECT: ADS-B Spoofing Data Collection (Academic Research)
-# FILE: infra/ansible/roles/recorder/templates/gnss_record.sh.j2
-# DEPLOY TARGET: /usr/local/bin/gnss_record.sh
-# VERSION: 0.4.0
-#
-# DESCRIPTION:
-#   Records Raw GNSS data to daily logs.
-#   - Implements "Smart Recording" to resolve resource contention.
-#   - Adapts method based on node role (RTK Base vs Production Scout).
+# 🛰️ SERVICE: GNSS Data Recorder (Scientific)
+# 📂 FILE:    /usr/local/bin/gnss_record.sh
+# 🔢 VERSION: 0.9.0 (Added Integrity Metrics: Sats + HDOP)
+# ------------------------------------------------------------------------------
+# DESCRIPTION: 
+#   - Standard Nodes: Connects to GPSD. Correlates SKY (Satellites) and TPV (Position)
+#     messages to produce a complete scientific log.
+#   - RTK Base Nodes: Dumps TCP Stream from str2str (Raw/Binary).
 # ==============================================================================
 
-# 1. SETUP VARIABLES
+# 1. Config
+HOSTNAME="{{ inventory_hostname }}"
+LOG_DIR="/var/lib/adsb_storage/csv_data"
 DATE=$(date +%Y-%m-%d)
-HOSTNAME=$(hostname)
-LOG_DIR="/data/gnss_raw"
-LOG_FILE="${LOG_DIR}/${HOSTNAME}_gnss_raw_${DATE}.log"
-META_FILE="${LOG_FILE}.meta"
+CSV_FILE="${LOG_DIR}/${HOSTNAME}_gnss_log_${DATE}.csv"
+RAW_FILE="${LOG_DIR}/${HOSTNAME}_gnss_raw_${DATE}.log"
 
-# Safety: Ensure directory exists (Redundant to Ansible, but good for portability)
+# Ensure Directory Exists
 mkdir -p "$LOG_DIR"
+chmod 755 "$LOG_DIR"
 
-# 2. METADATA HEADER
-# Tracks when recording started to correlate with spoofing experiments.
-echo "----------------------------------------------------------------" >> "$META_FILE"
-echo "START: $(date -Iseconds)" >> "$META_FILE"
-echo "HOST:  $HOSTNAME" >> "$META_FILE"
+# ------------------------------------------------------------------------------
+# MODE A: RTK BASE STATION (Sensor-North)
+# ------------------------------------------------------------------------------
+{% if inventory_hostname == 'sensor-north' %}
+echo "[$0] 📡 RTK MODE: Dumping TCP Stream (Port 2000) to $RAW_FILE"
+exec /bin/nc localhost 2000 >> "$RAW_FILE"
 
-# 3. RECORDING LOGIC (Heterogeneous)
-
-{% if ntrip_caster is defined %}
-# --- CASE A: SENSOR-NORTH (RTK Base) ---
-# HARDWARE: UART (/dev/ttyAMA0) is locked by str2str.
-# STRATEGY: Network Dump.
-# We record the TCP stream broadcast by str2str on Port 2000.
-# This ensures we capture the exact raw binary (UBX) data used for RTK.
-# -------------------------------------------------------
-echo "MODE:  TCP Stream Dump (Port 2000)" >> "$META_FILE"
-exec /bin/nc localhost 2000 >> "$LOG_FILE"
-
+# ------------------------------------------------------------------------------
+# MODE B: STANDARD SENSOR (West/East)
+# ------------------------------------------------------------------------------
 {% else %}
-# --- CASE B: SENSOR-WEST (Standard USB) ---
-# HARDWARE: USB (/dev/ttyUSB0) is locked by gpsd.
-# STRATEGY: GPS Pipe.
-# We cannot read the serial port directly without crashing gpsd.
-# We use 'gpspipe' to request a raw data copy from the daemon.
-# -R : Raw NMEA/Binary data (preserves original hardware output)
-# -------------------------------------------------------
-echo "MODE:  GPSD Pipe (Raw)" >> "$META_FILE"
-# Small delay to ensure gpsd is fully ready after service restart
-sleep 5
-exec /usr/bin/gpspipe -R >> "$LOG_FILE"
+echo "[$0] 🛰️ STANDARD MODE: Starting Scientific Python Logger..."
+echo "[$0] 📂 Target File: $CSV_FILE"
 
+cat <<EOF > /tmp/gnss_logger.py
+import gps
+import csv
+import time
+import os
+import sys
+
+LOG_FILE = "$CSV_FILE"
+HOSTNAME = "$HOSTNAME"
+
+def run_logger():
+    print(f"[*] Initializing Scientific GPSD connection...")
+    
+    # 1. Ensure Header Exists (With new columns)
+    try:
+        if not os.path.exists(LOG_FILE):
+            print(f"[*] Creating new log file: {LOG_FILE}")
+            with open(LOG_FILE, 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(['timestamp_utc', 'hostname', 'lat', 'lon', 'alt_m', 'speed_mps', 'track_deg', 'climb_mps', 'mode', 'sats_used', 'hdop'])
+                f.flush()
+        else:
+            print(f"[*] Appending to existing file: {LOG_FILE}")
+    except Exception as e:
+        print(f"[!] FAILED to create file: {e}")
+        sys.exit(1)
+
+    # 2. State Variables (To sync SKY and TPV messages)
+    current_sats = 0
+    current_hdop = 99.99
+
+    # 3. GPSD Loop
+    try:
+        session = gps.gps(mode=gps.WATCH_ENABLE | gps.WATCH_NEWSTYLE)
+        print("[*] Connected to GPSD. Listening for Satellites & Position...")
+        
+        while True:
+            try:
+                report = session.next()
+                
+                # --- CASE 1: Satellite View (SKY) ---
+                # Updates our knowledge of the sky quality
+                if report['class'] == 'SKY':
+                    if 'hdop' in report:
+                        current_hdop = report['hdop']
+                    
+                    if 'satellites' in report:
+                        # Count only satellites actually used in the fix
+                        used_sats = [s for s in report['satellites'] if hasattr(s, 'used') and s.used]
+                        current_sats = len(used_sats)
+
+                # --- CASE 2: Position Fix (TPV) ---
+                # Writes the row using the latest known sky data
+                elif report['class'] == 'TPV':
+                    mode = report.get('mode', 0)
+                    
+                    if mode >= 2: # 2D or 3D Fix
+                        ts = report.get('time', '')
+                        lat = report.get('lat', '')
+                        lon = report.get('lon', '')
+                        
+                        if ts and lat and lon:
+                            with open(LOG_FILE, 'a', newline='') as f:
+                                writer = csv.writer(f)
+                                writer.writerow([
+                                    ts, HOSTNAME, lat, lon, 
+                                    report.get('alt', ''), 
+                                    report.get('speed', ''), 
+                                    report.get('track', ''), 
+                                    report.get('climb', ''), 
+                                    mode,
+                                    current_sats,  # <--- NEW
+                                    current_hdop   # <--- NEW
+                                ])
+            except StopIteration:
+                print("[!] GPSD Connection Lost.")
+                break
+                
+    except Exception as e:
+        print(f"[!] Stream Error: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    run_logger()
+EOF
+
+# Execute with unbuffered output
+python3 -u /tmp/gnss_logger.py
 {% endif %}

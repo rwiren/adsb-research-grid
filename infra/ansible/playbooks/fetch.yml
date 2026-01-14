@@ -2,9 +2,8 @@
 # ==============================================================================
 # 📥 PROJECT: ADS-B Spoofing Data Collection
 # 📂 FILE:    infra/ansible/playbooks/fetch.yml
-# 🔢 VERSION: 0.7.2 (Expanded Data Scope: GNSS + Health)
-# 📅 DATE:    2026-01-13
-# ✍️ AUTHOR:  Gemini / ADSB Team
+# 🔢 VERSION: 0.7.5 (Live File Checksum Fix)
+# 📅 DATE:    2026-01-14
 # ==============================================================================
 
 - name: "📥 Grid Data Retrieval (Scientific Data Pipeline)"
@@ -12,41 +11,30 @@
   gather_facts: yes
   vars:
     local_data_dir: "research_data/raw"
-    remote_data_dir: "/opt/adsb-grid/data"
+    # Point to the parent folder containing health files + csv_data folder
+    remote_data_dir: "/var/lib/adsb_storage"
 
   tasks:
     - name: "[Discovery] Locate all generated CSV research logs"
       find:
         paths: "{{ remote_data_dir }}"
-        # REFINED v0.7.2: Capture ALL scientific log types
+        # Capture files in root AND inside 'csv_data'
         patterns: 
-          - "*_aircraft_log_*.csv"     # Primary Flight Tracks
-          - "*_stats_log_*.csv"        # SDR/Decoder Hardware Stats
-          - "*_gnss_log_*.csv"         # [NEW] GPS/RTK Position Fixes
-          - "*hardware_health*.csv"    # [NEW] System Crash/Throttling Logs
-          - "*storage_*.csv"           # [NEW] Disk Usage History
-          - "*.csv.gz"                 # Archived/Compressed Logs
+          - "*.csv"
+          - "*.json"
+          - "*.gz"
+          - "*.log"
         recurse: yes
       register: found_logs
 
-    - name: "[Ingest] Transfer CSV logs to Local Research Repository"
+    - name: "[Ingest] Transfer logs to Local Research Repository"
       fetch:
         src: "{{ item.path }}"
         dest: "{{ local_data_dir }}/{{ inventory_hostname }}/"
         flat: yes
+        # CRITICAL: Disable checksum for live files that grow during transfer
+        validate_checksum: no
       loop: "{{ found_logs.files }}"
       loop_control:
         label: "{{ item.path | basename }}"
       when: found_logs.matched > 0
-
-    - name: "[Ingest] Retrieve Storage History (Metrics)"
-      shell: "du -sk /opt/adsb-grid/data | awk '{print $1}'"
-      register: storage_usage
-      changed_when: false
-
-    - name: "[Meta] Save Storage Metrics"
-      local_action: 
-        module: lineinfile
-        path: "data/storage_history.csv"
-        line: "{{ ansible_date_time.iso8601 }},{{ inventory_hostname }},{{ storage_usage.stdout }}"
-        create: yes

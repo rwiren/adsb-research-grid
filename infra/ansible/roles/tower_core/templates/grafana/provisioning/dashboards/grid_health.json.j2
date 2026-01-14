@@ -1,0 +1,142 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": true,
+  "panels": [
+    {
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "OpenSearch-Logs"
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["count"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "alias": "Critical Faults",
+          "bucketAggs": [{ "field": "@timestamp", "id": "2", "settings": { "interval": "auto" }, "type": "date_histogram" }],
+          "metrics": [{ "id": "1", "type": "count" }],
+          "query": "(priority < 4 OR message:*error* OR message:*fail*) AND syslog_hostname:$host",
+          "timeField": "@timestamp"
+        }
+      ],
+      "title": "🚨 System Faults",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "OpenSearch-Logs"
+      },
+      "gridPos": { "h": 8, "w": 20, "x": 4, "y": 0 },
+      "id": 2,
+      "options": {
+        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "alias": "$tag_syslog_hostname",
+          "bucketAggs": [
+            { "field": "@timestamp", "id": "2", "settings": { "interval": "auto" }, "type": "date_histogram" },
+            { "field": "syslog_hostname.keyword", "id": "3", "settings": { "min_doc_count": "1", "order": "desc", "orderBy": "_count", "size": "10" }, "type": "terms" }
+          ],
+          "metrics": [{ "id": "1", "type": "count" }],
+          "query": "syslog_hostname:$host",
+          "timeField": "@timestamp"
+        }
+      ],
+      "title": "📡 Sensor Activity Stream (Filtered by $host)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "OpenSearch-Logs"
+      },
+      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 8 },
+      "id": 3,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "bucketAggs": [{ "field": "@timestamp", "id": "2", "settings": { "interval": "auto" }, "type": "date_histogram" }],
+          "metrics": [{ "id": "1", "type": "logs" }],
+          "query": "syslog_hostname:$host AND (message:$query OR program:$query)",
+          "timeField": "@timestamp"
+        }
+      ],
+      "title": "📜 Live Research Logs",
+      "type": "logs"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": ["Research", "Grid", "Logs"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": false, "text": "*", "value": "*" },
+        "definition": "{\"find\": \"terms\", \"field\": \"syslog_hostname.keyword\"}",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Select Sensor",
+        "multi": false,
+        "name": "host",
+        "options": [],
+        "query": "{\"find\": \"terms\", \"field\": \"syslog_hostname.keyword\"}",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query",
+        "datasource": { "type": "grafana-opensearch-datasource", "uid": "OpenSearch-Logs" }
+      },
+      {
+        "current": { "selected": false, "text": "*", "value": "*" },
+        "hide": 0,
+        "label": "Search Text",
+        "name": "query",
+        "options": [{ "selected": true, "text": "*", "value": "*" }],
+        "query": "*",
+        "skipUrlSync": false,
+        "type": "text"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Grid Health Center (Research V4)",
+  "uid": "grid-health-logs",
+  "version": 4
+}

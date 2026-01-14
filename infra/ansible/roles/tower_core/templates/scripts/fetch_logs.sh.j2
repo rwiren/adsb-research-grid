@@ -2,12 +2,12 @@
 # ==============================================================================
 # 📡 PROJECT: ADS-B Spoofing Data Collection
 # 📂 FILE:    /opt/adsb-grid/scripts/fetch_logs.sh
-# 🔢 VERSION: 0.7.2 (Added GNSS & Health Logs)
-# 📅 DATE:    {{ ansible_date_time.date }}
+# 🔢 VERSION: 0.7.4 (Fixed Recursive Path for Health & Storage)
+# 📅 DATE:    2026-01-13
 # ------------------------------------------------------------------------------
 # DESCRIPTION: Aggregates raw CSV research data from all Sensor Nodes to Tower.
-#              Designed to run via Cron (04:00 AM) or manual trigger.
-# SOURCE:      /opt/adsb-grid/data/ (On Sensors)
+#              Designed to run via Cron (Hourly) or manual trigger.
+# SOURCE:      /var/lib/adsb_storage/ (Parent Directory)
 # DESTINATION: /opt/adsb-grid/data/raw/ (On Tower)
 # ==============================================================================
 
@@ -17,7 +17,6 @@ LOG_FILE="/var/log/adsb-fetch.log"
 DATE=$(date +%Y-%m-%d)
 
 # Sensor Definitions (Hostname:IP)
-# We use explicit IPs to avoid DNS dependency failures during early morning runs
 declare -A SENSORS=( 
     ["sensor-north"]="192.168.192.130" 
     ["sensor-west"]="192.168.192.110" 
@@ -30,7 +29,7 @@ log() {
 }
 
 # --- Execution ---
-log "🚀 Starting Daily Science Data Ingest (v0.7.2) for $DATE"
+log "🚀 Starting Hourly Science Data Ingest (v0.7.4) for $DATE"
 
 # Ensure destination exists
 mkdir -p "$DEST_ROOT"
@@ -43,28 +42,23 @@ for SENSOR_NAME in "${!SENSORS[@]}"; do
     
     log "📡 Probing $SENSOR_NAME ($SENSOR_IP)..."
     
-    # 1. Connectivity Check (Ping with 2s timeout)
+    # 1. Connectivity Check
     if ping -c 1 -W 2 "$SENSOR_IP" &> /dev/null; then
         
+        log "   > Syncing Science CSV/JSON datasets..."
+        
         # 2. RSYNC Operation
-        # -a: Archive mode (preserve times/perms)
-        # -v: Verbose
-        # -z: Compress during transfer
-        # --include: Explicitly grab ALL research CSVs (GNSS, Health, Tracks)
-        # --exclude: Ignore everything else to save bandwidth
-        
-        log "   > Syncing Science CSV datasets..."
-        
+        # FIXED: Source is now /var/lib/adsb_storage/ (The Parent)
+        # --include="*/": Essential to traverse subdirectories like 'csv_data/'
         if rsync -avz --timeout=30 \
-           --include="*_aircraft_log_*.csv" \
-           --include="*_stats_log_*.csv" \
-           --include="*_gnss_log_*.csv" \
-           --include="*hardware_health*.csv" \
-           --include="*storage_*.csv" \
-           --include="*.csv.gz" \
+           --include="*/" \
+           --include="*.csv" \
+           --include="*.json" \
+           --include="*.gz" \
+           --include="*.log" \
            --exclude="*" \
-           -e "ssh -o StrictHostKeyChecking=no -i /home/admin/.ssh/id_rsa" \
-           "pi@$SENSOR_IP:/opt/adsb-grid/data/" "$TARGET_DIR/"; then
+           -e "ssh -o StrictHostKeyChecking=no -i /home/{{ ansible_user }}/.ssh/id_rsa" \
+           "pi@$SENSOR_IP:/var/lib/adsb_storage/" "$TARGET_DIR/"; then
             
             log "   ✅ Success: Data synced for $SENSOR_NAME"
         else
@@ -77,7 +71,7 @@ for SENSOR_NAME in "${!SENSORS[@]}"; do
 done
 
 # --- Maintenance ---
-# Compress any raw CSVs locally on Tower that are older than 24h to save space
+# Compress raw CSVs on Tower > 24h old
 find "$DEST_ROOT" -type f -name "*.csv" -mtime +1 -exec gzip {} \;
 
 log "🏁 Ingest Cycle Complete."
