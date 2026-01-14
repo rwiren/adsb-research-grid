@@ -1,0 +1,49 @@
+# ==============================================================================
+# 📂 File: infra/ansible/roles/tower_core/tasks/grafana_link.yml
+# Description: Connects Grafana to OpenSearch (Fixed Path Version)
+# ==============================================================================
+
+# --- 1. INSTALL PLUGIN (Hardcoded Path) ---
+- name: "[Grafana] Install OpenSearch Plugin"
+  command: /usr/sbin/grafana-cli plugins install grafana-opensearch-datasource
+  register: plugin_install
+  # This 'creates' check stops it from running if the plugin already exists
+  args:
+    creates: /var/lib/grafana/plugins/grafana-opensearch-datasource
+  notify: Restart Grafana
+  ignore_errors: yes
+
+# --- 2. PROVISION DATASOURCE ---
+- name: "[Grafana] Create Provisioning Directory"
+  file:
+    path: /etc/grafana/provisioning/datasources
+    state: directory
+    owner: root
+    group: grafana
+    mode: '0750'
+
+- name: "[Grafana] Configure OpenSearch Data Source"
+  copy:
+    dest: /etc/grafana/provisioning/datasources/opensearch.yaml
+    owner: root
+    group: grafana
+    mode: '0640'
+    content: |
+      apiVersion: 1
+      datasources:
+        - name: OpenSearch-Logs
+          type: grafana-opensearch-datasource
+          access: proxy
+          url: http://localhost:9200
+          basicAuth: true
+          basicAuthUser: admin
+          # Securely inject password from Vault
+          secureJsonData:
+            basicAuthPassword: "{{ vault_opensearch_password }}"
+          jsonData:
+            timeField: "@timestamp"
+            version: "2.0.0"
+            flavor: "opensearch"
+            database: "[logs-sensors-]YYYY.MM.dd"
+            interval: "Daily"
+  notify: Restart Grafana

@@ -1,6 +1,17 @@
 ---
+# ==============================================================================
+# FILE: infra/ansible/roles/recorder/handlers/main.yml
+# DESCRIPTION: Event handlers for service restarts
+# ==============================================================================
+
 - name: Restart Smart Logger
   ansible.builtin.systemd:
     name: smart-logger
+    state: restarted
+    daemon_reload: yes
+
+- name: Restart GNSS Recorder
+  ansible.builtin.systemd:
+    name: gnss-recorder
     state: restarted
     daemon_reload: yes

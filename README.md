@@ -7,7 +7,9 @@
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](#)
 ![Last Updated](https://img.shields.io/github/last-commit/rwiren/adsb-research-grid?label=Last%20Updated&color=orange)
 
-[![Audit Report](https://img.shields.io/badge/View-Latest%20Report-blue?style=for-the-badge&logo=github)](https://github.com/rwiren/adsb-research-grid/blob/main/docs/showcase/latest_audit/REPORT.md)
+#[![Audit Report](https://img.shields.io/badge/View-Latest%20Report-blue?style=for-the-badge&logo=github)](https://github.com/rwiren/adsb-research-grid/blob/main/docs/showcase/latest_audit/REPORT.md)
+
+[![Audit Report](https://img.shields.io/badge/View-Latest%20Report-blue?style=for-the-badge&logo=github)](docs/showcase/latest/REPORT.md)
 
 ## 📋 Table of Contents
 1. [Research Goal](#-research-goal)
@@ -92,15 +94,22 @@ To see the full list of available commands, run `make help` from the repository 
   --- OPERATIONS (Infra) ---
   make setup      - 📦 Install dependencies
   make deploy     - 🚀 Configure all sensors (Ansible)
-  make check      - 🏥 Real-time Sensor Health Dashboard
 
-  --- SCIENCE (Data) ---
-  make fetch      - 📥 Download, Heal & Merge logs from grid
-  make consolidate- 🧹 Manually fix fragmented logs (1-min -> Daily)
-  make ml         - 🧪 Run Anomaly Detection (Isolation Forest)
-  make ghosts     - 👻 Generate Forensic Maps (Ghost Hunt)
-  make report     - 📊 Generate Academic Audit Report
-  make all        - 🔁 Run Full Pipeline (Fetch->Heal->ML->Report)
+  --- INFRASTRUCTURE (Ops) --
+  make check        - 🏥 Check Connectivity
+  make dashboard    - 📊 Update Grafana Dashboards
+  make logging      - 🪵 Update Logstash Pipeline
+  make tower        - 🗼 Provision Tower Core services
+
+  --- DATA SCIENCE (Tier 1) ---
+  make fetch        - 📥 Download, Heal & Merge logs from grid
+  make ml           - 🧪 Run Ensemble Anomaly Detection (IsoForest + LOF)
+  make ghosts       - 👻 Generate Forensic Maps (Ghost Hunt)
+  make gnss         - 🛰️  Run Hardware Certification (D12)
+  make report       - 📊 Generate Academic Report (Default: Last 24h)
+  make clean        - 🧹 Archive old reports
+  make all          - 🔁 Run Full Pipeline (Fetch -> ML -> Report)
+--------------------------------------------------------
 ```
 
 ### 2. Scientific Workflows
@@ -112,7 +121,7 @@ make all
 ```
 * **Output:** `docs/showcase/latest_audit/REPORT.md` and `research_data/ml_ready/`
 
-  * **[View Latest Forensic Report](docs/showcase/latest_audit/REPORT.md)**
+  * **[View Latest Forensic Report](docs/showcase/latest/REPORT.md)**
 
 #### **B. Manual Data Repair**
 If `sensor-west` or other nodes generate fragmented 1-minute logs due to instability, run the self-healing utility manually:

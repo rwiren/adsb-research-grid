@@ -1,32 +1,38 @@
 # ==============================================================================
 # 🏛️ PROJECT: ADS-B Research Grid
 # 📂 FILE:    Makefile
-# 🔢 VERSION: 5.5.0 (Latest Link & Path Fixes)
+# 🔢 VERSION: 6.1.0 (macOS Compatible & Path Fixes)
 # ==============================================================================
 
-.PHONY: help report clean-docs check all setup deploy gnss
+.PHONY: help report clean-docs check all setup deploy gnss dashboard logging tower
 
 VENV_DIR = venv
 PYTHON   = $(VENV_DIR)/bin/python3
 ANSIBLE  = $(VENV_DIR)/bin/ansible-playbook
+ANSIBLE_ADHOC = $(VENV_DIR)/bin/ansible
+
+INVENTORY = infra/ansible/inventory/hosts.prod
+VAULT     = .vault_pass
+
+# Default Report Window (Can be overridden: make report WINDOW=48)
+WINDOW ?= 24
 
 # --- 1. CORE OPERATIONS ---
 
 help:
 	@echo "📡 ADS-B Research Grid Control Center"
 	@echo "--------------------------------------------------------"
-	@echo "  --- OPERATIONS (Infra) ---"
-	@echo "  make setup      - 📦 Install dependencies"
-	@echo "  make deploy     - 🚀 Configure all sensors"
-	@echo "  make check      - 🏥 Check Connectivity"
+	@echo "  --- INFRASTRUCTURE (Ops) ---"
+	@echo "  make check        - 🏥 Check Connectivity"
+	@echo "  make dashboard    - 📊 Update Grafana Dashboards"
+	@echo "  make logging      - 🪵 Update Logstash Pipeline"
 	@echo ""
-	@echo "  --- SCIENCE (Data) ---"
-	@echo "  make fetch      - 📥 Download & Heal logs"
-	@echo "  make ml         - 🧪 Run Anomaly Detection"
-	@echo "  make ghosts     - 👻 Generate Forensic Maps"
-	@echo "  make gnss       - 🛰️  Run Hardware Certification (D12)"
-	@echo "  make report     - 📊 Generate Academic Audit Report"
-	@echo "  make all        - 🔁 Run Full Pipeline"
+	@echo "  --- DATA SCIENCE (Tier 1) ---"
+	@echo "  make ml           - 🧪 Run Ensemble Anomaly Detection (IsoForest + LOF)"
+	@echo "  make report       - 📊 Generate Academic Report (Default: Last 24h)"
+	@echo "                      Usage: make report WINDOW=48"
+	@echo "                      Usage: make report WINDOW=all"
+	@echo "  make all          - 🔁 Run Full Pipeline"
 	@echo "--------------------------------------------------------"
 
 setup:
@@ -36,29 +42,44 @@ setup:
 	@echo "[INIT] ✅ Environment Ready."
 
 deploy:
-	@echo "[OPS] 🚀 Deploying Configuration to Grid..."
-	@$(ANSIBLE) -i infra/ansible/inventory/hosts.prod infra/ansible/playbooks/site.yml --vault-password-file .vault_pass
+	@echo "[OPS] 🚀 Deploying Configuration to Grid (Full Site)..."
+	@$(ANSIBLE) -i $(INVENTORY) infra/ansible/playbooks/site.yml --vault-password-file $(VAULT)
 
 check:
 	@echo "[OPS] 🏥 Checking Grid Connectivity..."
-	@$(ANSIBLE) -i infra/ansible/inventory/hosts.prod infra/ansible/playbooks/ping.yml --vault-password-file .vault_pass
+	@$(ANSIBLE) -i $(INVENTORY) infra/ansible/playbooks/ping.yml --vault-password-file $(VAULT)
 
-# --- 2. DATA PIPELINE ---
+# --- 2. TOWER MAINTENANCE (DevOps) ---
+
+dashboard:
+	@echo "[OPS] 📊 Pushing Updated Dashboards to Tower..."
+	@$(ANSIBLE_ADHOC) core -i $(INVENTORY) -b -m include_role -a "name=tower_core tasks_from=main" --vault-password-file $(VAULT) -t dashboard
+
+logging:
+	@echo "[OPS] 🪵 Updating Logging Pipeline (Logstash/OpenSearch)..."
+	@$(ANSIBLE_ADHOC) core -i $(INVENTORY) -b -m include_role -a "name=tower_core tasks_from=main" --vault-password-file $(VAULT) -t logging
+
+tower:
+	@echo "[OPS] 🗼 Provisioning Tower Core Role..."
+	@$(ANSIBLE_ADHOC) core -i $(INVENTORY) -b -m include_role -a "name=tower_core tasks_from=main" --vault-password-file $(VAULT)
+
+# --- 3. DATA PIPELINE ---
 
 fetch:
 	@echo "[DATA] 📥 Syncing logs from grid..."
-	@$(ANSIBLE) -i infra/ansible/inventory/hosts.prod infra/ansible/playbooks/fetch.yml --vault-password-file .vault_pass
+	@$(ANSIBLE) -i $(INVENTORY) infra/ansible/playbooks/fetch.yml --vault-password-file $(VAULT)
 	@$(MAKE) consolidate
 
 consolidate:
 	@echo "[MAINTENANCE] 🧹 Running Self-Healing on Sensor Logs..."
 	@$(PYTHON) scripts/maintenance/consolidate_fragments.py
 
-# --- 3. SCIENCE & FORENSICS ---
+# --- 4. SCIENCE & FORENSICS ---
 
 ml:
-	@echo "[ML] 🧪 Training Isolation Forest (v3)..."
-	@if [ -d "research_data" ]; then \
+	@echo "[ML] 🧪 Training Ensemble (IsoForest + LOF)..."
+	@# FIX: Updated check to look in the actual Ansible data directory
+	@if [ -d "infra/ansible/playbooks/research_data/raw" ]; then \
 		$(PYTHON) scripts/ds_pipeline_master.py; \
 	else \
 		echo "❌ No data found! Run 'make fetch' first."; \
@@ -75,6 +96,7 @@ gnss:
 
 report:
 	@echo "[PIPELINE] 🚀 Starting Modular Analysis Pipeline..."
+	@echo "[CONFIG] 🕒 Reporting Window: $(WINDOW) Hours"
 	@$(eval RUN_ID := run_$(shell date +%Y-%m-%d_%H%M))
 	@$(eval OUT_DIR := docs/showcase/$(RUN_ID))
 	@mkdir -p $(OUT_DIR)/figures
@@ -83,16 +105,16 @@ report:
 	@# 1. Run Infra Health (D5)
 	@$(PYTHON) scripts/infra_health.py --out-dir $(OUT_DIR)
 	
-	@# 2. Run GNSS Precision (D12) - Output directly to figures
+	@# 2. Run GNSS Precision (D12)
 	@$(PYTHON) scripts/gnss_analysis.py --out-dir $(OUT_DIR)/figures
 	
-	@# 3. Run Science EDA (D1-D4, D6, Report Compiler)
-	@$(PYTHON) scripts/academic_eda.py --out-dir $(OUT_DIR)
+	@# 3. Run Science EDA (D1-D4, Report Compiler) with Windowing
+	@$(PYTHON) scripts/academic_eda.py --out-dir $(OUT_DIR) --window $(WINDOW)
 	
-	@# 4. Copy Ghost Maps (D7-D10)
+	@# 4. Copy Ghost Maps
 	@cp docs/showcase/ghost_hunt/D*.png $(OUT_DIR)/figures/ 2>/dev/null || echo "[PIPELINE] ⚠️  No ghost maps to attach."
 	
-	@# 5. Update 'latest' link for README
+	@# 5. Update 'latest' link
 	@rm -rf docs/showcase/latest
 	@cp -r $(OUT_DIR) docs/showcase/latest
 	
@@ -101,9 +123,10 @@ report:
 clean-docs:
 	@echo "[MAINTENANCE] 🧹 Archiving old reports..."
 	@mkdir -p docs/showcase/archive
-	@cd docs/showcase && ls -d run_*/ 2>/dev/null | sort | head -n -1 | xargs -I {} mv {} archive/ 2>/dev/null || echo "   ℹ️  Archive up to date."
+	@# FIX: Replaced 'head -n -1' with 'sed $$d' for macOS compatibility
+	@cd docs/showcase && ls -d run_*/ 2>/dev/null | sort | sed '$$d' | xargs -I {} mv {} archive/ 2>/dev/null || echo "   ℹ️  Archive up to date."
 
-# --- 4. MASTER SWITCH ---
+# --- 5. MASTER SWITCH ---
 
 all: fetch ml ghosts report
 	@echo "✅ Full Science Run Complete."

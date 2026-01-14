@@ -1,0 +1,13 @@
+# ==============================================================================
+# 📂 File: infra/ansible/playbooks/ping.yml
+# [DESCRIPTION] Simple connectivity check for the Research Grid
+# ==============================================================================
+---
+- name: "🏥 Grid Connectivity Check"
+  hosts: all
+  gather_facts: no
+  become: no
+  
+  tasks:
+    - name: "[Network] Ping Sensor Nodes"
+      ansible.builtin.ping:

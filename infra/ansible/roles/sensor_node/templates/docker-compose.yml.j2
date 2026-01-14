@@ -1,17 +1,83 @@
+# -----------------------------------------------------------------------------
+# [FILE] infra/ansible/roles/sensor_node/templates/docker-compose.yml.j2
+# [DESCRIPTION] Docker composition for Edge Sensor Nodes (SDR + Telemetry)
+# [VERSION] v1.3.2 (Standardization to Reference Architecture)
+# [DATE] 2026-01-13
+# [AUTHOR] Gemini (Ref: User Requirement 2026-01-09)
+# -----------------------------------------------------------------------------
+
 version: '3.8'
 
 services:
+  # ============================================================================
+  # SERVICE: SDR RECEIVER & DECODER (Ultrafeeder)
+  # ============================================================================
+  ultrafeeder:
+    image: ghcr.io/sdr-enthusiasts/docker-adsb-ultrafeeder:latest
+    container_name: ultrafeeder
+    restart: always
+    # [HARDWARE ACCESS] --------------------------------------------------------
+    # Allow access to USB SDR devices
+    device_cgroup_rules:
+      - 'c 189:* rwm'
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+    # [ENVIRONMENT VARIABLES] --------------------------------------------------
+    environment:
+      - LOGLEVEL=error
+      # Dynamic configuration injected by Ansible inventory
+      - READSB_DEVICE_TYPE={{ sdr_type | default('rtlsdr') }}
+      - READSB_RTLSDR_DEVICE={{ sdr_device_index | default('0') }}
+      - READSB_RTLSDR_GAIN={{ sdr_gain | default('autohot') }}
+      - READSB_RTLSDR_PPM={{ sdr_ppm | default('0') }}
+      
+      # Location Metadata
+      - READSB_LAT={{ gnss_lat | default('0') }}
+      - READSB_LON={{ gnss_lon | default('0') }}
+      - READSB_ALT={{ gnss_alt | default('0') }}
+      
+      # Feeder Identity
+      - UUID={{ adsb_uuid | default('') }}
+      
+    # [NETWORKING] -------------------------------------------------------------
+    ports:
+      - 8080:80           # Web Interface (Tar1090)
+      - 30003:30003       # SBS (BaseStation) Format
+      - 30005:30005       # Beast Binary Format
+    
+    # [PERFORMANCE] ------------------------------------------------------------
+    tmpfs:
+      - /run:exec,size=64M
+      - /var/log
+
+  # ============================================================================
+  # SERVICE: TELEMETRY AGENT (Telegraf)
+  # ============================================================================
   telegraf:
     image: telegraf:latest
     container_name: telegraf
     restart: unless-stopped
+    
+    # [SECURITY CONFIGURATION]
+    # Aligned with Reference Nodes (North/West).
+    # Runs as Root to access socket, but without full Privileged mode.
     user: "0:0"
+    
+    # [NETWORKING] Use Host networking for accurate system metrics
+    network_mode: "host"
+    
     volumes:
       - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Host Filesystem Mount for Metrics
       - /:/hostfs:ro
+      
     environment:
+      # Tell Telegraf where to find host metrics
       - HOST_PROC=/hostfs/proc
       - HOST_SYS=/hostfs/sys
       - HOST_ETC=/hostfs/etc
-    network_mode: "host"
+      # Inject Tokens (Just in case config uses env vars)
+      - INFLUX_TOKEN={{ influx_token | default('') }}
+      - INFLUX_ORG={{ influx_org | default('') }}
+      - INFLUX_BUCKET={{ influx_bucket | default('adsb_metrics') }}

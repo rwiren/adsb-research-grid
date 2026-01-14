@@ -21,3 +21,8 @@
   ansible.builtin.shell: rmmod dvb_usb_rtl28xxu && modprobe -r rtl2832
   ignore_errors: yes
   become: yes
+
+- name: Restart Fluent Bit
+  service:
+    name: fluent-bit
+    state: restarted

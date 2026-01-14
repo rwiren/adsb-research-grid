@@ -1,46 +1,60 @@
----
-# ==============================================================================
-# Task: OpenSearch & Dashboards Deployment
-# Description: Deploys the search engine and visualization UI.
-# RAM Allocation: 4GB Heap for OpenSearch (Safe on your 16GB Pi)
-# ==============================================================================
-
-# --- 1. SYSTEM TUNING (CRITICAL) ---
-# OpenSearch uses mmapfs to store indices. The default OS limit (65530) is too low.
-# If this is not set, OpenSearch will crash immediately on startup.
-- name: "[System] Increase vm.max_map_count for OpenSearch"
-  ansible.posix.sysctl:
+# [FILE] infra/ansible/roles/tower_core/tasks/opensearch.yml
+- name: "[System] Increase vm.max_map_count"
+  sysctl:
     name: vm.max_map_count
     value: '262144'
     state: present
     reload: yes
-  become: yes
 
-# --- 2. DIRECTORIES ---
-- name: "[Storage] Create OpenSearch Data Directories"
-  ansible.builtin.file:
+- name: "[Storage] Create Data Directories"
+  file:
     path: "{{ item }}"
     state: directory
-    mode: '0777' # OpenSearch runs as UID 1000 inside container, strict permissions often fail
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
+    owner: 1000
+    group: 1000
+    mode: '0755'
   loop:
     - /opt/adsb-grid/opensearch
     - /opt/adsb-grid/opensearch/data
-  become: yes
 
-# --- 3. CONFIGURATION ---
 - name: "[Config] Deploy OpenSearch Docker Compose"
-  ansible.builtin.template:
-    src: opensearch/docker-compose.yml.j2
+  copy:
     dest: /opt/adsb-grid/opensearch/docker-compose.yml
-    mode: '0644'
-  become: yes
-  notify: Restart OpenSearch Stack
+    content: |
+      services:
+        opensearch:
+          image: opensearchproject/opensearch:latest
+          container_name: opensearch
+          environment:
+            - discovery.type=single-node
+            - "OPENSEARCH_INITIAL_ADMIN_PASSWORD={{ vault_opensearch_password }}"
+            - "network.host=0.0.0.0"
+            # Explicitly disable SSL for the HTTP layer to simplify local comms
+            - "plugins.security.ssl.http.enabled=false"
+          ports:
+            - "9200:9200"
+            - "9600:9600"
+          volumes:
+            - ./data:/usr/share/opensearch/data
+          restart: always
 
-# --- 4. DEPLOYMENT ---
-- name: "[Stack] Start OpenSearch Containers"
+        opensearch-dashboards:
+          image: opensearchproject/opensearch-dashboards:latest
+          container_name: opensearch-dashboards
+          ports:
+            - "5601:5601"
+          environment:
+            - 'OPENSEARCH_HOSTS=["http://opensearch:9200"]'
+            # IMPORTANT: Disable SSL verification so they can talk freely
+            - "opensearch.ssl.verificationMode=none"
+            - "opensearch.username=admin"
+            - "opensearch.password={{ vault_opensearch_password }}"
+          depends_on:
+            - opensearch
+          restart: always
+  notify: Restart OpenSearch
+
+- name: "[Stack] Start OpenSearch"
   community.docker.docker_compose_v2:
     project_src: /opt/adsb-grid/opensearch
     state: present
-  become: yes
