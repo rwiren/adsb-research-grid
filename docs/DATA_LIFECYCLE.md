@@ -15,7 +15,7 @@ To balance **forensic granularity** (seeing every packet) with **storage sustain
 
 ## 2. Data Flow Architecture
 
-![Architecture Diagram](../assets/diagrams/Data_LCM_2026-01-15-062727.png)
+![Architecture Diagram](*https://github.com/rwiren/adsb-research-grid/blob/main/docs/assets/diagrams/Data_LCM_2026-01-15-062727.png**)
 
 
 ```mermaid
