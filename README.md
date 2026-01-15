@@ -7,8 +7,6 @@
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](#)
 ![Last Updated](https://img.shields.io/github/last-commit/rwiren/adsb-research-grid?label=Last%20Updated&color=orange)
 
-#[![Audit Report](https://img.shields.io/badge/View-Latest%20Report-blue?style=for-the-badge&logo=github)](https://github.com/rwiren/adsb-research-grid/blob/main/docs/showcase/latest_audit/REPORT.md)
-
 [![Audit Report](https://img.shields.io/badge/View-Latest%20Report-blue?style=for-the-badge&logo=github)](docs/showcase/latest/REPORT.md)
 
 ## 📋 Table of Contents
