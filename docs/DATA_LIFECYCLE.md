@@ -15,8 +15,10 @@ To balance **forensic granularity** (seeing every packet) with **storage sustain
 
 ## 2. Data Flow Architecture
 
-![Architecture Diagram](*https://github.com/rwiren/adsb-research-grid/blob/main/docs/assets/diagrams/Data_LCM_2026-01-15-062727.png**)
+[![Data Lifecycle Architecture Diagram](https://raw.githubusercontent.com/rwiren/adsb-research-grid/main/docs/assets/diagrams/Data_LCM_2026-01-15-062727.png)](https://raw.githubusercontent.com/rwiren/adsb-research-grid/main/docs/assets/diagrams/Data_LCM_2026-01-15-062727.png)
 
+<details>
+<summary><b>🛠️ Click to view/edit Mermaid Source Code</b></summary>
 
 ```mermaid
 graph TD
@@ -31,6 +33,8 @@ graph TD
     style D fill:#ffff99,stroke:#333,stroke-width:2px
     style F fill:#99ff99,stroke:#333,stroke-width:2px
 ```
+
+</details>
 
 
 ## 3. Implementation Details
