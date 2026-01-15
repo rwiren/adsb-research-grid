@@ -15,19 +15,23 @@ To balance **forensic granularity** (seeing every packet) with **storage sustain
 
 ## 2. Data Flow Architecture
 
+![Architecture Diagram](../assets/diagrams/Data_LCM_2026-01-15-062727.png)
+
+
 ```mermaid
 graph TD
     A[Sensor Node] -->|JSON Stream| B(Ingestion Engine)
     B -->|Raw Telemetry| C[(Bucket: adsb_raw)]
     B -->|Hardware Stats| D[(Bucket: sensor_health)]
     
-    C -->|Batch Read| E[ML Engine (XGBoost)]
+    C -->|Batch Read| E[ML Engine XGBoost]
     E -->|Alerts & Anomalies| F[(Bucket: research_events)]
     
     style C fill:#ff9999,stroke:#333,stroke-width:2px
     style D fill:#ffff99,stroke:#333,stroke-width:2px
     style F fill:#99ff99,stroke:#333,stroke-width:2px
 ```
+
 
 ## 3. Implementation Details
 Technology: InfluxDB 2.x
