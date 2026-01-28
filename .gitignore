@@ -39,6 +39,14 @@ analysis/*
 !analysis/daily_reports/
 !analysis/archive/
 !analysis/**/*.md
+!analysis/**/*.py
+!analysis/**/*.ipynb
+!analysis/**/README.md
+!analysis/**/figures/
+!analysis/**/*.png
+!analysis/**/*.csv
+# Exclude very large CSV files (>100MB)
+analysis/**/golden_7day_ml_dataset.csv
 
 # --- 5. Documentation & Showcase ---
 # Ensure our academic proofs are always tracked
