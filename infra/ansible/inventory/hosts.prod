@@ -1,7 +1,7 @@
 # ==============================================================================
 # 📂 File: infra/ansible/inventory/hosts.prod
-# Version: v1.1.0 (Unified Sensor User 'pi')
-# Date: 2026-01-12
+# Version: v1.4.0 (Network Fix - Use Active Compose Network)
+# Date: 2026-01-19
 # Description: Single Source of Truth for ADSB Research Grid Hardware
 # ==============================================================================
 
@@ -16,15 +16,15 @@ localhost ansible_connection=local
 
 # --- 🛰️ SENSOR-NORTH (Reference Node) ---
 # Location: Keimola (Lab Roof) | Hardware: RPi 4 + u-blox F9P + FlightAware Blue
-sensor-north ansible_host=192.168.192.130 gnss_device=/dev/ttyACM0 gnss_driver=ublox gnss_baudrate=230400 sdr_type=flightaware-blue sdr_gain=15.7
+sensor-north ansible_host=192.168.192.130 gnss_device=/dev/ttyACM0 gnss_driver=ublox gnss_baudrate=230400 sdr_type=flightaware-blue sdr_gain=15.7 latitude=60.3194 longitude=24.8307 altitude_m=50
 
 # --- 🧪 SENSOR-WEST (Hardware Verification) ---
 # Location: Jorvas | Hardware: RPi 4 + G-STAR IV + RTL-SDR Silver
-sensor-west ansible_host=192.168.192.110 gnss_device=/dev/ttyUSB0 gnss_driver=nmea gnss_baudrate=4800 sdr_type=rtlsdr-v3 sdr_gain=40.2
+sensor-west ansible_host=192.168.192.110 gnss_device=/dev/ttyUSB0 gnss_driver=nmea gnss_baudrate=4800 sdr_type=rtlsdr sdr_gain=40.2 latitude=60.130897 longitude=24.512884 altitude_m=37
 
 # --- 🔭 SENSOR-EAST (Remote Monitor) ---
 # Location: Sibbo | Hardware: RPi 4 + G-STAR IV + FlightAware Blue
-sensor-east ansible_host=192.168.192.120 gnss_device=/dev/ttyUSB0 gnss_driver=nmea gnss_baudrate=4800 sdr_type=flightaware-blue sdr_gain=20.7
+sensor-east ansible_host=192.168.192.120 gnss_device=/dev/ttyUSB0 gnss_driver=nmea gnss_baudrate=4800 sdr_type=flightaware-blue sdr_gain=14.4 latitude=60.37409 longitude=25.248174 altitude_m=50 opensky_serial=-1408045128
 
 # ==============================================================================
 # 🗼 CORE (The Aggregator)
@@ -43,14 +43,17 @@ tower-core ansible_host=192.168.192.100
 [sensors:vars]
 # ⚠️ All sensors use the legacy 'pi' user
 ansible_user=pi
-# We can set the password here for bootstrapping, or rely on SSH keys (Recommended)
-# ansible_password=SecureSkies2026! 
+# Note: Ensure ~/.ssh/id_ed25519.pub is on all sensors
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 
+# Docker & Network
 install_path=/opt/adsb-grid
-docker_network_name=sensor_net
+# NOTE: Changing to the network ID found via 'docker network ls'
+docker_network_name=adsb-grid_default
+
+# Telemetry Targets
 influx_url=http://192.168.192.100:8086
 mqtt_broker=192.168.192.100
-ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 
 [core:vars]
 # ⚠️ Tower uses the secure 'admin' user
