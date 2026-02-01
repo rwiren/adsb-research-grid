@@ -1,7 +1,40 @@
-
 # 📝 Project Changelog
 
 All notable changes to the **ADS-B Research Grid** project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.8.1] - 2026-02-01: The "Elastic Grid" Milestone
+**Major Feature Release: TDOA Synchronization, Clock Drift Compensation, and Multi-Sensor Triangulation.**
+
+### 🚀 Physics & Synchronization (Scientific Proof)
+* **Elastic Grid Algorithm:** Implemented a linear heartbeat model ($True\_Time = t_{raw} - (Bias + Drift \times dt)$) to compensate for non-coherent SDR clock drift across the grid.
+* **Drift Quantification:** Successfully measured and corrected for individual hardware crystal errors:
+    * **Sensor-West (Jorvas):** **+273 PPM** (Fast clock).
+    * **Sensor-East (Sibbo):** **-51 PPM** (Slow clock).
+* **Golden Packet Harvester:** Added `analyze_tdoa_v23_golden_harvester.py` to identify simultaneous 3-node detections for definitive triangulation proof.
+* **Robust Solver:** Integrated a 4-variable Robust Least Squares optimizer (`v15_elastic_solver.py`) to solve for Lat/Lon offsets and drift rates simultaneously using commercial aircraft as "Signals of Opportunity."
+
+### 📊 Visualization (Scientific Evidence)
+* **Golden Cross Map:** Developed `v28_golden_cross_final.py` for high-precision validation. Features **Purple (N-W)** and **Red (N-E)** dotted TDOA hyperbolas intersecting at GPS ground truth.
+* **Color Standardization:** Anchored the visual schema for all research artifacts:
+    * **🟦 North (Master):** Blue (PPS-disciplined anchor).
+    * **🟩 West (Slave):** Green (+273 PPM).
+    * **🟥 East (Slave):** Red (-51 PPM).
+* **Full-Scale Projections:** Updated mapping logic (`v21_master_final.py`) to visualize full hyperbolic curves across 200km+ baselines without clipping.
+
+### 🔬 Documentation & Wiki
+* **Project Wiki Update:** Completed **Chapter 15 (Hardware Considerations)**, providing a technical comparison between DS3231 (TCXO) stability vs. GNSS PPS clock disciplining.
+* **LaTeX Standards:** Hardened math documentation with double-escaped underscores (`\\_`) to ensure universal MathJax/Markdown rendering for the synchronization formula.
+* **Procedural Guide:** Documented the "Triple-Baseline Calibration" workflow (Harvest -> Solve -> Validate).
+
+### 🐛 Fixes
+* **Clock Skew:** Resolved the "300km Drift Error" where uncompensated SDR crystals caused TDOA lines to miss targets by massive margins within 10 seconds of capture.
+* **Visualization Bounds:** Fixed `v17_elastic_map_fixed.py` where distant aircraft (>100km) were previously cut off by hardcoded axis limits.
+* **Ambiguity Error:** Resolved `ValueError` in Python analysis scripts caused by ambiguous truth values during Pandas Series comparisons in the map generator.
+
+---
 
 
 ## [0.8.0] - 2026-01-15: The "Panopticon" Update
