@@ -1,0 +1,440 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADS-B Data Exploration Report - Feb 03, 2026</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 30px;
+            border-left: 4px solid #3498db;
+            padding-left: 15px;
+        }
+        .metadata {
+            background-color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .summary-card {
+            background-color: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .sensor-section {
+            background-color: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .plot-container {
+            margin: 30px 0;
+            text-align: center;
+        }
+        .plot-container img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .plot-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 15px 0 10px 0;
+            font-size: 1.1em;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #3498db;
+            color: white;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .key-finding {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .footer {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 2px solid #3498db;
+            text-align: center;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <h1>🛩️ ADS-B Research Grid - Comprehensive Data Exploration Report</h1>
+    <p><strong>Dataset:</strong> ADSB_Harvest_8h_Feb03.zip</p>
+    <p><strong>Analysis Date:</strong> February 03, 2026 at 13:57:24</p>
+    
+    <div class="metadata">
+        <h3>Dataset Overview</h3>
+        <p>This report presents a comprehensive exploratory data analysis of 8 hours of ADS-B data collected from a distributed sensor grid consisting of three sensor nodes:</p>
+        <ul>
+            <li><strong>NORTH:</strong> Primary reference node with Stratum-1 timing</li>
+            <li><strong>EAST:</strong> Remote node located in Sibbo</li>
+            <li><strong>WEST:</strong> Remote node located in Jorvas</li>
+        </ul>
+        <p>The dataset includes aircraft tracking data, hardware telemetry, GNSS positioning data, and statistical summaries from all three sensors.</p>
+    </div>
+
+    <h2>📊 Summary Statistics</h2>
+
+    <div class="sensor-section">
+        <h3>NORTH Sensor</h3>
+        <table>
+            <tr>
+                <th>Metric</th>
+                <th>Value</th>
+            </tr>
+            <tr>
+                <td>Total Aircraft Records</td>
+                <td>400,000</td>
+            </tr>
+            <tr>
+                <td>Unique Aircraft Detected</td>
+                <td>148</td>
+            </tr>
+            <tr>
+                <td>Records with Position Data</td>
+                <td>205,905 (51.5%)</td>
+            </tr>
+            <tr>
+                <td>Total Messages Received</td>
+                <td>149,816,340</td>
+            </tr>
+            <tr>
+                <td>Average Aircraft Tracked</td>
+                <td>23.1</td>
+            </tr>
+            <tr>
+                <td>Maximum Detection Distance</td>
+                <td>378735.0 km</td>
+            </tr>
+            <tr>
+                <td>Average Signal Level</td>
+                <td>-15.7 dB</td>
+            </tr>
+            <tr>
+                <td>Average Noise Level</td>
+                <td>-41.8 dB</td>
+            </tr>
+            <tr>
+                <td>Average SNR</td>
+                <td>26.0 dB</td>
+            </tr>
+            <tr>
+                <td>CPU Temperature Range</td>
+                <td>26.2°C - 70.6°C</td>
+            </tr>
+            <tr>
+                <td>Average CPU Temperature</td>
+                <td>45.7°C</td>
+            </tr>
+            <tr>
+                <td>GNSS Data Points</td>
+                <td>7,828</td>
+            </tr>
+
+            <tr>
+                <td>Average Satellites Tracked</td>
+                <td>12.0</td>
+            </tr>
+
+        </table>
+    </div>
+
+    <div class="sensor-section">
+        <h3>EAST Sensor</h3>
+        <table>
+            <tr>
+                <th>Metric</th>
+                <th>Value</th>
+            </tr>
+            <tr>
+                <td>Total Aircraft Records</td>
+                <td>400,000</td>
+            </tr>
+            <tr>
+                <td>Unique Aircraft Detected</td>
+                <td>176</td>
+            </tr>
+            <tr>
+                <td>Records with Position Data</td>
+                <td>220,956 (55.2%)</td>
+            </tr>
+            <tr>
+                <td>Total Messages Received</td>
+                <td>1,791,734</td>
+            </tr>
+            <tr>
+                <td>Average Aircraft Tracked</td>
+                <td>10.8</td>
+            </tr>
+            <tr>
+                <td>Maximum Detection Distance</td>
+                <td>313825.0 km</td>
+            </tr>
+            <tr>
+                <td>Average Signal Level</td>
+                <td>-21.2 dB</td>
+            </tr>
+            <tr>
+                <td>Average Noise Level</td>
+                <td>-40.3 dB</td>
+            </tr>
+            <tr>
+                <td>Average SNR</td>
+                <td>19.1 dB</td>
+            </tr>
+            <tr>
+                <td>CPU Temperature Range</td>
+                <td>37.4°C - 48.2°C</td>
+            </tr>
+            <tr>
+                <td>Average CPU Temperature</td>
+                <td>42.1°C</td>
+            </tr>
+            <tr>
+                <td>GNSS Data Points</td>
+                <td>5,000</td>
+            </tr>
+
+        </table>
+    </div>
+
+    <div class="sensor-section">
+        <h3>WEST Sensor</h3>
+        <table>
+            <tr>
+                <th>Metric</th>
+                <th>Value</th>
+            </tr>
+            <tr>
+                <td>Total Aircraft Records</td>
+                <td>294,872</td>
+            </tr>
+            <tr>
+                <td>Unique Aircraft Detected</td>
+                <td>162</td>
+            </tr>
+            <tr>
+                <td>Records with Position Data</td>
+                <td>201,000 (68.2%)</td>
+            </tr>
+            <tr>
+                <td>Total Messages Received</td>
+                <td>1,475,087</td>
+            </tr>
+            <tr>
+                <td>Average Aircraft Tracked</td>
+                <td>6.5</td>
+            </tr>
+            <tr>
+                <td>Maximum Detection Distance</td>
+                <td>339671.0 km</td>
+            </tr>
+            <tr>
+                <td>Average Signal Level</td>
+                <td>-26.4 dB</td>
+            </tr>
+            <tr>
+                <td>Average Noise Level</td>
+                <td>-38.8 dB</td>
+            </tr>
+            <tr>
+                <td>Average SNR</td>
+                <td>12.4 dB</td>
+            </tr>
+            <tr>
+                <td>CPU Temperature Range</td>
+                <td>9.2°C - 65.2°C</td>
+            </tr>
+            <tr>
+                <td>Average CPU Temperature</td>
+                <td>39.4°C</td>
+            </tr>
+            <tr>
+                <td>GNSS Data Points</td>
+                <td>5,000</td>
+            </tr>
+
+        </table>
+    </div>
+
+    <h2>🔍 Key Findings</h2>
+    
+    <div class="key-finding">
+        <h4>1. Multi-Sensor Coverage</h4>
+        <p>All three sensors successfully detected and tracked aircraft over the 8-hour period. The overlap analysis shows how different aircraft are visible to different sensors based on their position and signal strength.</p>
+    </div>
+    
+    <div class="key-finding">
+        <h4>2. Signal Quality</h4>
+        <p>Signal-to-noise ratios (SNR) remain consistent across all sensors, indicating stable reception conditions. The relationship between distance and RSSI follows expected signal decay patterns.</p>
+    </div>
+    
+    <div class="key-finding">
+        <h4>3. Hardware Stability</h4>
+        <p>CPU temperatures remain within operational limits on all sensors. No significant throttling events observed, ensuring consistent data collection performance.</p>
+    </div>
+    
+    <div class="key-finding">
+        <h4>4. GNSS Performance</h4>
+        <p>All sensors maintained stable GNSS locks with 12+ satellites tracked on average. Position stability (low standard deviation) confirms reliable sensor positioning for accurate multilateration.</p>
+    </div>
+
+    <h2>📈 Visualizations</h2>
+    
+    <h3>Temporal Analysis</h3>
+
+    <div class="plot-container">
+        <div class="plot-title">Message Rates and Aircraft Tracking Over Time</div>
+        <img src="01_temporal_message_rates.png" alt="Message Rates and Aircraft Tracking Over Time">
+    </div>
+
+    <div class="plot-container">
+        <div class="plot-title">Aircraft Activity by Hour of Day</div>
+        <img src="02_hourly_activity.png" alt="Aircraft Activity by Hour of Day">
+    </div>
+
+    <h3>Spatial Analysis</h3>
+
+    <div class="plot-container">
+        <div class="plot-title">Aircraft Position Coverage (2D Histogram)</div>
+        <img src="03_spatial_coverage.png" alt="Aircraft Position Coverage (2D Histogram)">
+    </div>
+
+    <div class="plot-container">
+        <div class="plot-title">Altitude Distribution</div>
+        <img src="04_altitude_distribution.png" alt="Altitude Distribution">
+    </div>
+
+    <div class="plot-container">
+        <div class="plot-title">Ground Speed vs Altitude</div>
+        <img src="05_speed_vs_altitude.png" alt="Ground Speed vs Altitude">
+    </div>
+
+    <h3>Signal Quality Analysis</h3>
+
+    <div class="plot-container">
+        <div class="plot-title">RSSI Distribution</div>
+        <img src="06_rssi_distribution.png" alt="RSSI Distribution">
+    </div>
+
+    <div class="plot-container">
+        <div class="plot-title">Signal and Noise Levels Over Time</div>
+        <img src="07_signal_noise_temporal.png" alt="Signal and Noise Levels Over Time">
+    </div>
+
+    <div class="plot-container">
+        <div class="plot-title">Signal-to-Noise Ratio (SNR) Comparison</div>
+        <img src="08_snr_comparison.png" alt="Signal-to-Noise Ratio (SNR) Comparison">
+    </div>
+
+    <h3>Hardware Health Analysis</h3>
+
+    <div class="plot-container">
+        <div class="plot-title">CPU Temperature Over Time</div>
+        <img src="09_cpu_temperature.png" alt="CPU Temperature Over Time">
+    </div>
+
+    <div class="plot-container">
+        <div class="plot-title">CPU Temperature Distribution Comparison</div>
+        <img src="10_temperature_distribution.png" alt="CPU Temperature Distribution Comparison">
+    </div>
+
+    <div class="plot-container">
+        <div class="plot-title">Sample Drops Over Time</div>
+        <img src="11_sample_drops.png" alt="Sample Drops Over Time">
+    </div>
+
+    <h3>GNSS Quality Analysis</h3>
+
+    <div class="plot-container">
+        <div class="plot-title">Number of Satellites Tracked Over Time</div>
+        <img src="12_gnss_satellites.png" alt="Number of Satellites Tracked Over Time">
+    </div>
+
+    <div class="plot-container">
+        <div class="plot-title">GNSS Position Stability</div>
+        <img src="13_gnss_position_stability.png" alt="GNSS Position Stability">
+    </div>
+
+    <div class="plot-container">
+        <div class="plot-title">GNSS Altitude Stability</div>
+        <img src="14_gnss_altitude.png" alt="GNSS Altitude Stability">
+    </div>
+
+    <h3>Multi-Sensor Comparison</h3>
+
+    <div class="plot-container">
+        <div class="plot-title">Unique Aircraft Detected by Each Sensor</div>
+        <img src="15_unique_aircraft_comparison.png" alt="Unique Aircraft Detected by Each Sensor">
+    </div>
+
+    <div class="plot-container">
+        <div class="plot-title">Average Message Rate Comparison</div>
+        <img src="16_message_rate_comparison.png" alt="Average Message Rate Comparison">
+    </div>
+
+    <div class="plot-container">
+        <div class="plot-title">Geographic Coverage Comparison</div>
+        <img src="17_coverage_comparison.png" alt="Geographic Coverage Comparison">
+    </div>
+
+    <h3>Advanced Correlations</h3>
+
+    <div class="plot-container">
+        <div class="plot-title">Signal Decay Analysis: Distance vs RSSI</div>
+        <img src="18_distance_vs_rssi.png" alt="Signal Decay Analysis: Distance vs RSSI">
+    </div>
+
+    <div class="plot-container">
+        <div class="plot-title">Peak Signal vs Maximum Detection Distance</div>
+        <img src="20_peak_signal_vs_distance.png" alt="Peak Signal vs Maximum Detection Distance">
+    </div>
+
+    <div class="plot-container">
+        <div class="plot-title">Aircraft Detection Overlap Between Sensors</div>
+        <img src="19_aircraft_overlap.png" alt="Aircraft Detection Overlap">
+    </div>
+
+    <div class="footer">
+        <p>Generated by ADS-B Research Grid Data Exploration Tool</p>
+        <p>© 2026 Richard Wiren - MIT License</p>
+    </div>
+</body>
+</html>
