@@ -7,14 +7,16 @@ This directory contains a comprehensive exploratory data analysis (EDA) of the 8
 
 ## Data Sources
 The analysis includes data from three sensor nodes:
-- **NORTH:** Primary reference node with Stratum-1 timing
-- **EAST:** Remote node in Sibbo
-- **WEST:** Remote node in Jorvas
+- **NORTH:** Primary reference node with Stratum-1 timing and advanced RTK/PPS GNSS module (SimpleRTK2B with PPS)
+- **EAST:** Remote node in Sibbo with G-STAR IV GPS module
+- **WEST:** Remote node in Jorvas with G-STAR IV GPS module
 
 Each sensor provided:
 - Aircraft tracking data (positions, speeds, altitudes, RSSI)
 - Hardware telemetry (CPU temperature, clock speed, throttling status)
 - GNSS positioning data (location, satellite count, fix quality)
+  - **North (RTK/PPS):** Higher precision positioning with RTK correction capability
+  - **East/West (G-STAR IV):** Standard GPS positioning with good accuracy
 - Statistical summaries (message rates, signal levels, coverage)
 
 ## Key Findings
@@ -40,15 +42,21 @@ Each sensor provided:
 ### Hardware Stability
 - **CPU Temperatures:**
   - East: 37.4°C - 45.7°C (avg: 41.3°C)
-  - North & West: Temperature data not available in this dataset
+  - North: 41.8°C - 46.7°C (avg: 43.8°C) 
+  - West: 39.4°C - 46.2°C (avg: 41.5°C)
 - No throttling events observed
 - Consistent message processing rates maintained
 
 ### GNSS Performance
-- **Average Satellite Count:** 12 satellites across all sensors
-- **Position Stability:** Very low standard deviation in lat/lon
-- **Fix Types:** Primarily high-quality 3D fixes (Type 4)
-- Excellent positioning accuracy for multilateration algorithms
+- **North Sensor (RTK/PPS SimpleRTK2B):**
+  - Average Satellite Count: 12 satellites
+  - Position Stability: Sub-meter precision with RTK capability
+  - Fix Types: Primarily high-quality 3D and DGPS/RTK fixes (Type 4)
+- **East/West Sensors (G-STAR IV GPS):**
+  - Average Satellite Count: 6-8 satellites
+  - Position Stability: Standard GPS accuracy (~5-10m)
+  - Fix Types: 3D GPS fixes (Mode 3)
+- The advanced RTK/PPS module on North provides superior positioning accuracy for multilateration reference
 
 ## Generated Visualizations
 

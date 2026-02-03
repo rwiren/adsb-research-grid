@@ -51,26 +51,31 @@ def load_data():
         file = DATA_DIR / f"{sensor}_hardware.csv"
         print(f"Loading {file.name}...")
         try:
-            # Try reading with error handling for commas in uptime field
-            df = pd.read_csv(file, on_bad_lines='skip')
+            # Read only first 4 columns to avoid issues with commas in Uptime field
+            # The Uptime field contains strings like "up 14 hours, 37 minutes" which causes CSV parsing issues
+            df = pd.read_csv(file, usecols=[0, 1, 2, 3], names=['Timestamp', 'Temp_C', 'Throttled_Hex', 'Clock_Arm_Hz'], skiprows=1)
             # Remove duplicate header rows if present
             df = df[df['Timestamp'] != 'Timestamp']
-            df['Timestamp'] = pd.to_datetime(df['Timestamp'])
+            df['Timestamp'] = pd.to_datetime(df['Timestamp'], errors='coerce')
             df['Temp_C'] = pd.to_numeric(df['Temp_C'], errors='coerce')
+            # Remove rows with invalid data
+            df = df.dropna(subset=['Timestamp', 'Temp_C'])
             data[f'{sensor}_hardware'] = df
             print(f"  - {len(df):,} records loaded")
         except Exception as e:
             print(f"  ⚠ Error loading {file.name}: {e}")
             # Create empty dataframe with expected columns
-            data[f'{sensor}_hardware'] = pd.DataFrame(columns=['Timestamp', 'Temp_C', 'Throttled_Hex', 'Clock_Arm_Hz', 'Uptime'])
+            data[f'{sensor}_hardware'] = pd.DataFrame(columns=['Timestamp', 'Temp_C', 'Throttled_Hex', 'Clock_Arm_Hz'])
     
     # Load GNSS data
+    # Note: Sensor-north uses advanced RTK/PPS GNSS module (SimpleRTK2B with PPS)
+    #       Sensor-east and sensor-west use simpler GPS modules (G-STAR IV)
     for sensor in sensors:
         file = DATA_DIR / f"{sensor}_gnss.csv"
         print(f"Loading {file.name}...")
         df = pd.read_csv(file)
-        # Convert numeric columns
-        for col in ['lat', 'lon', 'hMSL', 'fixType', 'numSV']:
+        # Convert numeric columns (different columns for different GNSS modules)
+        for col in ['lat', 'lon', 'hMSL', 'fixType', 'numSV', 'alt_m', 'sats_used', 'hdop', 'mode']:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
         data[f'{sensor}_gnss'] = df
@@ -127,18 +132,37 @@ def print_summary_statistics(data):
         
         # Hardware data summary
         hardware = data[f'{sensor}_hardware']
-        print(f"Hardware Data:")
-        print(f"  - Temperature range: {hardware['Temp_C'].min():.1f}°C to {hardware['Temp_C'].max():.1f}°C")
-        print(f"  - Avg temperature: {hardware['Temp_C'].mean():.1f}°C")
+        if len(hardware) > 0 and hardware['Temp_C'].notna().sum() > 0:
+            print(f"Hardware Data:")
+            print(f"  - Temperature range: {hardware['Temp_C'].min():.1f}°C to {hardware['Temp_C'].max():.1f}°C")
+            print(f"  - Avg temperature: {hardware['Temp_C'].mean():.1f}°C")
+        else:
+            print(f"Hardware Data:")
+            print(f"  - Temperature data not available")
         
         # GNSS data summary
+        # Note: sensor-north uses RTK/PPS module (SimpleRTK2B), east/west use simpler GPS (G-STAR IV)
         gnss = data[f'{sensor}_gnss']
         print(f"GNSS Data:")
         print(f"  - Total records: {len(gnss):,}")
-        if 'fixType' in gnss.columns:
-            print(f"  - Fix types: {gnss['fixType'].value_counts().to_dict()}")
-        if 'numSV' in gnss.columns:
-            print(f"  - Avg satellites: {gnss['numSV'].mean():.1f}")
+        if sensor == 'north':
+            # RTK/PPS module has different fields
+            print(f"  - GNSS Module: RTK/PPS (SimpleRTK2B with Stratum-1 timing)")
+            if 'fixType' in gnss.columns:
+                fix_counts = gnss['fixType'].value_counts().to_dict()
+                print(f"  - Fix types: {fix_counts} (2=2D, 3=3D, 4=DGPS/RTK)")
+            if 'numSV' in gnss.columns:
+                print(f"  - Avg satellites: {gnss['numSV'].mean():.1f}")
+        else:
+            # Simpler GPS modules
+            print(f"  - GNSS Module: G-STAR IV GPS")
+            if 'mode' in gnss.columns:
+                mode_counts = gnss['mode'].value_counts().to_dict()
+                print(f"  - Mode: {mode_counts} (2=2D, 3=3D)")
+            if 'sats_used' in gnss.columns:
+                print(f"  - Avg satellites: {gnss['sats_used'].mean():.1f}")
+            if 'hdop' in gnss.columns:
+                print(f"  - Avg HDOP: {gnss['hdop'].mean():.2f}")
 
 def plot_temporal_analysis(data):
     """Create temporal analysis plots"""
@@ -474,26 +498,37 @@ def plot_gnss_analysis(data):
     colors = {'north': 'blue', 'east': 'green', 'west': 'red'}
     
     # Plot 1: Number of satellites over time
+    # Note: North uses RTK/PPS (numSV), East/West use simpler GPS (sats_used)
     fig, axes = plt.subplots(3, 1, figsize=(15, 12))
-    fig.suptitle('Number of Satellites Tracked Over Time', fontsize=16, fontweight='bold')
+    fig.suptitle('Number of Satellites Tracked Over Time\n(North: RTK/PPS Module | East/West: G-STAR IV GPS)', 
+                fontsize=16, fontweight='bold')
     
     for idx, sensor in enumerate(sensors):
         gnss = data[f'{sensor}_gnss']
-        if 'numSV' not in gnss.columns:
-            continue
-        
         ax = axes[idx]
-        # Create time index from row number (approximation)
         time_approx = np.arange(len(gnss))
         
-        ax.plot(time_approx, gnss['numSV'], 
+        # Different column names for different GNSS modules
+        if sensor == 'north' and 'numSV' in gnss.columns:
+            sat_col = 'numSV'
+            module_type = 'RTK/PPS (SimpleRTK2B)'
+        elif 'sats_used' in gnss.columns:
+            sat_col = 'sats_used'
+            module_type = 'G-STAR IV GPS'
+        else:
+            ax.text(0.5, 0.5, f'{sensor.upper()}: No satellite data available',
+                   ha='center', va='center', fontsize=14, transform=ax.transAxes)
+            ax.set_title(f'{sensor.upper()} Sensor', fontsize=14)
+            continue
+        
+        ax.plot(time_approx, gnss[sat_col], 
                 color=colors[sensor], linewidth=1, alpha=0.7)
-        ax.axhline(gnss['numSV'].mean(), color='red', linestyle='--', 
-                  linewidth=2, label=f'Mean: {gnss["numSV"].mean():.1f} satellites')
+        ax.axhline(gnss[sat_col].mean(), color='red', linestyle='--', 
+                  linewidth=2, label=f'Mean: {gnss[sat_col].mean():.1f} satellites')
         
         ax.set_ylabel('Number of Satellites', fontsize=12)
         ax.set_xlabel('Sample Index', fontsize=12)
-        ax.set_title(f'{sensor.upper()} Sensor', fontsize=14)
+        ax.set_title(f'{sensor.upper()} Sensor ({module_type})', fontsize=14)
         ax.legend()
         ax.grid(True, alpha=0.3)
     
@@ -530,24 +565,37 @@ def plot_gnss_analysis(data):
     print(f"✓ Saved: 13_gnss_position_stability.png")
     plt.close()
     
-    # Plot 3: GNSS altitude (hMSL) stability
+    # Plot 3: GNSS altitude stability
+    # North uses RTK/PPS with hMSL, East/West use simpler GPS with alt_m
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
-    fig.suptitle('GNSS Altitude (Height above Mean Sea Level)', fontsize=16, fontweight='bold')
+    fig.suptitle('GNSS Altitude Stability\n(North: RTK/PPS High-Precision | East/West: G-STAR IV GPS)', 
+                fontsize=16, fontweight='bold')
     
     for idx, sensor in enumerate(sensors):
         gnss = data[f'{sensor}_gnss']
-        if 'hMSL' not in gnss.columns:
-            continue
-        
         ax = axes[idx]
         time_approx = np.arange(len(gnss))
-        ax.plot(time_approx, gnss['hMSL'], color=colors[sensor], linewidth=1, alpha=0.7)
-        ax.axhline(gnss['hMSL'].mean(), color='red', linestyle='--', 
-                  linewidth=2, label=f'Mean: {gnss["hMSL"].mean():.1f} m')
         
-        ax.set_ylabel('Altitude (m)', fontsize=12)
+        # Different column names for different GNSS modules
+        if sensor == 'north' and 'hMSL' in gnss.columns:
+            alt_col = 'hMSL'
+            module_type = 'RTK/PPS'
+        elif 'alt_m' in gnss.columns:
+            alt_col = 'alt_m'
+            module_type = 'G-STAR IV'
+        else:
+            ax.text(0.5, 0.5, f'{sensor.upper()}: No altitude data',
+                   ha='center', va='center', fontsize=14, transform=ax.transAxes)
+            ax.set_title(f'{sensor.upper()} Sensor', fontsize=14)
+            continue
+        
+        ax.plot(time_approx, gnss[alt_col], color=colors[sensor], linewidth=1, alpha=0.7)
+        ax.axhline(gnss[alt_col].mean(), color='red', linestyle='--', 
+                  linewidth=2, label=f'Mean: {gnss[alt_col].mean():.1f} m')
+        
+        ax.set_ylabel('Altitude (m above MSL)', fontsize=12)
         ax.set_xlabel('Sample Index', fontsize=12)
-        ax.set_title(f'{sensor.upper()} (σ={gnss["hMSL"].std():.2f} m)', fontsize=14)
+        ax.set_title(f'{sensor.upper()} ({module_type}, σ={gnss[alt_col].std():.2f} m)', fontsize=14)
         ax.legend()
         ax.grid(True, alpha=0.3)
     
