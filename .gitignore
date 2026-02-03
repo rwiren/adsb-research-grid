@@ -38,6 +38,7 @@ storage_history.csv
 analysis/*
 !analysis/daily_reports/
 !analysis/archive/
+!analysis/feb03_exploration/
 !analysis/**/*.md
 
 # --- 5. Documentation & Showcase ---
