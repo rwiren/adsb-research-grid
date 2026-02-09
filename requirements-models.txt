@@ -1,0 +1,13 @@
+# Additional dependencies for deep learning models (LNN, xLSTM)
+# Install with: pip install -r requirements-models.txt
+
+# Core Deep Learning
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Neural ODE for Liquid Neural Networks
+torchdiffeq>=0.2.3
+
+# Additional utilities
+tensorboard>=2.14.0
+tqdm>=4.65.0
