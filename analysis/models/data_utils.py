@@ -71,7 +71,7 @@ class ADSBDataset(Dataset):
         self.target_features = target_features if target_features else features
         
         # Handle missing values
-        self.df[self.features] = self.df[self.features].fillna(method='ffill').fillna(0)
+        self.df[self.features] = self.df[self.features].ffill().fillna(0)
         
         # Normalization
         if normalize:
@@ -182,7 +182,7 @@ class AnomalyDataset(Dataset):
         self.features = features
         
         # Handle missing values
-        self.df[self.features] = self.df[self.features].fillna(method='ffill').fillna(0)
+        self.df[self.features] = self.df[self.features].ffill().fillna(0)
         
         # Determine anomalies (if not already labeled)
         if 'is_anomaly' not in self.df.columns and anomaly_threshold is not None:
