@@ -38,7 +38,7 @@ The detection engine utilizes a comparative ensemble of 18 distinct methods, lay
 ### Tier 0: The Physical Truth (Hardware & Signal Layer)
 *New layer establishing "Ground Truth" independent of decoded data.*
 
-* **1. Elastic Grid TDOA (Physics):** "The Anchor." Uses nanosecond-level Time Difference of Arrival (TDOA) to calculate the *physical* location of a transmitter, independent of the GPS coordinates reported in the data packet. (⚠️ *Integration Phase*)
+* **1. Elastic Grid TDOA (Physics):** "The Anchor." Uses nanosecond-level Time Difference of Arrival (TDOA) to calculate the *physical* location of a transmitter, independent of the GPS coordinates reported in the data packet. (✅ **Verified in Science Run**)
 * **2. RF Fingerprinting (CNN/ResNet):** "The Hardware ID." A Deep Learning model (running on Hailo-8) that analyzes Raw I/Q signal data to identify the unique electronic signature of the transmitter (e.g., distinguishing a HackRF One from a Garmin transponder). (⚠️ *Planned*)
 
 ### Tier 1: Edge Baselines (Reflex Layer)
@@ -71,7 +71,7 @@ The detection engine utilizes a comparative ensemble of 18 distinct methods, lay
 * **15. Physics-Informed Neural Networks (PINN):** Embedding Equations of Motion (Navier-Stokes/Kinematics) directly into the loss function to penalize physically impossible maneuvers. (✅ **Implemented**)
 * **16. Kolmogorov-Arnold Networks (KAN):** Symbolic regression for real-time estimation of aerodynamic coefficients (Lift/Drag). Flags targets flying with impossible parameters. (✅ **Implemented**)
 * **17. RL-Enhanced GAN (RL-GAN):** "The Smart Red Team." Uses Reinforcement Learning to guide the Generator (GAN), rewarding it for successfully bypassing specific Tier 1-3 defenses. (✅ **Implemented as GAN**)
-* **18. DeepSeek-R1 (Reasoning LLM):** "The Investigator." A Chain-of-Thought Language Model that analyzes logs when other models disagree, providing a human-readable explanation of the anomaly. (⚠️ *Planned*)
+* **18. Ollama Reasoning Swarm (DeepSeek-R1 / Llama 3 / Phi-3):** "The Investigator." Validated ensemble of LLMs analyzing MQTT-based incident logs. Benchmarks confirm efficacy in parsing complex, multi-variable anomaly scenarios (SecuringSkies Benchmarks). (✅ **Benchmarked & Implemented**)
 
 ---
 
