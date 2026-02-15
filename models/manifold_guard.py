@@ -19,14 +19,36 @@ from typing import Dict, List, Optional, Tuple, Any
 import warnings
 
 from .sinkhorn_knopp import SinkhornKnoppProjection
-from .deepseek_mchc import DeepSeekMCHC
-from .lnn import LiquidNeuralNetwork
-from .xlstm import xLSTM
-from .mamba_ssm import MambaSSM, MambaSSMNumPy
-from .kan import KAN, KANNumPy
-from .pinn import PINN, PINNNumPy
-from .gan import SpoofingGAN, SpoofingGANNumPy
-from .marl import MARLCoordination, MARLCoordinationNumPy
+
+# Try to import PyTorch-based models
+try:
+    from .deepseek_mchc import DeepSeekMCHC
+    from .lnn import LiquidNeuralNetwork
+    from .xlstm import xLSTM
+    from .mamba_ssm import MambaSSM, MambaSSMNumPy
+    from .kan import KAN, KANNumPy
+    from .pinn import PINN, PINNNumPy
+    from .gan import SpoofingGAN, SpoofingGANNumPy
+    from .marl import MARLCoordination, MARLCoordinationNumPy
+    PYTORCH_MODELS_AVAILABLE = True
+except ImportError as e:
+    # PyTorch not available - use NumPy fallbacks
+    DeepSeekMCHC = None
+    LiquidNeuralNetwork = None
+    xLSTM = None
+    MambaSSM = None
+    KAN = None
+    PINN = None
+    SpoofingGAN = None
+    MARLCoordination = None
+    from .mamba_ssm import MambaSSMNumPy
+    from .kan import KANNumPy
+    from .pinn import PINNNumPy
+    from .gan import SpoofingGANNumPy
+    from .marl import MARLCoordinationNumPy
+    PYTORCH_MODELS_AVAILABLE = False
+    warnings.warn(f"PyTorch models not available: {e}. Using NumPy fallbacks where possible.")
+
 from .tree_models import TreeBasedEnsemble
 
 try:
