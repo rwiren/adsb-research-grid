@@ -29,3 +29,6 @@ seaborn==0.13.2
 six==1.17.0
 threadpoolctl==3.6.0
 tzdata==2025.3
+# Deep Learning Dependencies for Manifold Defense System
+torch>=2.0.0
+torch-geometric>=2.3.0
