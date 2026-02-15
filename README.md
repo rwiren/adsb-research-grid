@@ -11,7 +11,7 @@
 
 ## 📋 Table of Contents
 1. [Research Goal](#-research-goal)
-2. [The Model Zoo (12 Architectures)](#-the-model-zoo-12-architecture-ensemble)
+2. [The Model Zoo (12 Architectures)](#-the-model-zoo-18-architecture-ensemble)
 3. [Architecture (Hardware Grid)](#-architecture-distributed-sensor-grid)
 4. [Research Workflow (Usage)](#-research-workflow-usage)
 5. [Repository Structure](#-repository-structure)
