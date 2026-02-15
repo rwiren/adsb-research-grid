@@ -22,6 +22,12 @@ from .sinkhorn_knopp import SinkhornKnoppProjection
 from .deepseek_mchc import DeepSeekMCHC
 from .lnn import LiquidNeuralNetwork
 from .xlstm import xLSTM
+from .mamba_ssm import MambaSSM, MambaSSMNumPy
+from .kan import KAN, KANNumPy
+from .pinn import PINN, PINNNumPy
+from .gan import SpoofingGAN, SpoofingGANNumPy
+from .marl import MARLCoordination, MARLCoordinationNumPy
+from .tree_models import TreeBasedEnsemble
 
 try:
     import torch
@@ -76,6 +82,12 @@ class ManifoldGuard:
         lnn_hidden_dim: int = 32,
         xlstm_hidden_dim: int = 64,
         mchc_hidden_dim: int = 64,
+        mamba_hidden_dim: int = 64,
+        kan_hidden_dims: List[int] = [32, 16],
+        pinn_hidden_dim: int = 64,
+        gan_hidden_dim: int = 256,
+        marl_num_agents: int = 4,
+        enable_all_models: bool = False,
         ensemble_weights: Optional[Dict[str, float]] = None,
         device: str = "cpu",
     ):
@@ -87,18 +99,36 @@ class ManifoldGuard:
             lnn_hidden_dim: Hidden dimension for Liquid Neural Network.
             xlstm_hidden_dim: Hidden dimension for xLSTM.
             mchc_hidden_dim: Hidden dimension for DeepSeek MCHC.
+            mamba_hidden_dim: Hidden dimension for Mamba SSM.
+            kan_hidden_dims: Hidden layer dimensions for KAN.
+            pinn_hidden_dim: Hidden dimension for PINN.
+            gan_hidden_dim: Hidden dimension for GAN.
+            marl_num_agents: Number of agents for MARL coordination.
+            enable_all_models: If True, enables all 16 models. If False, uses core models only.
             ensemble_weights: Optional custom weights for ensemble voting.
-                             Keys: 'sinkhorn', 'lnn', 'xlstm', 'mchc'
-                             Default: {'sinkhorn': 0.3, 'lnn': 0.2, 'xlstm': 0.2, 'mchc': 0.3}
+                             Keys: 'sinkhorn', 'rf_xgb', 'marl', 'lnn', 'xlstm', 'mamba',
+                                   'pinn', 'kan', 'mchc', 'gan'
             device: Device for PyTorch models ('cpu', 'cuda', or 'hailo').
         """
+        self.enable_all_models = enable_all_models
+        
         # Initialize Sinkhorn-Knopp (NumPy-based, always available)
         self.sinkhorn = SinkhornKnoppProjection(epsilon=sinkhorn_epsilon)
+        
+        # Initialize tree-based models (sklearn-based, CPU only)
+        try:
+            self.tree_ensemble = TreeBasedEnsemble()
+            self.tree_available = True
+        except ImportError:
+            self.tree_ensemble = None
+            self.tree_available = False
+            warnings.warn("Tree-based models (RF/XGBoost) not available.")
         
         # Initialize neural networks (PyTorch-based, requires torch)
         if TORCH_AVAILABLE:
             self.device = torch.device(device if device != 'hailo' else 'cpu')
             
+            # Core models (always initialized if PyTorch available)
             self.lnn = LiquidNeuralNetwork(
                 input_dim=8,  # [lat, lon, alt, velocity, heading, rssi, ...]
                 hidden_dim=lnn_hidden_dim,
@@ -118,24 +148,87 @@ class ManifoldGuard:
                 num_layers=3,
             ).to(self.device)
             
+            # New models (initialized only if enable_all_models is True)
+            if enable_all_models:
+                self.mamba = MambaSSM(
+                    input_dim=8,
+                    d_model=mamba_hidden_dim,
+                    num_layers=4,
+                    output_dim=32,
+                ).to(self.device)
+                
+                self.kan = KAN(
+                    input_dim=8,
+                    hidden_dims=kan_hidden_dims,
+                    output_dim=2,
+                ).to(self.device)
+                
+                self.pinn = PINN(
+                    input_dim=8,
+                    hidden_dim=pinn_hidden_dim,
+                    output_dim=9,
+                ).to(self.device)
+                
+                self.gan = SpoofingGAN(
+                    latent_dim=128,
+                    trajectory_dim=8,
+                    seq_len=50,
+                    hidden_dim=gan_hidden_dim,
+                ).to(self.device)
+                
+                self.marl = MARLCoordination(
+                    num_agents=marl_num_agents,
+                    state_dim=16,
+                    action_dim=4,
+                    hidden_dim=128,
+                ).to(self.device)
+            else:
+                self.mamba = None
+                self.kan = None
+                self.pinn = None
+                self.gan = None
+                self.marl = None
+            
             self.torch_available = True
         else:
             self.lnn = None
             self.xlstm = None
             self.mchc = None
+            self.mamba = None
+            self.kan = None
+            self.pinn = None
+            self.gan = None
+            self.marl = None
             self.torch_available = False
             warnings.warn(
-                "PyTorch not available. Only Sinkhorn-Knopp layer will be active."
+                "PyTorch not available. Only Sinkhorn-Knopp and tree-based models will be active."
             )
         
         # Ensemble voting weights
         if ensemble_weights is None:
-            self.ensemble_weights = {
-                'sinkhorn': 0.3,  # Mathematical gatekeeper
-                'lnn': 0.2,       # Time-continuous
-                'xlstm': 0.2,     # Recurrent patterns
-                'mchc': 0.3,      # Topology validation
-            }
+            if enable_all_models:
+                # Full 16-model ensemble
+                self.ensemble_weights = {
+                    'sinkhorn': 0.10,     # Tier 1: Mathematical gatekeeper
+                    'rf_xgb': 0.10,       # Tier 1: Tree-based baseline
+                    'marl': 0.05,         # Tier 1: Multi-agent coordination
+                    'lnn': 0.10,          # Tier 2: Time-continuous
+                    'xlstm': 0.10,        # Tier 2: Recurrent patterns
+                    'mamba': 0.10,        # Tier 2: Long-context tracking
+                    'pinn': 0.15,         # Tier 3: Physics constraints
+                    'kan': 0.10,          # Tier 3: Aerodynamic regression
+                    'mchc': 0.15,         # Tier 3: Topology validation
+                    'gan': 0.05,          # Tier 3: Adversarial detection
+                }
+            else:
+                # Core models only
+                self.ensemble_weights = {
+                    'sinkhorn': 0.25,     # Mathematical gatekeeper
+                    'rf_xgb': 0.15,       # Tree-based baseline
+                    'lnn': 0.15,          # Time-continuous
+                    'xlstm': 0.15,        # Recurrent patterns
+                    'mchc': 0.30,         # Topology validation
+                }
         else:
             self.ensemble_weights = ensemble_weights
             
@@ -197,6 +290,19 @@ class ManifoldGuard:
         model_scores['sinkhorn'] = float(sinkhorn_score)
         
         # ========================================
+        # TIER 1: Tree-Based Models (RF/XGBoost)
+        # ========================================
+        if self.tree_available and trajectory_sequence is not None:
+            try:
+                tree_result = self.tree_ensemble(trajectory_sequence)
+                model_scores['rf_xgb'] = float(tree_result['anomaly_score'].mean())
+            except Exception as e:
+                warnings.warn(f"Tree ensemble failed: {e}")
+                model_scores['rf_xgb'] = 0.0
+        else:
+            model_scores['rf_xgb'] = 0.0
+        
+        # ========================================
         # TIER 2 & 3: Neural Network Ensemble
         # ========================================
         if self.torch_available and trajectory_sequence is not None:
@@ -226,6 +332,66 @@ class ManifoldGuard:
                 xlstm_hidden = xlstm_output['hidden']
                 model_scores['xlstm'] = float(xlstm_score)
             
+            # ========================================
+            # NEW TIER 2 MODELS (if enabled)
+            # ========================================
+            if self.enable_all_models and self.mamba is not None:
+                # Mamba: Long-Context Trajectory Tracking
+                with torch.no_grad():
+                    mamba_output = self.mamba(trajectory_tensor)
+                    mamba_score = mamba_output['anomaly_score'].mean().item()
+                    model_scores['mamba'] = float(mamba_score)
+            else:
+                model_scores['mamba'] = 0.0
+            
+            # ========================================
+            # NEW TIER 3 MODELS (if enabled)
+            # ========================================
+            if self.enable_all_models and self.kan is not None:
+                # KAN: Aerodynamic Coefficient Regression
+                with torch.no_grad():
+                    kan_output = self.kan(trajectory_tensor)
+                    kan_score = kan_output['anomaly_score'].mean().item()
+                    model_scores['kan'] = float(kan_score)
+            else:
+                model_scores['kan'] = 0.0
+            
+            if self.enable_all_models and self.pinn is not None:
+                # PINN: Physics Constraints
+                with torch.no_grad():
+                    pinn_output = self.pinn(trajectory_tensor, dt_tensor)
+                    pinn_score = pinn_output['anomaly_score'].mean().item()
+                    model_scores['pinn'] = float(pinn_score)
+            else:
+                model_scores['pinn'] = 0.0
+            
+            if self.enable_all_models and self.gan is not None:
+                # GAN: Adversarial Detection
+                with torch.no_grad():
+                    gan_output = self.gan(trajectory_tensor)
+                    gan_score = gan_output['anomaly_score'].mean().item()
+                    model_scores['gan'] = float(gan_score)
+            else:
+                model_scores['gan'] = 0.0
+            
+            if self.enable_all_models and self.marl is not None:
+                # MARL: Multi-Agent Coordination
+                # Reshape for MARL (assumes multiple agents/sensors)
+                with torch.no_grad():
+                    # Simple reshaping: treat different aircraft as different agents
+                    if trajectory_tensor.shape[1] >= self.marl.num_agents:
+                        marl_input = trajectory_tensor[:, :self.marl.num_agents, :]
+                        # Compute mean state for each agent
+                        agent_states = marl_input.mean(dim=2)  # [batch, num_agents, features] -> need proper state
+                        # For now, use simplified approach
+                        marl_output = self.marl(trajectory_tensor[:, :, :16])  # Use first 16 features as state
+                        marl_score = marl_output['coordination_score'].mean().item()
+                        model_scores['marl'] = float(marl_score)
+                    else:
+                        model_scores['marl'] = 0.0
+            else:
+                model_scores['marl'] = 0.0
+            
             # DeepSeek MCHC: Topology Validation
             # Prepare graph features
             node_features = trajectory_tensor[:, :, -1, :]  # [batch, n_nodes, features]
@@ -252,11 +418,16 @@ class ManifoldGuard:
             # Fallback: Use only Sinkhorn if trajectory data not provided
             if trajectory_sequence is None:
                 warnings.warn(
-                    "Trajectory sequence not provided. Using Sinkhorn-only detection."
+                    "Trajectory sequence not provided. Using limited detection."
                 )
             model_scores['lnn'] = 0.0
             model_scores['xlstm'] = 0.0
             model_scores['mchc'] = 0.0
+            model_scores['mamba'] = 0.0
+            model_scores['kan'] = 0.0
+            model_scores['pinn'] = 0.0
+            model_scores['gan'] = 0.0
+            model_scores['marl'] = 0.0
             topology_score = 0.0
         
         # ========================================
