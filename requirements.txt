@@ -32,3 +32,8 @@ tzdata==2025.3
 # Deep Learning Dependencies for Manifold Defense System
 torch>=2.0.0
 torch-geometric>=2.3.0
+# Tree-based models
+xgboost>=2.0.0
+# Optional: Treelite for edge deployment
+# treelite>=3.0.0
+# treelite_runtime>=3.0.0
