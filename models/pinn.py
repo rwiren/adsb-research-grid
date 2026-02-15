@@ -24,7 +24,10 @@ try:
     import torch.nn as nn
     import torch.nn.functional as F
     TORCH_AVAILABLE = True
-
+except ImportError:
+    TORCH_AVAILABLE = False
+    nn = None
+    warnings.warn("PyTorch not available. PINN will not be functional.")
 
 
 class PhysicsConstraints:
