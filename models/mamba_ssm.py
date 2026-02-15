@@ -13,40 +13,46 @@ import numpy as np
 from typing import Dict, Optional, Tuple, Any
 import warnings
 
+# Conditional PyTorch imports
+TORCH_AVAILABLE = False
 try:
     import torch
     import torch.nn as nn
     import torch.nn.functional as F
     TORCH_AVAILABLE = True
 except ImportError:
-    TORCH_AVAILABLE = False
-    nn = None
-    warnings.warn("PyTorch not available. Mamba SSM will not be functional.")
+    # Create dummy classes for type hints
+    class nn:
+        class Module:
+            pass
+    torch = None
+    F = None
 
-
-class MambaBlock(nn.Module):
-    """
-    Single Mamba block implementing selective state space mechanism.
+# Only define PyTorch models if available
+if TORCH_AVAILABLE:
+        class MambaBlock(nn.Module):
+        """
+        Single Mamba block implementing selective state space mechanism.
     
-    The block consists of:
-    1. Input projection
-    2. Selective state space operation (S6)
-    3. Gated output projection
+        The block consists of:
+        1. Input projection
+        2. Selective state space operation (S6)
+        3. Gated output projection
     
-    Args:
+        Args:
         d_model: Model dimension
         d_state: State space dimension (typically 16)
         d_conv: Convolution dimension for local context (typically 4)
         expand: Expansion factor (typically 2)
-    """
+        """
     
-    def __init__(
+        def __init__(
         self,
         d_model: int = 64,
         d_state: int = 16,
         d_conv: int = 4,
         expand: int = 2,
-    ):
+        ):
         super().__init__()
         
         self.d_model = d_model
@@ -78,7 +84,7 @@ class MambaBlock(nn.Module):
         # Output projection
         self.out_proj = nn.Linear(self.d_inner, d_model, bias=False)
         
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass through Mamba block.
         
@@ -113,7 +119,7 @@ class MambaBlock(nn.Module):
         
         return output
     
-    def selective_scan(self, x: torch.Tensor) -> torch.Tensor:
+        def selective_scan(self, x: torch.Tensor) -> torch.Tensor:
         """
         Selective state space scan (S6 operation).
         
@@ -157,31 +163,31 @@ class MambaBlock(nn.Module):
         return y
 
 
-class MambaSSM(nn.Module):
-    """
-    Mamba State Space Model for long-context trajectory tracking.
+    class MambaSSM(nn.Module):
+        """
+        Mamba State Space Model for long-context trajectory tracking.
     
-    This model uses stacked Mamba blocks to efficiently process long
-    sequences of aircraft trajectories with linear time complexity.
+        This model uses stacked Mamba blocks to efficiently process long
+        sequences of aircraft trajectories with linear time complexity.
     
-    Key features:
-    - Linear time complexity O(L) vs O(L^2) for Transformers
-    - Selective state space for adaptive information flow
-    - Efficient for long-range dependency modeling
+        Key features:
+        - Linear time complexity O(L) vs O(L^2) for Transformers
+        - Selective state space for adaptive information flow
+        - Efficient for long-range dependency modeling
     
-    Attributes:
+        Attributes:
         num_layers: Number of Mamba blocks
         d_model: Model dimension
         d_state: State space dimension
         
-    Example:
+        Example:
         >>> model = MambaSSM(input_dim=8, d_model=64, num_layers=4)
         >>> trajectory = torch.randn(2, 1000, 8)  # Long sequence
         >>> output = model(trajectory)
         >>> print(output['anomaly_score'])
-    """
+        """
     
-    def __init__(
+        def __init__(
         self,
         input_dim: int = 8,
         d_model: int = 64,
@@ -190,7 +196,7 @@ class MambaSSM(nn.Module):
         expand: int = 2,
         num_layers: int = 4,
         output_dim: int = 32,
-    ):
+        ):
         super().__init__()
         
         self.input_dim = input_dim
@@ -223,11 +229,11 @@ class MambaSSM(nn.Module):
             nn.Sigmoid(),
         )
         
-    def forward(
+        def forward(
         self,
         x: torch.Tensor,
         return_hidden: bool = True,
-    ) -> Dict[str, torch.Tensor]:
+        ) -> Dict[str, torch.Tensor]:
         """
         Forward pass through Mamba SSM.
         
@@ -271,7 +277,7 @@ class MambaSSM(nn.Module):
             
         return result
     
-    def export_to_onnx(self, output_path: str, batch_size: int = 1, seq_len: int = 100):
+        def export_to_onnx(self, output_path: str, batch_size: int = 1, seq_len: int = 100):
         """
         Export model to ONNX format for deployment.
         
@@ -297,6 +303,12 @@ class MambaSSM(nn.Module):
                 'output': {0: 'batch', 1: 'seq_len'},
             }
         )
+
+else:
+    # Placeholders when PyTorch not available
+    MambaBlock = None
+    MambaSSM = None
+    warnings.warn("PyTorch not available. Mamba SSM will not be functional.")
 
 
 # NumPy fallback for environments without PyTorch
