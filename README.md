@@ -36,12 +36,12 @@ The detection engine utilizes a comparative ensemble of 18 distinct methods, lay
 *New layer establishing "Ground Truth" before data enters the AI pipeline.*
 
 * **1. Elastic Grid TDOA (Physics):** "The Anchor." Uses nanosecond-level Time Difference of Arrival (TDOA) to calculate the *physical* location of a transmitter, independent of the GPS coordinates reported in the data packet.
-* **2. RF Fingerprinting (CNN/ResNet):** "The Hardware ID." [cite_start]A Deep Learning model (running on Hailo-8) that analyzes Raw I/Q signal data to identify the unique electronic signature of the transmitter (e.g., distinguishing a HackRF One from a Garmin transponder)[cite: 313, 314].
+* **2. RF Fingerprinting (CNN/ResNet):** "The Hardware ID." A Deep Learning model (running on Hailo-8) that analyzes Raw I/Q signal data to identify the unique electronic signature of the transmitter (e.g., distinguishing a HackRF One from a Garmin transponder).
 
 ### Tier 1: Edge Baselines (Reflex Layer)
 *Fast, low-latency filters running on Raspberry Pi CPU.*
 
-* **3. Sinkhorn-Knopp Algorithm:** Mathematical gatekeeper using Optimal Transport theory to project signal cost matrices onto the **Birkhoff Polytope**. [cite_start]Fails to converge on "impossible" signal clusters[cite: 168, 171].
+* **3. Sinkhorn-Knopp Algorithm:** Mathematical gatekeeper using Optimal Transport theory to project signal cost matrices onto the **Birkhoff Polytope**. Fails to converge on "impossible" signal clusters.
 * **4. Random Forest (RF):** "Sanity Check" filtering based on basic feature extraction (RSSI vs. Distance consistency).
 * **5. XGBoost / LightGBM:** High-speed, Treelite-compiled inference for detecting known spoofing software signatures.
 * **6. Reinforcement Learning (RL):** Single-agent active sensor tuning (Gain/Threshold optimization) to maximize Signal-to-Noise Ratio.
@@ -50,15 +50,15 @@ The detection engine utilizes a comparative ensemble of 18 distinct methods, lay
 ### Tier 2: Temporal & Stream Intelligence
 *Understanding the flow of time and trajectory continuity (Hailo-8 NPU).*
 
-* **8. Mamba (SSM):** State Space Models for efficient long-context trajectory tracking. [cite_start]Detects slow "drift" attacks that standard Transformers miss due to linear scaling efficiency[cite: 6, 8].
-* [cite_start]**9. xLSTM:** Extended Long Short-Term Memory networks for precise validation of rapid maneuvers and sharp turns[cite: 6].
-* **10. [cite_start]Liquid Neural Networks (LNN):** Time-continuous neural networks designed to handle irregular ADS-B packet arrival times without losing context[cite: 19, 20].
+* **8. Mamba (SSM):** State Space Models for efficient long-context trajectory tracking. Detects slow "drift" attacks that standard Transformers miss due to linear scaling efficiency.
+* **9. xLSTM:** Extended Long Short-Term Memory networks for precise validation of rapid maneuvers and sharp turns.
+* **10. Liquid Neural Networks (LNN):** Time-continuous neural networks designed to handle irregular ADS-B packet arrival times without losing context.
 * **11. Transformers (FlightBERT++):** Self-attention based trajectory forecasting to detect subtle "meandering" anomalies.
 
 ### Tier 3: Topological & Spatial Reasoning
 *Understanding the shape of the swarm and sensor trust.*
 
-* **12. [cite_start]DeepSeek MCHC (Manifold-Constrained Hyper-Connection):** Graph Neural Network with topology-based validation to detect "ghost aircraft" formations that violate the manifold constraints[cite: 3, 29].
+* **12. DeepSeek MCHC (Manifold-Constrained Hyper-Connection):** Graph Neural Network with topology-based validation to detect "ghost aircraft" formations that violate the manifold constraints.
 * **13. Graph Neural Networks (GNN):** Modeling the sensor grid as a geometric graph to detect spatial anomalies (e.g., signals visible to Node A but impossibly occluded from Node B).
 * **14. Graph Attention Networks (GAT):** Dynamic weighting of sensor reliability based on **Clock Drift (PPM)** stability, allowing the grid to "ignore" jammed or overheating nodes.
 
@@ -66,9 +66,9 @@ The detection engine utilizes a comparative ensemble of 18 distinct methods, lay
 *High-level reasoning and adversarial testing (M4 Max / Server).*
 
 * **15. Physics-Informed Neural Networks (PINN):** Embedding Equations of Motion (Navier-Stokes/Kinematics) directly into the loss function to penalize physically impossible maneuvers.
-* **16. Kolmogorov-Arnold Networks (KAN):** Symbolic regression for real-time estimation of aerodynamic coefficients (Lift/Drag). [cite_start]Flags targets flying with impossible parameters[cite: 14, 16].
+* **16. Kolmogorov-Arnold Networks (KAN):** Symbolic regression for real-time estimation of aerodynamic coefficients (Lift/Drag). Flags targets flying with impossible parameters.
 * **17. Generative Adversarial Networks (GAN):** "Red Teaming" the system by generating synthetic Zero-Day attack signatures to harden the classifiers.
-* **18. DeepSeek-R1 (Reasoning LLM):** "The Investigator." [cite_start]A Chain-of-Thought Language Model that analyzes logs when other models disagree, providing a human-readable explanation of the anomaly[cite: 39].
+* **18. DeepSeek-R1 (Reasoning LLM):** "The Investigator." A Chain-of-Thought Language Model that analyzes logs when other models disagree, providing a human-readable explanation of the anomaly.
 
 ---
 
@@ -77,10 +77,9 @@ The project orchestrates these tiers into a single decision engine:
 
 **Key Features:**
 - **Weighted Ensemble Vote:** A voting mechanism where Tier 0 (Physics) has veto power over Tier 2/3 (AI).
-- [cite_start]**Lightweight Inference:** Optimized for **Raspberry Pi 5 + Hailo-8 NPU** (~12ms latency for Tier 1-2)[cite: 30, 357].
+- **Lightweight Inference:** Optimized for **Raspberry Pi 5 + Hailo-8 NPU** (~12ms latency for Tier 1-2).
 - **Graceful Fallback:** System degrades safely from "Full Manifold Defense" to "Basic RF Filtering" if hardware resources are constrained.
-- [cite_start]**Distributed Trust:** Uses **GAT** and **Elastic TDOA** to dynamically identify and isolate compromised sensors in the grid[cite: 404].
-  
+- **Distributed Trust:** Uses **GAT** and **Elastic TDOA** to dynamically identify and isolate compromised sensors in the grid.
 ---
 
 ## 📡 Grid Infrastructure
