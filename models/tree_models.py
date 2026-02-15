@@ -108,69 +108,7 @@ class RandomForestDetector:
         Returns:
             Extracted features [n_samples, n_features]
         """
-        n_samples, seq_len, _ = trajectory.shape
-        features = []
-        
-        for i in range(n_samples):
-            traj = trajectory[i]  # [seq_len, raw_features]
-            
-            # Extract raw features
-            lat, lon, alt = traj[:, 0], traj[:, 1], traj[:, 2]
-            velocity = traj[:, 3]
-            heading = traj[:, 4]
-            rssi = traj[:, 5]
-            
-            # 1. RSSI vs Distance consistency
-            # Compute distance traveled
-            distances = np.sqrt(
-                (lat[1:] - lat[:-1])**2 +
-                (lon[1:] - lon[:-1])**2
-            )
-            distance_total = distances.sum()
-            rssi_mean = rssi.mean()
-            rssi_distance_ratio = np.abs(rssi_mean) / (distance_total + 1e-6)
-            
-            # 2. Velocity statistics
-            velocity_mean = velocity.mean()
-            velocity_std = velocity.std()
-            
-            # 3. Acceleration (velocity changes)
-            velocity_changes = np.abs(velocity[1:] - velocity[:-1])
-            acceleration_max = velocity_changes.max()
-            
-            # 4. Altitude statistics
-            altitude_mean = alt.mean()
-            altitude_std = alt.std()
-            
-            # 5. Vertical rate (altitude changes)
-            altitude_changes = np.abs(alt[1:] - alt[:-1])
-            vertical_rate = altitude_changes.mean()
-            
-            # 6. Heading changes (turn rate)
-            heading_changes = np.abs(heading[1:] - heading[:-1])
-            # Handle wraparound (0/360 degrees)
-            heading_changes = np.minimum(heading_changes, 360 - heading_changes)
-            heading_change_max = heading_changes.max()
-            
-            # 7. Sensor correlation (RSSI stability)
-            rssi_std = rssi.std()
-            sensor_correlation = 1.0 / (1.0 + rssi_std)
-            
-            # 8. Signal stability (overall variance)
-            signal_stability = 1.0 / (1.0 + velocity_std + altitude_std)
-            
-            features.append([
-                rssi_distance_ratio,
-                velocity_mean,
-                acceleration_max,
-                altitude_mean,
-                vertical_rate,
-                heading_change_max,
-                sensor_correlation,
-                signal_stability,
-            ])
-        
-        return np.array(features)
+        return _extract_trajectory_features(trajectory)
     
     def fit(self, X: np.ndarray, y: np.ndarray):
         """
@@ -290,9 +228,83 @@ class XGBoostDetector:
         Extract physical features from trajectory data.
         Uses same feature extraction as Random Forest for consistency.
         """
-        # Use Random Forest's feature extraction
-        rf = RandomForestDetector()
-        return rf.extract_features(trajectory)
+        return _extract_trajectory_features(trajectory)
+
+
+def _extract_trajectory_features(trajectory: np.ndarray) -> np.ndarray:
+    """
+    Shared feature extraction logic for tree-based models.
+    
+    Args:
+        trajectory: [n_samples, seq_len, raw_features]
+                   Raw features: [lat, lon, alt, velocity, heading, rssi, temp, pressure]
+        
+    Returns:
+        Extracted features [n_samples, n_features]
+    """
+    n_samples, seq_len, _ = trajectory.shape
+    features = []
+    
+    for i in range(n_samples):
+        traj = trajectory[i]  # [seq_len, raw_features]
+        
+        # Extract raw features
+        lat, lon, alt = traj[:, 0], traj[:, 1], traj[:, 2]
+        velocity = traj[:, 3]
+        heading = traj[:, 4]
+        rssi = traj[:, 5]
+        
+        # 1. RSSI vs Distance consistency
+        # Compute distance traveled
+        distances = np.sqrt(
+            (lat[1:] - lat[:-1])**2 +
+            (lon[1:] - lon[:-1])**2
+        )
+        distance_total = distances.sum()
+        rssi_mean = rssi.mean()
+        rssi_distance_ratio = np.abs(rssi_mean) / (distance_total + 1e-6)
+        
+        # 2. Velocity statistics
+        velocity_mean = velocity.mean()
+        velocity_std = velocity.std()
+        
+        # 3. Acceleration (velocity changes)
+        velocity_changes = np.abs(velocity[1:] - velocity[:-1])
+        acceleration_max = velocity_changes.max()
+        
+        # 4. Altitude statistics
+        altitude_mean = alt.mean()
+        altitude_std = alt.std()
+        
+        # 5. Vertical rate (altitude changes)
+        altitude_changes = np.abs(alt[1:] - alt[:-1])
+        vertical_rate = altitude_changes.mean()
+        
+        # 6. Heading changes (turn rate)
+        heading_changes = np.abs(heading[1:] - heading[:-1])
+        # Handle wraparound (0/360 degrees)
+        heading_changes = np.minimum(heading_changes, 360 - heading_changes)
+        heading_change_max = heading_changes.max()
+        
+        # 7. Sensor correlation (RSSI stability)
+        rssi_std = rssi.std()
+        sensor_correlation = 1.0 / (1.0 + rssi_std)
+        
+        # 8. Signal stability (overall variance)
+        signal_stability = 1.0 / (1.0 + velocity_std + altitude_std)
+        
+        features.append([
+            rssi_distance_ratio,
+            velocity_mean,
+            acceleration_max,
+            altitude_mean,
+            vertical_rate,
+            heading_change_max,
+            sensor_correlation,
+            signal_stability,
+        ])
+    
+    return np.array(features)
     
     def fit(self, X: np.ndarray, y: np.ndarray):
         """

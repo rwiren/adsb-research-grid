@@ -398,18 +398,39 @@ class ManifoldGuard:
             
             if self.enable_all_models and self.marl is not None:
                 # MARL: Multi-Agent Coordination
-                # Reshape for MARL (assumes multiple agents/sensors)
+                # Reshape trajectory data to create agent states
+                # Each aircraft is treated as an agent, and we aggregate features into state_dim=16
                 with torch.no_grad():
-                    # Simple reshaping: treat different aircraft as different agents
+                    batch_size = trajectory_tensor.shape[0]
+                    n_timesteps = trajectory_tensor.shape[1]
+                    
+                    # If we have enough aircraft to form agents
                     if trajectory_tensor.shape[1] >= self.marl.num_agents:
-                        marl_input = trajectory_tensor[:, :self.marl.num_agents, :]
-                        # Compute mean state for each agent
-                        agent_states = marl_input.mean(dim=2)  # [batch, num_agents, features] -> need proper state
-                        # For now, use simplified approach
-                        marl_output = self.marl(trajectory_tensor[:, :, :16])  # Use first 16 features as state
+                        # Take first num_agents aircraft and compute their aggregated states
+                        # State includes: mean position, velocity, heading, signal strength
+                        agent_trajectories = trajectory_tensor[:, :self.marl.num_agents, :]  # [batch, num_agents, features]
+                        
+                        # Create state_dim=16 by aggregating trajectory statistics
+                        # [mean_features(8), std_features(8)]
+                        agent_states = torch.cat([
+                            agent_trajectories.mean(dim=1),  # Mean over time: [batch, num_agents, 8]
+                            agent_trajectories.std(dim=1),   # Std over time: [batch, num_agents, 8]
+                        ], dim=-1)  # [batch, num_agents, 16]
+                        
+                        # Ensure shape is correct
+                        if agent_states.shape[-1] < 16:
+                            # Pad to 16 dimensions if needed
+                            padding = torch.zeros(batch_size, self.marl.num_agents, 16 - agent_states.shape[-1], device=self.device)
+                            agent_states = torch.cat([agent_states, padding], dim=-1)
+                        elif agent_states.shape[-1] > 16:
+                            # Truncate if too large
+                            agent_states = agent_states[:, :, :16]
+                        
+                        marl_output = self.marl(agent_states)
                         marl_score = marl_output['coordination_score'].mean().item()
                         model_scores['marl'] = float(marl_score)
                     else:
+                        # Not enough agents - skip MARL
                         model_scores['marl'] = 0.0
             else:
                 model_scores['marl'] = 0.0
