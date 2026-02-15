@@ -44,7 +44,7 @@ The detection engine utilizes a comparative ensemble of 18 distinct methods, lay
 * **3. Sinkhorn-Knopp Algorithm:** Mathematical gatekeeper using Optimal Transport theory to project signal cost matrices onto the **Birkhoff Polytope**. Fails to converge on "impossible" signal clusters.
 * **4. Random Forest (RF):** "Sanity Check" filtering based on basic feature extraction (RSSI vs. Distance consistency).
 * **5. XGBoost / LightGBM:** High-speed, Treelite-compiled inference for detecting known spoofing software signatures.
-* **6. Reinforcement Learning (RL):** Single-agent active sensor tuning (Gain/Threshold optimization) to maximize Signal-to-Noise Ratio.
+* **6. Reinforcement Learning (RL):** **"The Auto-Tuner."** Single-agent active learning that dynamically optimizes **RF Gain (LNA/VGA)** and **Squelch Thresholds** in real-time to maximize the Signal-to-Noise Ratio (SNR) for specific targets, ensuring the sensor adapts to changing environmental noise.
 * **7. Multi-Agent RL (MARL):** Decentralized coordination allowing sensor nodes (North/East/West) to cooperatively optimize grid-wide coverage.
 
 ### Tier 2: Temporal & Stream Intelligence
@@ -67,7 +67,7 @@ The detection engine utilizes a comparative ensemble of 18 distinct methods, lay
 
 * **15. Physics-Informed Neural Networks (PINN):** Embedding Equations of Motion (Navier-Stokes/Kinematics) directly into the loss function to penalize physically impossible maneuvers.
 * **16. Kolmogorov-Arnold Networks (KAN):** Symbolic regression for real-time estimation of aerodynamic coefficients (Lift/Drag). Flags targets flying with impossible parameters.
-* **17. Generative Adversarial Networks (GAN):** "Red Teaming" the system by generating synthetic Zero-Day attack signatures to harden the classifiers.
+* **17. RL-Enhanced GAN (RL-GAN):** **"The Smart Red Team."** Uses Reinforcement Learning to guide the Generator (GAN), rewarding it not just for fooling the discriminator, but for successfully bypassing specific Tier 1-3 defenses. This creates a "Super-Spoofer" for robust training.
 * **18. DeepSeek-R1 (Reasoning LLM):** "The Investigator." A Chain-of-Thought Language Model that analyzes logs when other models disagree, providing a human-readable explanation of the anomaly.
 
 ---
