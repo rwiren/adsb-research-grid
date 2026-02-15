@@ -25,26 +25,39 @@ To detect and mitigate GNSS spoofing attacks on civilian aviation tracking syste
 
 ---
 
-## 🧠 The "Model Zoo": 12-Architecture Ensemble
-The detection engine utilizes a comparative ensemble of 12 distinct methods, layered by computational complexity and abstraction level:
+## 🧠 The "Model Zoo": 16-Architecture Ensemble
+The detection engine utilizes a comparative ensemble of 16 distinct methods, layered by computational complexity and abstraction level:
 
 ### Tier 1: Edge Baselines (Explainable AI)
 * **1. Random Forest (RF):** "Sanity Check" filtering based on physical feature extraction (RSSI vs. Distance consistency).
 * **2. XGBoost / LightGBM:** High-speed, Treelite-compiled inference optimized for the Raspberry Pi edge agent.
 * **3. Reinforcement Learning (RL):** Single-agent active sensor tuning (Gain/Threshold optimization) to maximize Signal-to-Noise Ratio.
 * **4. Multi-Agent RL (MARL):** Decentralized coordination allowing sensor nodes to cooperatively optimize grid-wide coverage.
+* **5. Sinkhorn-Knopp Algorithm:** Mathematical gatekeeper using optimal transport theory to project cost matrices onto the Birkhoff Polytope for anomaly detection.
 
 ### Tier 2: Spatial & Temporal Deep Learning
-* **5. Graph Neural Networks (GNN):** Modeling the sensor grid as a geometric graph to detect spatial anomalies (e.g., signal seen by Node A but physically impossible to be missed by Node B).
-* **6. Graph Attention Networks (GAT):** Dynamic weighting of sensor reliability, allowing the grid to "ignore" noisy or jammed nodes.
-* **7. Transformers (FlightBERT++):** Long-range trajectory forecasting using self-attention to detect subtle "meandering" drift.
-* **8. xLSTM:** Extended Long Short-Term Memory networks for recurrent anomaly detection with improved memory retention.
-* **9. Liquid Neural Networks (LNN):** Time-continuous neural networks designed for adaptive signal processing on irregular time-series data.
+* **6. Graph Neural Networks (GNN):** Modeling the sensor grid as a geometric graph to detect spatial anomalies (e.g., signal seen by Node A but physically impossible to be missed by Node B).
+* **7. Graph Attention Networks (GAT):** Dynamic weighting of sensor reliability, allowing the grid to "ignore" noisy or jammed nodes.
+* **8. Transformers (FlightBERT++):** Long-range trajectory forecasting using self-attention to detect subtle "meandering" drift.
+* **9. xLSTM:** Extended Long Short-Term Memory networks for recurrent anomaly detection with improved memory retention.
+* **10. Liquid Neural Networks (LNN):** Time-continuous neural networks designed for adaptive signal processing on irregular time-series data.
+* **11. Mamba (SSM):** State Space Models for efficient long-context trajectory tracking (replacing Transformers for long streams).
 
 ### Tier 3: Physics & Generative Validation
-* **10. Physics-Informed Neural Networks (PINN):** Embedding Equations of Motion (EoM) directly into the loss function to penalize physically impossible maneuvers.
-* **11. Kolmogorov-Arnold Networks (KAN):** Symbolic regression for real-time estimation of aerodynamic coefficients (Lift/Drag).
-* **12. Generative Adversarial Networks (GAN):** "Red Teaming" the system by generating synthetic zero-day attack signatures to harden the classifiers.
+* **12. Physics-Informed Neural Networks (PINN):** Embedding Equations of Motion (EoM) directly into the loss function to penalize physically impossible maneuvers.
+* **13. Kolmogorov-Arnold Networks (KAN):** Symbolic regression for real-time estimation of aerodynamic coefficients (Lift/Drag).
+* **14. DeepSeek MCHC (Manifold-Constrained Hyper-Connection):** Graph Neural Network with topology-based validation to detect "ghost aircraft" formations and hyper-connection violations.
+* **15. Generative Adversarial Networks (GAN):** "Red Teaming" the system by generating synthetic zero-day attack signatures to harden the classifiers.
+* **16. ManifoldGuard Ensemble:** Orchestration system that coordinates Tier 1-3 models with weighted voting for final detection decisions.
+
+### 🛡️ Manifold Defense System (NEW)
+The project now includes a sophisticated **Topological & Logical Defense System** implementing models 5, 9, 10, 14, and 16 from the Model Zoo. See [`models/README.md`](models/README.md) for detailed architecture documentation and usage examples.
+
+**Key Features:**
+- **Multi-tier defense**: Mathematical (Sinkhorn-Knopp) → Temporal (LNN/xLSTM) → Topological (DeepSeek MCHC)
+- **Lightweight inference**: Optimized for Raspberry Pi 5 + Hailo-8 NPU (~12ms latency)
+- **Graceful fallback**: Works with NumPy-only mode when PyTorch unavailable
+- **ONNX export**: Ready for NPU acceleration
 
 ---
 
@@ -168,6 +181,15 @@ make ml
 
 ## 📂 Repository Structure
 * **`infra/`**: Ansible playbooks for Infrastructure as Code (IaC).
+* **`models/`**: Advanced ML models for the 16-Model Zoo (Manifold Defense System).
+    * `sinkhorn_knopp.py`: Optimal transport algorithm (Tier 1 gatekeeper).
+    * `lnn.py`: Liquid Neural Networks for time-continuous dynamics.
+    * `xlstm.py`: Extended LSTM with exponential gating.
+    * `deepseek_mchc.py`: Graph Neural Network for topology validation.
+    * `manifold_guard.py`: Ensemble orchestration system.
+    * See [`models/README.md`](models/README.md) for detailed documentation.
+* **`examples/`**: Usage demonstrations and tutorials.
+    * `demo_manifold_guard.py`: Complete demo of spoofing detection with normal and spoofed scenarios.
 * **`research_data/`**: Local repository for ingested sensor logs (Ignored by Git).
 * **`docs/showcase/`**: Versioned output of scientific runs (The "Evidence").
 * **`scripts/`**: Python analysis tools.
