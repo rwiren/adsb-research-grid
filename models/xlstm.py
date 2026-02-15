@@ -258,9 +258,11 @@ class xLSTMCell(nn.Module):
         # Concatenate input and hidden state
         combined = torch.cat([x, h_prev], dim=-1)
         
-        # Compute gates with exponential activation (xLSTM enhancement)
+        # Compute gates with exponential gating (xLSTM enhancement)
         i_t = torch.sigmoid(self.W_i(combined))  # Input gate
-        f_t = torch.sigmoid(self.W_f(combined) * self.exp_scale)  # Forget gate (exponential)
+        # Exponential forget gate: use exp activation instead of sigmoid
+        f_t = torch.exp(self.W_f(combined) * self.exp_scale)  # Forget gate (exponential)
+        f_t = f_t / (1.0 + f_t)  # Normalize to [0, 1] range
         o_t = torch.sigmoid(self.W_o(combined))  # Output gate
         c_tilde = torch.tanh(self.W_c(combined))  # Candidate cell state
         

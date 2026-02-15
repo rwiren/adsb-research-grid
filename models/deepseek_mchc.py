@@ -111,6 +111,11 @@ class DeepSeekMCHC(nn.Module if TORCH_AVAILABLE else object):
         # Manifold constraint layer
         self.manifold_projection = nn.Linear(hidden_dim, hidden_dim)
         
+        # Projection layers for integrating LNN and xLSTM hidden states
+        # These handle variable input dimensions by projecting concatenated features
+        self.lnn_projection = None  # Created dynamically if lnn_hidden provided
+        self.xlstm_projection = None  # Created dynamically if xlstm_hidden provided
+        
         # Hyper-connection detection layers
         self.hyperconnection_detector = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim // 2),
@@ -213,16 +218,20 @@ class DeepSeekMCHC(nn.Module if TORCH_AVAILABLE else object):
         
         # 5. Integrate LNN and xLSTM hidden states if provided
         if lnn_hidden is not None:
+            # Create projection layer on first use if not already created
+            if self.lnn_projection is None:
+                combined_dim = self.hidden_dim + lnn_hidden.shape[-1]
+                self.lnn_projection = nn.Linear(combined_dim, self.hidden_dim).to(x_global.device)
             x_global = torch.cat([x_global, lnn_hidden], dim=-1)
-            x_global = nn.Linear(
-                x_global.shape[-1], self.hidden_dim
-            ).to(x_global.device)(x_global)
+            x_global = self.lnn_projection(x_global)
             
         if xlstm_hidden is not None:
+            # Create projection layer on first use if not already created
+            if self.xlstm_projection is None:
+                combined_dim = self.hidden_dim + xlstm_hidden.shape[-1]
+                self.xlstm_projection = nn.Linear(combined_dim, self.hidden_dim).to(x_global.device)
             x_global = torch.cat([x_global, xlstm_hidden], dim=-1)
-            x_global = nn.Linear(
-                x_global.shape[-1], self.hidden_dim
-            ).to(x_global.device)(x_global)
+            x_global = self.xlstm_projection(x_global)
         
         # 6. Hyper-connection Detection
         topology_features = self.hyperconnection_detector(x_global)
