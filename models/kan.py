@@ -275,9 +275,11 @@ class KAN(nn.Module):
         drag_std = drag_coeff.std(dim=1)
         
         # Lift/drag ratio should be reasonable for aircraft
+        # Typical L/D for civilian aircraft: 15-20 (efficient), military: 10-15
+        # Using conservative threshold of 5.0 to catch severely degraded performance
         ld_ratio = lift_coeff.abs() / (drag_coeff + 1e-6)
         ld_anomaly = torch.where(
-            ld_ratio < 5.0,  # Typical aircraft L/D > 10
+            ld_ratio < 5.0,  # Conservative threshold - below this indicates severe issues
             1.0,
             0.0
         ).mean(dim=1)
