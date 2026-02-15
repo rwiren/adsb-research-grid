@@ -20,45 +20,67 @@
 
 ---
 
-## 🔬 Research Goal
-To detect and mitigate GNSS spoofing attacks on civilian aviation tracking systems (ADS-B) using a distributed sensor grid and a **Hybrid AI Model Zoo**. This project moves beyond simple signal strength thresholding to a multi-layered defense strategy capable of identifying sophisticated trajectory modification attacks and "ghost" aircraft injections.
+# 🔬 Research Goal: The "Elastic Manifold" Defense
+
+To detect and mitigate GNSS spoofing attacks on civilian aviation tracking systems (ADS-B) using a distributed sensor grid and a **Hybrid AI Model Zoo**. This project moves beyond simple signal strength thresholding to a multi-layered defense strategy capable of identifying sophisticated trajectory modification attacks, "ghost" aircraft injections, and hardware-level signal cloning.
+
+The core innovation is the **Elastic Manifold Architecture**: a system that validates aircraft not just by physics (speed/altitude), but by **topology** (mathematical constraints), **time** (elastic synchronization), and **hardware signatures** (RF fingerprinting).
 
 ---
 
-## 🧠 The "Model Zoo": 16-Architecture Ensemble
-The detection engine utilizes a comparative ensemble of 16 distinct methods, layered by computational complexity and abstraction level:
+# 🧠 The "Model Zoo": 18-Architecture Ensemble
 
-### Tier 1: Edge Baselines (Explainable AI)
-* **1. Random Forest (RF):** "Sanity Check" filtering based on physical feature extraction (RSSI vs. Distance consistency).
-* **2. XGBoost / LightGBM:** High-speed, Treelite-compiled inference optimized for the Raspberry Pi edge agent.
-* **3. Reinforcement Learning (RL):** Single-agent active sensor tuning (Gain/Threshold optimization) to maximize Signal-to-Noise Ratio.
-* **4. Multi-Agent RL (MARL):** Decentralized coordination allowing sensor nodes to cooperatively optimize grid-wide coverage.
-* **5. Sinkhorn-Knopp Algorithm:** Mathematical gatekeeper using optimal transport theory to project cost matrices onto the Birkhoff Polytope for anomaly detection.
+The detection engine utilizes a comparative ensemble of 18 distinct methods, layered by computational complexity and abstraction level:
 
-### Tier 2: Spatial & Temporal Deep Learning
-* **6. Graph Neural Networks (GNN):** Modeling the sensor grid as a geometric graph to detect spatial anomalies (e.g., signal seen by Node A but physically impossible to be missed by Node B).
-* **7. Graph Attention Networks (GAT):** Dynamic weighting of sensor reliability, allowing the grid to "ignore" noisy or jammed nodes.
-* **8. Transformers (FlightBERT++):** Long-range trajectory forecasting using self-attention to detect subtle "meandering" drift.
-* **9. xLSTM:** Extended Long Short-Term Memory networks for recurrent anomaly detection with improved memory retention.
-* **10. Liquid Neural Networks (LNN):** Time-continuous neural networks designed for adaptive signal processing on irregular time-series data.
-* **11. Mamba (SSM):** State Space Models for efficient long-context trajectory tracking (replacing Transformers for long streams).
+### Tier 0: The Physical Truth (Hardware & Signal Layer)
+*New layer establishing "Ground Truth" before data enters the AI pipeline.*
 
-### Tier 3: Physics & Generative Validation
-* **12. Physics-Informed Neural Networks (PINN):** Embedding Equations of Motion (EoM) directly into the loss function to penalize physically impossible maneuvers.
-* **13. Kolmogorov-Arnold Networks (KAN):** Symbolic regression for real-time estimation of aerodynamic coefficients (Lift/Drag).
-* **14. DeepSeek MCHC (Manifold-Constrained Hyper-Connection):** Graph Neural Network with topology-based validation to detect "ghost aircraft" formations and hyper-connection violations.
-* **15. Generative Adversarial Networks (GAN):** "Red Teaming" the system by generating synthetic zero-day attack signatures to harden the classifiers.
-* **16. ManifoldGuard Ensemble:** Orchestration system that coordinates Tier 1-3 models with weighted voting for final detection decisions.
+* **1. Elastic Grid TDOA (Physics):** "The Anchor." Uses nanosecond-level Time Difference of Arrival (TDOA) to calculate the *physical* location of a transmitter, independent of the GPS coordinates reported in the data packet.
+* **2. RF Fingerprinting (CNN/ResNet):** "The Hardware ID." [cite_start]A Deep Learning model (running on Hailo-8) that analyzes Raw I/Q signal data to identify the unique electronic signature of the transmitter (e.g., distinguishing a HackRF One from a Garmin transponder)[cite: 313, 314].
 
-### 🛡️ Manifold Defense System (NEW)
-The project now includes a sophisticated **Topological & Logical Defense System** implementing models 5, 9, 10, 14, and 16 from the Model Zoo. See [`models/README.md`](models/README.md) for detailed architecture documentation and usage examples.
+### Tier 1: Edge Baselines (Reflex Layer)
+*Fast, low-latency filters running on Raspberry Pi CPU.*
+
+* **3. Sinkhorn-Knopp Algorithm:** Mathematical gatekeeper using Optimal Transport theory to project signal cost matrices onto the **Birkhoff Polytope**. [cite_start]Fails to converge on "impossible" signal clusters[cite: 168, 171].
+* **4. Random Forest (RF):** "Sanity Check" filtering based on basic feature extraction (RSSI vs. Distance consistency).
+* **5. XGBoost / LightGBM:** High-speed, Treelite-compiled inference for detecting known spoofing software signatures.
+* **6. Reinforcement Learning (RL):** Single-agent active sensor tuning (Gain/Threshold optimization) to maximize Signal-to-Noise Ratio.
+* **7. Multi-Agent RL (MARL):** Decentralized coordination allowing sensor nodes (North/East/West) to cooperatively optimize grid-wide coverage.
+
+### Tier 2: Temporal & Stream Intelligence
+*Understanding the flow of time and trajectory continuity (Hailo-8 NPU).*
+
+* **8. Mamba (SSM):** State Space Models for efficient long-context trajectory tracking. [cite_start]Detects slow "drift" attacks that standard Transformers miss due to linear scaling efficiency[cite: 6, 8].
+* [cite_start]**9. xLSTM:** Extended Long Short-Term Memory networks for precise validation of rapid maneuvers and sharp turns[cite: 6].
+* **10. [cite_start]Liquid Neural Networks (LNN):** Time-continuous neural networks designed to handle irregular ADS-B packet arrival times without losing context[cite: 19, 20].
+* **11. Transformers (FlightBERT++):** Self-attention based trajectory forecasting to detect subtle "meandering" anomalies.
+
+### Tier 3: Topological & Spatial Reasoning
+*Understanding the shape of the swarm and sensor trust.*
+
+* **12. [cite_start]DeepSeek MCHC (Manifold-Constrained Hyper-Connection):** Graph Neural Network with topology-based validation to detect "ghost aircraft" formations that violate the manifold constraints[cite: 3, 29].
+* **13. Graph Neural Networks (GNN):** Modeling the sensor grid as a geometric graph to detect spatial anomalies (e.g., signals visible to Node A but impossibly occluded from Node B).
+* **14. Graph Attention Networks (GAT):** Dynamic weighting of sensor reliability based on **Clock Drift (PPM)** stability, allowing the grid to "ignore" jammed or overheating nodes.
+
+### Tier 4: Physics, Logic & Generative Validation
+*High-level reasoning and adversarial testing (M4 Max / Server).*
+
+* **15. Physics-Informed Neural Networks (PINN):** Embedding Equations of Motion (Navier-Stokes/Kinematics) directly into the loss function to penalize physically impossible maneuvers.
+* **16. Kolmogorov-Arnold Networks (KAN):** Symbolic regression for real-time estimation of aerodynamic coefficients (Lift/Drag). [cite_start]Flags targets flying with impossible parameters[cite: 14, 16].
+* **17. Generative Adversarial Networks (GAN):** "Red Teaming" the system by generating synthetic Zero-Day attack signatures to harden the classifiers.
+* **18. DeepSeek-R1 (Reasoning LLM):** "The Investigator." [cite_start]A Chain-of-Thought Language Model that analyzes logs when other models disagree, providing a human-readable explanation of the anomaly[cite: 39].
+
+---
+
+### 🛡️ Manifold Defense System (Integration)
+The project orchestrates these tiers into a single decision engine:
 
 **Key Features:**
-- **Multi-tier defense**: Mathematical (Sinkhorn-Knopp) → Temporal (LNN/xLSTM) → Topological (DeepSeek MCHC)
-- **Lightweight inference**: Optimized for Raspberry Pi 5 + Hailo-8 NPU (~12ms latency)
-- **Graceful fallback**: Works with NumPy-only mode when PyTorch unavailable
-- **ONNX export**: Ready for NPU acceleration
-
+- **Weighted Ensemble Vote:** A voting mechanism where Tier 0 (Physics) has veto power over Tier 2/3 (AI).
+- [cite_start]**Lightweight Inference:** Optimized for **Raspberry Pi 5 + Hailo-8 NPU** (~12ms latency for Tier 1-2)[cite: 30, 357].
+- **Graceful Fallback:** System degrades safely from "Full Manifold Defense" to "Basic RF Filtering" if hardware resources are constrained.
+- [cite_start]**Distributed Trust:** Uses **GAT** and **Elastic TDOA** to dynamically identify and isolate compromised sensors in the grid[cite: 404].
+  
 ---
 
 ## 📡 Grid Infrastructure
