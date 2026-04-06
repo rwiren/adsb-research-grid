@@ -1,7 +1,7 @@
 # Securing the Skies: ADS-B Spoofing Detection Grid
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-v0.8.1-green.svg)](#)
+[![Version](https://img.shields.io/github/v/tag/rwiren/adsb-research-grid?label=Version&color=green)](https://github.com/rwiren/adsb-research-grid/tags)
 [![Status](https://img.shields.io/badge/Status-Phase%203%3A%20Validation-success.svg)](#)
 [![Wiki](https://img.shields.io/badge/Docs-Project%20Wiki-purple?style=flat-square)](https://github.com/rwiren/adsb-research-grid/wiki)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](#)
@@ -156,7 +156,7 @@ To perform a complete scientific audit (Ingest data $\rightarrow$ Heal fragmenta
 ```bash
 make all
 ```
-* **Output:** `docs/showcase/latest_audit/REPORT.md` and `research_data/ml_ready/`
+* **Output:** `docs/showcase/latest/REPORT.md` and `research_data/ml_ready/`
 
   * **[View Latest Forensic Report](docs/showcase/latest/REPORT.md)**
 
@@ -185,7 +185,7 @@ To run the full physics validation and generate the "Principal Investigator" das
 make report
 ```
 
-**Output (`docs/showcase/latest_audit/REPORT.md`):**
+**Output (`docs/showcase/latest/REPORT.md`):**
 * **`REPORT.md`**: Executive Forensic Report including "Data Health Certificate" and missing value analysis.
 * **`D1_Operational.png`**: Grid stability, message rates, and sensor sensitivity profiles.
 * **`D2_Physics.png`**: Flight Envelopes (Alt vs Speed) and Signal Decay (Inverse-Square Law validation).
@@ -207,7 +207,7 @@ make ml
 
 ## 📂 Repository Structure
 * **`infra/`**: Ansible playbooks for Infrastructure as Code (IaC).
-* **`models/`**: Advanced ML models for the 16-Model Zoo (Manifold Defense System).
+* **`models/`**: Advanced ML models for the 18-Architecture Ensemble (Manifold Defense System).
     * `sinkhorn_knopp.py`: Optimal transport algorithm (Tier 1 gatekeeper).
     * `lnn.py`: Liquid Neural Networks for time-continuous dynamics.
     * `xlstm.py`: Extended LSTM with exponential gating.
@@ -262,5 +262,6 @@ We follow a strict DevOps workflow to ensure integrity across Apple Silicon, Int
 ### 3. Setup
 - **Vault Password:** You need the project secret to decrypt configuration files.
     - *Action:* Ask the Maintainer for the password, then run:
-    - `echo 'THE_PASSWORD' > .vault_pass`
+    - `read -rs VAULT_PASS && echo "$VAULT_PASS" > .vault_pass`
+    - *(Using `read -rs` avoids storing the password in shell history.)*
 - **Environment:** Run `make setup` to initialize the Python environment.
