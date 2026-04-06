@@ -276,7 +276,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Analysis Tools:** Added `scripts/eda_check.py` for parsing Beast Binary files and generating health-check plots.
 - **License:** Added MIT License.
 
-## [v0.2.0] - 2026-01-05 (Infrastructure Baseline)
+## [0.2.0] - 2026-01-05 (Infrastructure Baseline)
 ### 🚀 Added
 * **Ansible Roles:**
     * `common`: OS hardening, UFW firewall, Fail2Ban, essential tools.
@@ -285,7 +285,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **Network Topology:** Established "Century Schema" (VPN IPs .100-.130) for grid independence.
 * **Security:** Implemented Vault encryption for secrets and SSH key-based authentication.
 
-## [v0.1.0] - 2026-01-05 (Research Definition)
+## [0.1.0] - 2026-01-05 (Research Definition)
 ### 📄 Added
 * Initial README with 12-Model Architecture.
 * Project directory structure.
