@@ -8,7 +8,7 @@ Welcome! We follow a strict DevOps workflow to ensure scientific integrity acros
 ## 2. Workflow
 1.  **Sync:** `git checkout main && git pull origin main`
 2.  **Branch:** `git checkout -b feature/description`
-3.  **Test:** Run `make analyze` before every commit.
+3.  **Test:** Run `make report` before every commit.
     - *Must pass on your local machine (Mac or WSL).*
 4.  **Commit:** Use [Conventional Commits](https://www.conventionalcommits.org/) (e.g., `feat:`, `fix:`, `docs:`).
 5.  **Merge:** Open a Pull Request (PR).
@@ -16,3 +16,8 @@ Welcome! We follow a strict DevOps workflow to ensure scientific integrity acros
 ## 3. Environment Setup
 - Run `make setup` to initialize the Python environment.
 - Data is not stored in the repo. You must fetch `.bin` files from the sensor or `sensor-north`.
+- **Vault Password:** Ask the maintainer for the vault password, then store it securely:
+  ```bash
+  read -rs VAULT_PASS && echo "$VAULT_PASS" > .vault_pass
+  ```
+  *(Using `read -rs` avoids storing the password in shell history.)*

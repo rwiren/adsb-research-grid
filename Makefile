@@ -22,17 +22,27 @@ WINDOW ?= 24
 help:
 	@echo "📡 ADS-B Research Grid Control Center"
 	@echo "--------------------------------------------------------"
+	@echo "  --- OPERATIONS (Infra) ---"
+	@echo "  make setup      - 📦 Install dependencies"
+	@echo "  make deploy     - 🚀 Configure all sensors (Ansible)"
+	@echo ""
 	@echo "  --- INFRASTRUCTURE (Ops) ---"
 	@echo "  make check        - 🏥 Check Connectivity"
 	@echo "  make dashboard    - 📊 Update Grafana Dashboards"
 	@echo "  make logging      - 🪵 Update Logstash Pipeline"
+	@echo "  make tower        - 🗼 Provision Tower Core services"
 	@echo ""
 	@echo "  --- DATA SCIENCE (Tier 1) ---"
+	@echo "  make fetch        - 📥 Download, Heal & Merge logs from grid"
+	@echo "  make consolidate  - 🧹 Self-Heal fragmented sensor logs"
 	@echo "  make ml           - 🧪 Run Ensemble Anomaly Detection (IsoForest + LOF)"
+	@echo "  make ghosts       - 👻 Generate Forensic Maps (Ghost Hunt)"
+	@echo "  make gnss         - 🛰️  Run Hardware Certification (D12)"
 	@echo "  make report       - 📊 Generate Academic Report (Default: Last 24h)"
 	@echo "                      Usage: make report WINDOW=48"
 	@echo "                      Usage: make report WINDOW=all"
-	@echo "  make all          - 🔁 Run Full Pipeline"
+	@echo "  make clean-docs   - 🧹 Archive old reports"
+	@echo "  make all          - 🔁 Run Full Pipeline (Fetch -> ML -> Report)"
 	@echo "--------------------------------------------------------"
 
 setup:
@@ -78,8 +88,7 @@ consolidate:
 
 ml:
 	@echo "[ML] 🧪 Training Ensemble (IsoForest + LOF)..."
-	@# FIX: Updated check to look in the actual Ansible data directory
-	@if [ -d "infra/ansible/playbooks/research_data/raw" ]; then \
+	@if [ -d "research_data/raw" ]; then \
 		$(PYTHON) scripts/ds_pipeline_master.py; \
 	else \
 		echo "❌ No data found! Run 'make fetch' first."; \
