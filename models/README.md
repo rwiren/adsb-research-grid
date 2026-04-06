@@ -1,10 +1,14 @@
 # Manifold Defense System - ADS-B Spoofing Detection
 
-This directory contains the advanced ML models for the **16-Model Zoo** architecture implementing a multi-tier topological and logical defense system for ADS-B spoofing detection.
+This directory contains the advanced ML models for the **18-Architecture Ensemble** implementing a multi-tier topological and logical defense system for ADS-B spoofing detection.
 
 ## Architecture Overview
 
-The system implements a **Tier 1-3 Defense Strategy**:
+The system implements a **Tier 0-4 Defense Strategy**:
+
+### Tier 0: Physical Truth (Hardware & Signal Layer)
+- **Elastic Grid TDOA**: Nanosecond-level Time Difference of Arrival to calculate the *physical* location of a transmitter, independent of reported GPS coordinates.
+- **RF Fingerprinting (CNN/ResNet)**: Deep Learning model (Hailo-8) that identifies the unique electronic signature of a transmitter from raw I/Q data. *(Planned)*
 
 ### Tier 1: Mathematical Gatekeeper
 - **Sinkhorn-Knopp Algorithm**: Projects cost matrices onto the Birkhoff Polytope using optimal transport theory. Computes transport costs between observed and predicted aircraft positions as an initial anomaly score.
@@ -15,6 +19,9 @@ The system implements a **Tier 1-3 Defense Strategy**:
 
 ### Tier 3: Topological Validation
 - **DeepSeek MCHC (Manifold-Constrained Hyper-Connection)**: Graph Neural Network architecture that validates flight paths using topological constraints derived from manifold logic. Detects "ghost aircraft" formations and hyper-connection violations.
+
+### Tier 4: LLM Reasoning
+- **Ollama Reasoning Swarm (DeepSeek-R1 / Llama 3 / Phi-3)**: Validated ensemble of LLMs that analyze MQTT-based incident logs to parse complex multi-variable anomaly scenarios. *(Benchmarked)*
 
 ### Orchestration
 - **ManifoldGuard**: Central orchestration system that coordinates all components and performs weighted ensemble voting to produce final spoofing probability.
@@ -186,15 +193,22 @@ guard = ManifoldGuard(ensemble_weights=weights)
 
 *Benchmarked on Raspberry Pi 5 (8GB) with 10 aircraft, 50 time steps.*
 
-## Future Enhancements
+## Status
 
-All planned enhancements have been implemented! The 16-Model Zoo is now complete:
-- [x] Mamba (State Space Model) for long-context trajectory tracking
-- [x] KAN (Kolmogorov-Arnold Networks) for symbolic aerodynamic regression
-- [x] Integration with Random Forest and XGBoost models
-- [x] Multi-Agent RL coordination layer
-- [x] Physics-Informed Neural Network (PINN) constraints
-- [x] GAN-based adversarial training
+The core 16-model engine (Tiers 1–3) is fully implemented. Two additional architectures are planned or benchmarked:
+
+| Architecture | Status |
+|---|---|
+| RF Fingerprinting (Tier 0, CNN/ResNet) | ⚠️ Planned |
+| Ollama Reasoning Swarm (Tier 4, LLMs) | ✅ Benchmarked |
+
+Remaining Tier 2/3 models pending implementation:
+
+| Model | Status |
+|---|---|
+| GNN (Spatial anomalies) | ⚠️ Planned |
+| GAT (Attention-based reliability) | ⚠️ Planned |
+| Transformers / FlightBERT++ | ⚠️ Planned |
 
 ## Model Details
 
@@ -250,22 +264,25 @@ Random Forest and XGBoost for explainable baseline detection.
 
 | # | Model | Tier | Purpose | Parameters | Latency (CPU) |
 |---|-------|------|---------|-----------|---------------|
-| 1 | Random Forest | 1 | Explainable baseline | ~100 trees | <1ms |
-| 2 | XGBoost | 1 | High-speed tree ensemble | ~100 trees | <1ms |
-| 3 | RL (Single-Agent) | 1 | Sensor parameter tuning | ~50K | ~5ms |
-| 4 | **MARL** | 1 | **Multi-agent coordination** | **~150K** | **~10ms** |
-| 5 | Sinkhorn-Knopp | 1 | Optimal transport gatekeeper | N/A | ~1ms |
-| 6 | GNN | 2 | Spatial anomalies | Planned | - |
-| 7 | GAT | 2 | Attention-based reliability | Planned | - |
-| 8 | Transformers | 2 | Long-range forecasting | Planned | - |
-| 9 | xLSTM | 2 | Extended LSTM | ~100K | ~20ms |
-| 10 | LNN | 2 | Time-continuous dynamics | ~50K | ~15ms |
-| 11 | **Mamba** | 2 | **Long-context SSM** | **~200K** | **~20ms** |
-| 12 | **PINN** | 3 | **Physics constraints** | **~100K** | **~18ms** |
-| 13 | **KAN** | 3 | **Aerodynamic regression** | **~50K** | **~15ms** |
-| 14 | DeepSeek MCHC | 3 | Topology validation | ~150K | ~30ms |
-| 15 | **GAN** | 3 | **Adversarial detection** | **~400K** | **~25ms** |
-| 16 | ManifoldGuard | - | Ensemble orchestration | All above | ~150ms |
+| 1 | Elastic Grid TDOA | 0 | Physical location ground truth | N/A | Hardware |
+| 2 | RF Fingerprinting (CNN) | 0 | Transmitter hardware ID | Planned | Planned |
+| 3 | Random Forest | 1 | Explainable baseline | ~100 trees | <1ms |
+| 4 | XGBoost | 1 | High-speed tree ensemble | ~100 trees | <1ms |
+| 5 | RL (Single-Agent) | 1 | Sensor parameter tuning | ~50K | ~5ms |
+| 6 | **MARL** | 1 | **Multi-agent coordination** | **~150K** | **~10ms** |
+| 7 | Sinkhorn-Knopp | 1 | Optimal transport gatekeeper | N/A | ~1ms |
+| 8 | GNN | 2 | Spatial anomalies | Planned | - |
+| 9 | GAT | 2 | Attention-based reliability | Planned | - |
+| 10 | Transformers | 2 | Long-range forecasting | Planned | - |
+| 11 | xLSTM | 2 | Extended LSTM | ~100K | ~20ms |
+| 12 | LNN | 2 | Time-continuous dynamics | ~50K | ~15ms |
+| 13 | **Mamba** | 2 | **Long-context SSM** | **~200K** | **~20ms** |
+| 14 | **PINN** | 3 | **Physics constraints** | **~100K** | **~18ms** |
+| 15 | **KAN** | 3 | **Aerodynamic regression** | **~50K** | **~15ms** |
+| 16 | DeepSeek MCHC | 3 | Topology validation | ~150K | ~30ms |
+| 17 | **GAN** | 3 | **Adversarial detection** | **~400K** | **~25ms** |
+| 18 | Ollama Swarm (LLMs) | 4 | Incident log reasoning | External | Async |
+| - | ManifoldGuard | - | Ensemble orchestration | All above | ~150ms |
 
 **Bold** = Newly implemented models
 
@@ -275,7 +292,7 @@ Random Forest and XGBoost for explainable baseline detection.
 |--------------|---------------|------------------|-------------|-------------|
 | **Minimal** | Sinkhorn + RF/XGBoost | ~100 trees | ~2ms | N/A |
 | **Core** | Sinkhorn + RF + LNN + xLSTM + MCHC | ~350K | ~70ms | ~15ms |
-| **Full** | All 16 models | ~1.5M | ~150ms | ~30ms |
+| **Full** | All 18 architectures | ~1.5M | ~150ms | ~30ms |
 
 *Benchmarked on Raspberry Pi 5 (8GB) with 10 aircraft, 50 time steps.*
 
