@@ -5,6 +5,18 @@ All notable changes to the **ADS-B Research Grid** project will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-04-07: Cross-Pollination — Velocity Drift Feature
+**Feature: Added `velocity_drift` to ML dataset pipeline, closing the 0% drift detection blind spot.**
+
+### 🧪 Feature Engineering
+* **`velocity_drift`:** Rolling mean of `sign(diff(velocity_discrepancy))` over 15 timesteps. Detects sustained monotonic drift in velocity error. Range: -1.0 (decreasing) to +1.0 (increasing). Normal flights ≈ 0.0.
+* Cross-pollinated from `team-9-secure-skies-detection` issue #21 (shared 144h dataset, MD5: `0e820625`).
+* Updated `scripts/generate_ml_dataset.py` to v1.2.0.
+
+### 📋 Context
+* All 6 model architectures in team-9 (LSTM, GRU, CNN × w10/w30) showed 0% detection on velocity drift attacks.
+* The `velocity_drift` feature provides a temporal derivative signal that the autoencoder can learn to flag.
+
 ## [0.8.1] - 2026-02-01: The "Elastic Grid" Milestone
 **Major Feature Release: TDOA Synchronization, Clock Drift Compensation, and Multi-Sensor Triangulation.**
 
