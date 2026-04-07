@@ -8,7 +8,7 @@ from datetime import datetime
 
 # ==============================================================================
 # FILE: scripts/generate_ml_dataset.py
-# VERSION: 1.1.0 (Fixed Timezone Mismatch)
+# VERSION: 1.2.0 (Added velocity_drift feature — cross-pollination from team-9)
 # PURPOSE: Normalize raw ADSB logs for AI/ML Spoofing Detection Training
 # OUTPUT: research_data/ml_ready/training_dataset_20260111.csv
 # ==============================================================================
@@ -94,6 +94,14 @@ df_clean['dist_delta_approx_m'] = np.sqrt(
 df_clean['calc_velocity_ms'] = df_clean['dist_delta_approx_m'] / df_clean['time_gap']
 df_clean['reported_velocity_ms'] = df_clean['ground_speed'] * 0.514444
 df_clean['velocity_discrepancy'] = abs(df_clean['calc_velocity_ms'] - df_clean['reported_velocity_ms'])
+
+# Velocity Drift: detects sustained monotonic changes in velocity_discrepancy.
+# Cross-pollinated from team-9-secure-skies-detection (#21).
+# Uses rolling mean of sign(diff) — ranges from -1 (decreasing) to +1 (increasing).
+_ve_sign = np.sign(df_clean.groupby('hex')['velocity_discrepancy'].diff().fillna(0))
+df_clean['velocity_drift'] = _ve_sign.groupby(df_clean['hex']).transform(
+    lambda x: x.rolling(window=15, min_periods=1).mean()
+)
 
 # 5. Export
 output_file = os.path.join(OUTPUT_DIR, "training_dataset_20260111.csv")
