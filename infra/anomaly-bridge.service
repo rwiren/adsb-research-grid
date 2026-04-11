@@ -31,9 +31,10 @@ Group=admin
 WorkingDirectory=/opt/adsb-grid
 
 # --- Runtime configuration ---
-# Mosquitto on this server listens on localhost:1883 with allow_anonymous true,
-# so no credentials are required. Override any variable via a drop-in or
-# an EnvironmentFile if your setup differs.
+# Mosquitto on this server listens on localhost:1883 with allow_anonymous true.
+# MQTT_USER and MQTT_PASS are intentionally left blank so the script connects
+# anonymously. If your broker requires authentication, set them here or via a
+# drop-in EnvironmentFile (e.g. /etc/anomaly-bridge.env).
 Environment="MQTT_HOST=localhost"
 Environment="MQTT_PORT=1883"
 Environment="MQTT_USER="
