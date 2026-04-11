@@ -27,6 +27,7 @@ from flask_socketio import SocketIO
 import paho.mqtt.client as mqtt
 import json
 import math
+import ssl
 import time
 import logging
 from collections import deque
@@ -43,15 +44,27 @@ EMERGENCY_SQUAWKS = {"7500", "7600", "7700"}
 # Speed of light (m/s) — for TDOA uncertainty calculation
 C = 299792458.0
 
+# Server-side sensor positions (WGS-84)
+SENSOR_POS = {
+    "sensor-north": (60.319555, 24.830816),
+    "sensor-west":  (60.130919, 24.512869),
+    "sensor-east":  (60.350000, 25.350000),
+}
+
+# Spoofing heuristic thresholds
+MAX_CREDIBLE_CLIMB_FPM = 6000   # ft/min — above this is physically impossible for civil AC
+MAX_GS_DISCREPANCY     = 0.50   # 50 % difference between computed and reported groundspeed
+
 state = {
     "aircraft": {},
     "sensors": {
-        "sensor-north": {"now": 0, "signal": 0, "noise": 0, "msg_rate": 0, "max_range_km": 0, "gain_db": 0, "ac_with_pos": 0, "ac_total": 0},
-        "sensor-west":  {"now": 0, "signal": 0, "noise": 0, "msg_rate": 0, "max_range_km": 0, "gain_db": 0, "ac_with_pos": 0, "ac_total": 0},
-        "sensor-east":  {"now": 0, "signal": 0, "noise": 0, "msg_rate": 0, "max_range_km": 0, "gain_db": 0, "ac_with_pos": 0, "ac_total": 0},
+        "sensor-north": {"now": 0, "signal": 0, "noise": 0, "msg_rate": 0, "max_range_km": 0, "gain_db": 0, "ac_with_pos": 0, "ac_total": 0, "msg_rate_history": deque(maxlen=120)},
+        "sensor-west":  {"now": 0, "signal": 0, "noise": 0, "msg_rate": 0, "max_range_km": 0, "gain_db": 0, "ac_with_pos": 0, "ac_total": 0, "msg_rate_history": deque(maxlen=120)},
+        "sensor-east":  {"now": 0, "signal": 0, "noise": 0, "msg_rate": 0, "max_range_km": 0, "gain_db": 0, "ac_with_pos": 0, "ac_total": 0, "msg_rate_history": deque(maxlen=120)},
     },
-    "sync": {"delta_ms": 0.0, "per_sensor": {}},
-    "anomalies": {}   # icao_hex -> score  (-1 = anomaly flagged by ML pipeline)
+    "sync":    {"delta_ms": 0.0, "per_sensor": {}},
+    "anomalies": {},   # icao_hex -> score  (-1 = anomaly flagged by ML pipeline)
+    "jamming": [],     # list of sensor names currently showing jamming signature
 }
 
 
@@ -81,6 +94,96 @@ def tdoa_uncertainty_radius_m(sync_delta_ms):
     return (sync_delta_ms / 1000.0) * C / 2.0
 
 
+def compute_spoof_score(entry):
+    """
+    Heuristic spoofing confidence score in [0.0, 1.0] with named flag strings.
+
+    Three independent physics checks — any trigger raises the score.  The score
+    is intentionally conservative: a single flag gives 0.3–0.4, making 1.0 only
+    reachable if multiple independent anomalies coincide.
+
+    Flags
+    -----
+    1-sensor>10kft  — seen by only 1 of 3 sensors but alt > 10 000 ft.
+                      At that altitude, LoS geometry means all three RPi nodes
+                      should receive the signal.  Single-sensor = likely spoofer
+                      transmitting from close range on one beam.
+    climb>Xfpm      — derived climb/descent rate from alt_history exceeds
+                      MAX_CREDIBLE_CLIMB_FPM.  Civil aircraft do not exceed
+                      ~6 000 fpm; this catches instant altitude teleportation.
+    GS Yvsz kt      — computed groundspeed from position trail differs from the
+                      ADS-B-reported gs by more than MAX_GS_DISCREPANCY.
+                      A spoofer replaying a fixed trajectory will have a
+                      mismatch between the declared gs and actual movement.
+    """
+    score = 0.0
+    flags = []
+    alt     = entry.get("alt")
+    seen_by = entry.get("seen_by", set())
+
+    # Check 1: single-sensor high-altitude
+    if len(seen_by) == 1 and isinstance(alt, (int, float)) and alt > 10000:
+        score += 0.4
+        flags.append("1-sensor>10kft")
+
+    # Check 2: impossible climb / descent rate
+    ah = list(entry.get("alt_history", []))
+    if len(ah) >= 2:
+        t1, a1 = ah[-2]
+        t2, a2 = ah[-1]
+        if isinstance(a1, (int, float)) and isinstance(a2, (int, float)) and t2 > t1:
+            dt_min = (t2 - t1) / 60.0
+            if dt_min > 0:
+                fpm = abs(a2 - a1) / dt_min
+                if fpm > MAX_CREDIBLE_CLIMB_FPM:
+                    score += 0.35
+                    flags.append("climb>{:.0f}fpm".format(fpm))
+
+    # Check 3: groundspeed inconsistency
+    trail    = list(entry.get("trail", []))
+    last_seen = entry.get("last_seen", 0)
+    prev_seen = entry.get("prev_seen", 0)
+    if len(trail) >= 2 and 0 < prev_seen < last_seen:
+        d_m  = haversine_m(trail[-2][0], trail[-2][1], trail[-1][0], trail[-1][1])
+        dt_s = last_seen - prev_seen
+        if dt_s > 0:
+            computed_kt  = (d_m / dt_s) * 1.94384   # m/s → knots
+            reported_gs  = entry.get("gs")
+            if reported_gs and reported_gs > 20 and computed_kt > 20:
+                ratio = abs(computed_kt - reported_gs) / max(reported_gs, 1.0)
+                if ratio > MAX_GS_DISCREPANCY:
+                    score += 0.3
+                    flags.append("GS{:.0f}vs{:.0f}kt".format(reported_gs, computed_kt))
+
+    return min(score, 1.0), flags
+
+
+def check_jamming_alerts():
+    """
+    Flag sensors whose 1-minute message rate has dropped >60 % in the last
+    15 s compared to the prior 60 s baseline.
+
+    A sudden, steep drop in all three sensors simultaneously is the classic
+    signature of wideband GNSS/RF jamming.  A single-sensor drop may indicate
+    a hardware fault or directed jamming toward one node.
+    """
+    now_ts  = time.time()
+    alerts  = []
+    for name, s in state["sensors"].items():
+        hist = list(s.get("msg_rate_history", []))
+        if len(hist) < 4:
+            continue
+        recent = [r for t, r in hist if now_ts - t < 15]
+        older  = [r for t, r in hist if 15 <= now_ts - t < 75]
+        if not recent or not older:
+            continue
+        recent_avg = sum(recent) / len(recent)
+        older_avg  = sum(older)  / len(older)
+        if older_avg > 10 and recent_avg < older_avg * 0.4:
+            alerts.append(name)
+    return alerts
+
+
 def on_message(client, userdata, message):
     try:
         parts = message.topic.split('/')
@@ -95,15 +198,18 @@ def on_message(client, userdata, message):
 
         if dtype == "stats":
             s = state["sensors"].setdefault(sensor, {})
-            s["now"] = float(payload.get("now", 0))
-            s["gain_db"] = payload.get("gain_db", 0)
+            s["now"]         = float(payload.get("now", 0))
+            s["gain_db"]     = payload.get("gain_db", 0)
             s["ac_with_pos"] = payload.get("aircraft_with_pos", 0)
-            s["ac_total"] = s["ac_with_pos"] + payload.get("aircraft_without_pos", 0)
-            l1 = payload.get("last1min", {}).get("local", {})
-            s["signal"] = l1.get("signal", 0)
-            s["noise"] = l1.get("noise", 0)
-            s["msg_rate"] = payload.get("last1min", {}).get("messages_valid", 0)
+            s["ac_total"]    = s["ac_with_pos"] + payload.get("aircraft_without_pos", 0)
+            l1               = payload.get("last1min", {}).get("local", {})
+            s["signal"]      = l1.get("signal", 0)
+            s["noise"]       = l1.get("noise", 0)
+            msg_rate         = payload.get("last1min", {}).get("messages_valid", 0)
+            s["msg_rate"]    = msg_rate
             s["max_range_km"] = round(payload.get("last15min", {}).get("max_distance", 0) / 1000, 1)
+            # Record for jamming detection
+            s.setdefault("msg_rate_history", deque(maxlen=120)).append((time.time(), msg_rate))
 
         elif dtype == "aircraft":
             if "now" not in payload:
@@ -127,8 +233,10 @@ def on_message(client, userdata, message):
                     continue
 
                 entry = state["aircraft"].setdefault(hex_id, {
-                    "seen_by": set(),
-                    "trail": deque(maxlen=60),  # Feature 1: position history
+                    "seen_by":     set(),
+                    "trail":       deque(maxlen=60),   # Feature 1
+                    "alt_history": deque(maxlen=10),   # climb-rate check
+                    "prev_seen":   0,
                 })
 
                 lat, lon = ac["lat"], ac["lon"]
@@ -138,17 +246,28 @@ def on_message(client, userdata, message):
                 if not trail or haversine_m(lat, lon, trail[-1][0], trail[-1][1]) > 50:
                     trail.append((lat, lon))
 
-                squawk = ac.get("squawk")
+                squawk  = ac.get("squawk")
+                alt     = ac.get("alt_baro", "ground")
+
+                # Track altitude history for climb-rate spoofing check
+                if isinstance(alt, (int, float)):
+                    ah = entry["alt_history"]
+                    if not ah or alt != ah[-1][1]:
+                        ah.append((time.time(), alt))
+
+                # Keep prev_seen for groundspeed consistency check
+                entry["prev_seen"] = entry.get("last_seen", 0)
+
                 entry.update({
                     "lat": lat, "lon": lon,
-                    "flight": (ac.get("flight") or "").strip() or None,
-                    "squawk": squawk,
-                    "alt": ac.get("alt_baro", "ground"),
-                    "gs": ac.get("gs"),
-                    "track": ac.get("track"),
-                    "rssi": ac.get("rssi"),
-                    "type": ac.get("type"),
-                    "category": ac.get("category"),
+                    "flight":    (ac.get("flight") or "").strip() or None,
+                    "squawk":    squawk,
+                    "alt":       alt,
+                    "gs":        ac.get("gs"),
+                    "track":     ac.get("track"),
+                    "rssi":      ac.get("rssi"),
+                    "type":      ac.get("type"),
+                    "category":  ac.get("category"),
                     "last_seen": time.time(),
                     # Feature 2: mark emergency squawks server-side
                     "emergency": squawk in EMERGENCY_SQUAWKS if squawk else False,
@@ -167,22 +286,32 @@ def on_message(client, userdata, message):
 
             aircraft_list = []
             for k, v in state["aircraft"].items():
+                spoof_score, spoof_flags = compute_spoof_score(v)
                 entry_data = {
-                    **{kk: vv for kk, vv in v.items() if kk not in ("seen_by", "trail")},
-                    "hex": k,
-                    "seen_by": list(v["seen_by"]),
-                    "trail": list(v["trail"]),
+                    **{kk: vv for kk, vv in v.items() if kk not in ("seen_by", "trail", "alt_history", "prev_seen")},
+                    "hex":          k,
+                    "seen_by":      list(v["seen_by"]),
+                    "trail":        list(v["trail"]),
                     # Feature 7: anomaly score from ML pipeline
                     "anomaly_score": state["anomalies"].get(k),
+                    # v3.4: spoofing heuristics
+                    "spoof_score":  round(spoof_score, 3),
+                    "spoof_flags":  spoof_flags,
                 }
                 if len(v["seen_by"]) == 3:
                     entry_data["tdoa_uncertainty_m"] = tdoa_r
                 aircraft_list.append(entry_data)
 
+            # Jamming detection
+            state["jamming"] = check_jamming_alerts()
+
             socketio.emit('map_update', {
-                "sync": state["sync"],
-                "sensors": state["sensors"],
+                "sync":     state["sync"],
+                # Exclude non-serialisable msg_rate_history deque from sensors dict
+                "sensors":  {k: {kk: vv for kk, vv in v.items() if kk != "msg_rate_history"}
+                             for k, v in state["sensors"].items()},
                 "aircraft": aircraft_list,
+                "jamming":  state["jamming"],
             })
 
     except Exception as e:
@@ -191,17 +320,19 @@ def on_message(client, userdata, message):
 
 mqtt_client = mqtt.Client()
 mqtt_client.username_pw_set("team9", "ResearchView2026!")
+# TLS — verify broker certificate against the system CA store (no custom cert needed)
+mqtt_client.tls_set(cert_reqs=ssl.CERT_REQUIRED)
 mqtt_client.on_message = on_message
 
 
 def start_mqtt():
     try:
-        mqtt_client.connect("127.0.0.1", 1883, 60)
+        mqtt_client.connect("mqtt.securingskies.eu", 8883, 60)
         mqtt_client.subscribe("+/aircraft")
         mqtt_client.subscribe("+/stats")
         mqtt_client.subscribe("sensor-core/anomalies")   # Feature 7
         mqtt_client.loop_start()
-        log.warning("MQTT connected to 127.0.0.1:1883")
+        log.warning("MQTT connected to mqtt.securingskies.eu:8883 (TLS)")
     except Exception as e:
         log.error("MQTT Connect Error: %s", e)
 
@@ -210,7 +341,7 @@ HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>SecuringSkies MLAT Hub v3.3</title>
+    <title>SecuringSkies MLAT Hub v3.4</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
@@ -265,6 +396,24 @@ HTML_TEMPLATE = """
         #conn-badge.live         { background:#0d2b1a; color:#3fb950; border-color:#3fb950; }
         #conn-badge.stale        { background:#2b2200; color:#d29922; border-color:#d29922; }
         #conn-badge.disconnected { background:#2b0a0a; color:#f85149; border-color:#f85149; }
+
+        /* ── v3.4: Jamming alert banner ── */
+        #jamming-banner {
+            display:none; position:absolute; top:0; left:0; right:0; z-index:1900;
+            background:#7d4000; color:#fff; padding:6px 12px; font-size:0.85em;
+            font-weight:bold; text-align:center; border-bottom:2px solid #d29922;
+            pointer-events:none;
+        }
+        /* Emergency banner sits above jamming banner */
+        #emergency-banner { z-index:2000; }
+
+        /* ── v3.4: Spoof score ring animation ── */
+        @keyframes spoof-pulse {
+            0%   { opacity:0.9; }
+            50%  { opacity:0.3; }
+            100% { opacity:0.9; }
+        }
+        .spoof-ring { animation:spoof-pulse 1.5s ease-in-out infinite; }
 
         /* ── Feature 2: Emergency banner ── */
         #emergency-banner {
@@ -331,6 +480,8 @@ HTML_TEMPLATE = """
 <body>
     <!-- Feature 2: Emergency banner (shown above the map) -->
     <div id="emergency-banner"></div>
+    <!-- v3.4: Jamming alert banner -->
+    <div id="jamming-banner"></div>
 
     <div id="map">
         <!-- Feature 4: Connection status badge -->
@@ -427,6 +578,11 @@ HTML_TEMPLATE = """
                     <span style="margin-right:8px;">🚨</span>Anomalies
                     <span id="cnt-anomaly" style="color:#d29922;font-weight:bold;margin-left:auto;">0</span>
                 </div>
+                <!-- v3.4: Spoofing suspects row -->
+                <div class="legend-item" style="grid-column:span 2;margin-top:2px;">
+                    <span style="margin-right:8px;">⚡</span>Spoof suspects
+                    <span id="cnt-spoof" style="color:#f85149;font-weight:bold;margin-left:auto;">0</span>
+                </div>
             </div>
         </div>
     </div>
@@ -449,7 +605,7 @@ var map = L.map('map', {zoomControl:false});
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:''}).addTo(map);
 
 // Per-aircraft layer stores
-var markers = {}, labels = {}, arrows = {}, trails = {}, tdoaCircles = {}, anomalyRings = {};
+var markers = {}, labels = {}, arrows = {}, trails = {}, tdoaCircles = {}, anomalyRings = {}, spoofRings = {};
 
 // Client-side last-seen timestamps (Date.now()/1000) for opacity fade
 var markerLastSeen = {};
@@ -638,6 +794,7 @@ socket.on('map_update', function(data) {
     var counts         = {n:0, w:0, e:0, nw:0, ne:0, we:0, all:0};
     var emergencyMsgs  = [];
     var anomalyCount   = 0;
+    var spoofCount     = 0;
 
     filtered.forEach(function(ac) {
         activeHexes.add(ac.hex);
@@ -669,6 +826,13 @@ socket.on('map_update', function(data) {
         // Feature 7: anomaly count
         if (ac.anomaly_score === -1) anomalyCount++;
 
+        // v3.4: spoof count
+        var spoofScore = ac.spoof_score || 0;
+        if (spoofScore >= 0.2) spoofCount++;
+
+        // v3.4: ghost aircraft = single-sensor high-altitude
+        var isGhost = (ac.seen_by.length === 1 && typeof ac.alt === 'number' && ac.alt > 10000);
+
         // Sensor distances for popup
         var dN = n ? (map.distance(loc, L.latLng(nodes["sensor-north"].pos))/1000).toFixed(1)+' km' : '—';
         var dW = w ? (map.distance(loc, L.latLng(nodes["sensor-west"].pos))/1000).toFixed(1)+' km'  : '—';
@@ -692,6 +856,17 @@ socket.on('map_update', function(data) {
                     + (um < 1000 ? um.toFixed(0)+' m' : (um/1000).toFixed(1)+' km')+' radius<br>';
         }
 
+        // v3.4: spoof score badge for popup
+        var spoofBadge = '';
+        if (spoofScore > 0) {
+            var scol = spoofScore >= 0.5 ? '#f85149' : '#d29922';
+            var pct  = Math.round(spoofScore * 100);
+            var flagStr = (ac.spoof_flags && ac.spoof_flags.length) ? ac.spoof_flags.join(', ') : '';
+            spoofBadge = '<hr style="border:0;border-top:1px dashed #30363d;margin:6px 0;">'
+                + '<span style="color:'+scol+';font-weight:bold;">&#9889; SPOOF: '+pct+'%</span>'
+                + (flagStr ? '<br><span style="color:#8b949e;font-size:0.85em;">'+flagStr+'</span>' : '');
+        }
+
         var popupHTML =
             '<div style="font-family:monospace;min-width:175px;">'
             +(ac.emergency ? '<div style="color:#f85149;font-weight:bold;margin-bottom:4px;">⚠ EMERGENCY SQUAWK</div>' : '')
@@ -712,6 +887,8 @@ socket.on('map_update', function(data) {
             +'<span style="color:#f85149">[E]</span> '+dE+'<br>'
             +tdoaStr
             +'<span style="color:#8b949e;font-size:0.85em;">Sensors: '+ac.seen_by.length+'/3</span>'
+            +spoofBadge
+            +(isGhost ? '<br><span style="color:#d29922;font-size:0.85em;">&#9655; GHOST candidate</span>' : '')
             +'</div>';
 
         // ── Feature 1: Trail polyline ─────────────────────────────────────
@@ -748,6 +925,38 @@ socket.on('map_update', function(data) {
                 anomalyRings[ac.hex] = L.circleMarker(loc, {
                     radius:14, fillColor:'transparent', color:'#d29922',
                     weight:2, fillOpacity:0, pane:'markerPane', interactive:false
+                }).addTo(map);
+            }
+        }
+
+        // ── v3.4: Spoofing score outer ring ───────────────────────────────
+        if (spoofScore >= 0.2) {
+            var ringColor  = spoofScore >= 0.5 ? '#f85149' : '#d29922';
+            var ringRadius = spoofScore >= 0.5 ? 20 : 17;
+            if (spoofRings[ac.hex]) {
+                spoofRings[ac.hex].setLatLng(loc).setStyle({color: ringColor, radius: ringRadius});
+            } else {
+                spoofRings[ac.hex] = L.circleMarker(loc, {
+                    radius: ringRadius, fillColor:'transparent', color: ringColor,
+                    weight: 2.5, fillOpacity:0, pane:'markerPane', interactive:false,
+                    className:'spoof-ring'
+                }).addTo(map);
+            }
+        } else if (spoofRings[ac.hex]) {
+            map.removeLayer(spoofRings[ac.hex]);
+            delete spoofRings[ac.hex];
+        }
+
+        // ── v3.4: Ghost aircraft dashed ring ──────────────────────────────
+        if (isGhost && !anomalyRings[ac.hex]) {
+            // Reuse anomalyRings slot with a distinct dashed style
+            if (anomalyRings[ac.hex]) {
+                anomalyRings[ac.hex].setLatLng(loc);
+            } else {
+                anomalyRings[ac.hex] = L.circleMarker(loc, {
+                    radius:16, fillColor:'transparent', color:'#d29922',
+                    weight:1.5, fillOpacity:0, dashArray:'3,4',
+                    pane:'markerPane', interactive:false
                 }).addTo(map);
             }
         }
@@ -801,6 +1010,18 @@ socket.on('map_update', function(data) {
         banner.style.display = 'none';
     }
 
+    // ── v3.4: Jamming alert banner ────────────────────────────────────────
+    var jammingBanner = document.getElementById('jamming-banner');
+    var jamList = data.jamming || [];
+    if (jamList.length > 0) {
+        var jamNames = jamList.map(function(s) { return s.replace('sensor-','').toUpperCase(); });
+        jammingBanner.style.display = 'block';
+        jammingBanner.textContent   = '&#x26A1; JAMMING DETECTED: ' + jamNames.join(', ')
+            + ' — message rate dropped >60%';
+    } else {
+        jammingBanner.style.display = 'none';
+    }
+
     // Legend counts
     document.getElementById('cnt-n').textContent       = counts.n;
     document.getElementById('cnt-w').textContent       = counts.w;
@@ -810,6 +1031,7 @@ socket.on('map_update', function(data) {
     document.getElementById('cnt-we').textContent      = counts.we;
     document.getElementById('cnt-all').textContent     = counts.all;
     document.getElementById('cnt-anomaly').textContent = anomalyCount;
+    document.getElementById('cnt-spoof').textContent   = spoofCount;
 
     // Clean up markers for aircraft no longer in the current display set
     // Use allServerHexes for markerLastSeen cleanup (keep data for off-screen filtered aircraft)
@@ -821,6 +1043,7 @@ socket.on('map_update', function(data) {
     for (hx in trails)        { if (!activeHexes.has(hx))    { map.removeLayer(trails[hx]);        delete trails[hx]; } }
     for (hx in tdoaCircles)   { if (!activeHexes.has(hx))    { map.removeLayer(tdoaCircles[hx]);   delete tdoaCircles[hx]; } }
     for (hx in anomalyRings)  { if (!activeHexes.has(hx))    { map.removeLayer(anomalyRings[hx]);  delete anomalyRings[hx]; } }
+    for (hx in spoofRings)    { if (!activeHexes.has(hx))    { map.removeLayer(spoofRings[hx]);    delete spoofRings[hx]; } }
     for (hx in markerLastSeen){ if (!allServerHexes.has(hx)) { delete markerLastSeen[hx]; } }
 });
 </script>
