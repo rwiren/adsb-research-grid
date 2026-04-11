@@ -58,9 +58,9 @@ MAX_GS_DISCREPANCY     = 0.50   # 50 % difference between computed and reported 
 state = {
     "aircraft": {},
     "sensors": {
-        "sensor-north": {"now": 0, "signal": 0, "noise": 0, "msg_rate": 0, "max_range_km": 0, "gain_db": 0, "ac_with_pos": 0, "ac_total": 0, "msg_rate_history": deque(maxlen=120)},
-        "sensor-west":  {"now": 0, "signal": 0, "noise": 0, "msg_rate": 0, "max_range_km": 0, "gain_db": 0, "ac_with_pos": 0, "ac_total": 0, "msg_rate_history": deque(maxlen=120)},
-        "sensor-east":  {"now": 0, "signal": 0, "noise": 0, "msg_rate": 0, "max_range_km": 0, "gain_db": 0, "ac_with_pos": 0, "ac_total": 0, "msg_rate_history": deque(maxlen=120)},
+        "sensor-north": {"now": 0, "signal": 0, "noise": 0, "msg_rate": 0, "max_range_km": 0, "gain_db": 0, "ac_with_pos": 0, "ac_total": 0, "msg_rate_history": deque(maxlen=120), "temp_c": None, "load_1m": None},
+        "sensor-west":  {"now": 0, "signal": 0, "noise": 0, "msg_rate": 0, "max_range_km": 0, "gain_db": 0, "ac_with_pos": 0, "ac_total": 0, "msg_rate_history": deque(maxlen=120), "temp_c": None, "load_1m": None},
+        "sensor-east":  {"now": 0, "signal": 0, "noise": 0, "msg_rate": 0, "max_range_km": 0, "gain_db": 0, "ac_with_pos": 0, "ac_total": 0, "msg_rate_history": deque(maxlen=120), "temp_c": None, "load_1m": None},
     },
     "sync":    {"delta_ms": 0.0, "per_sensor": {}},
     "anomalies": {},   # icao_hex -> score  (-1 = anomaly flagged by ML pipeline)
@@ -194,6 +194,14 @@ def on_message(client, userdata, message):
         if sensor == "sensor-core" and dtype == "anomalies":
             # Payload is {icao_hex: score, ...}  (-1 = anomaly, 1 = normal)
             state["anomalies"].update(payload)
+            return
+
+        if dtype == "system":
+            s = state["sensors"].setdefault(sensor, {})
+            if "temp_c" in payload:
+                s["temp_c"]  = float(payload["temp_c"])
+            if "load_1m" in payload:
+                s["load_1m"] = float(payload["load_1m"])
             return
 
         if dtype == "stats":
@@ -330,6 +338,7 @@ def start_mqtt():
         mqtt_client.connect("mqtt.securingskies.eu", 8883, 60)
         mqtt_client.subscribe("+/aircraft")
         mqtt_client.subscribe("+/stats")
+        mqtt_client.subscribe("+/system")           # System telemetry (temp, load)
         mqtt_client.subscribe("sensor-core/anomalies")   # Feature 7
         mqtt_client.loop_start()
         log.warning("MQTT connected to mqtt.securingskies.eu:8883 (TLS)")
@@ -534,6 +543,8 @@ HTML_TEMPLATE = """
                     <div class="row"><span class="k">Msg/min</span><span class="v" id="n-msg">—</span></div>
                     <div class="row"><span class="k">Max Range</span><span class="v" id="n-range">—</span></div>
                     <div class="row"><span class="k">AC (pos/all)</span><span class="v" id="n-ac">—</span></div>
+                    <div class="row"><span class="k">CPU Temp</span><span class="v" id="n-temp">—</span></div>
+                    <div class="row"><span class="k">Load 1m</span><span class="v" id="n-load">—</span></div>
                     <div class="snr-bar"><div class="snr-bar-fill" id="n-bar" style="width:0%;background:#58a6ff;"></div></div>
                 </div>
                 <div class="sensor-card" id="card-west">
@@ -544,6 +555,8 @@ HTML_TEMPLATE = """
                     <div class="row"><span class="k">Msg/min</span><span class="v" id="w-msg">—</span></div>
                     <div class="row"><span class="k">Max Range</span><span class="v" id="w-range">—</span></div>
                     <div class="row"><span class="k">AC (pos/all)</span><span class="v" id="w-ac">—</span></div>
+                    <div class="row"><span class="k">CPU Temp</span><span class="v" id="w-temp">—</span></div>
+                    <div class="row"><span class="k">Load 1m</span><span class="v" id="w-load">—</span></div>
                     <div class="snr-bar"><div class="snr-bar-fill" id="w-bar" style="width:0%;background:#3fb950;"></div></div>
                 </div>
                 <div class="sensor-card" id="card-east">
@@ -554,6 +567,8 @@ HTML_TEMPLATE = """
                     <div class="row"><span class="k">Msg/min</span><span class="v" id="e-msg">—</span></div>
                     <div class="row"><span class="k">Max Range</span><span class="v" id="e-range">—</span></div>
                     <div class="row"><span class="k">AC (pos/all)</span><span class="v" id="e-ac">—</span></div>
+                    <div class="row"><span class="k">CPU Temp</span><span class="v" id="e-temp">—</span></div>
+                    <div class="row"><span class="k">Load 1m</span><span class="v" id="e-load">—</span></div>
                     <div class="snr-bar"><div class="snr-bar-fill" id="e-bar" style="width:0%;background:#f85149;"></div></div>
                 </div>
             </div>
@@ -699,6 +714,26 @@ function updateSensor(prefix, s) {
     document.getElementById(prefix+'-ac').textContent    = (s.ac_with_pos||0)+'/'+(s.ac_total||0);
     var pct = snr !== '—' ? Math.min(Math.max(parseFloat(snr)/30*100, 0), 100) : 0;
     document.getElementById(prefix+'-bar').style.width = pct+'%';
+
+    // System telemetry: temperature and CPU load
+    var tempEl = document.getElementById(prefix+'-temp');
+    var loadEl = document.getElementById(prefix+'-load');
+    if (s.temp_c != null) {
+        var t = parseFloat(s.temp_c);
+        var tcol = t >= 75 ? '#f85149' : t >= 60 ? '#d29922' : '#3fb950';
+        tempEl.textContent = t.toFixed(1)+'°C';
+        tempEl.style.color = tcol;
+    } else {
+        tempEl.textContent = '—';
+        tempEl.style.color = '';
+    }
+    if (s.load_1m != null) {
+        loadEl.textContent = parseFloat(s.load_1m).toFixed(2);
+        loadEl.style.color = '';
+    } else {
+        loadEl.textContent = '—';
+        loadEl.style.color = '';
+    }
 }
 
 // ── Feature 4: Connection state indicator ─────────────────────────────────
