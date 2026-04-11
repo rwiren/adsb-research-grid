@@ -1,0 +1,18 @@
+[Unit]
+Description=ADS-B Research Grid — System Telemetry Reporter
+Documentation=https://github.com/rwiren/adsb-research-grid
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/system_telemetry.env
+ExecStart=/usr/bin/python3 /root/system_telemetry.py
+Restart=always
+RestartSec=15
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=system-telemetry
+
+[Install]
+WantedBy=multi-user.target
