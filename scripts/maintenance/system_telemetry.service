@@ -6,7 +6,6 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-EnvironmentFile=-/etc/system_telemetry.env
 ExecStart=/usr/bin/python3 /root/system_telemetry.py
 Restart=always
 RestartSec=15

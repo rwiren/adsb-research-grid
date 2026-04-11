@@ -615,6 +615,10 @@ var CAT_LABELS = {
     "C6":"Spare","C7":"Spare"
 };
 
+// ── Temperature thresholds for sensor health colour coding ─────────────────
+var TEMP_WARN_C = 60;   // °C — amber above this
+var TEMP_CRIT_C = 75;   // °C — red above this
+
 // ── Map setup ──────────────────────────────────────────────────────────────
 var map = L.map('map', {zoomControl:false});
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:''}).addTo(map);
@@ -720,7 +724,7 @@ function updateSensor(prefix, s) {
     var loadEl = document.getElementById(prefix+'-load');
     if (s.temp_c != null) {
         var t = parseFloat(s.temp_c);
-        var tcol = t >= 75 ? '#f85149' : t >= 60 ? '#d29922' : '#3fb950';
+        var tcol = t >= TEMP_CRIT_C ? '#f85149' : t >= TEMP_WARN_C ? '#d29922' : '#3fb950';
         tempEl.textContent = t.toFixed(1)+'°C';
         tempEl.style.color = tcol;
     } else {
