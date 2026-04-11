@@ -1,0 +1,60 @@
+# ==============================================================================
+# FILE: /etc/systemd/system/anomaly-bridge.service
+# DESCRIPTION: Live ADS-B Anomaly Detection Bridge (Tower Core)
+# VERSION: 1.0.0
+#
+# Runs scripts/anomaly_bridge.py on the securingskies.eu server.
+# Subscribes to sensor-+/aircraft via localhost Mosquitto, runs an
+# IsolationForest + LOF ensemble every 30 s, and publishes anomaly scores
+# to sensor-core/anomalies so the dashboard can display them.
+#
+# INSTALLATION (run as root on the tower server):
+#   cp scripts/anomaly_bridge.py /opt/adsb-grid/scripts/anomaly_bridge.py
+#   cp infra/anomaly-bridge.service /etc/systemd/system/anomaly-bridge.service
+#   pip3 install paho-mqtt scikit-learn numpy          # if not already present
+#   systemctl daemon-reload
+#   systemctl enable --now anomaly-bridge
+#   journalctl -u anomaly-bridge -f                    # tail logs
+# ==============================================================================
+
+[Unit]
+Description=ADS-B Live Anomaly Detection Bridge
+Documentation=https://github.com/rwiren/adsb-research-grid
+# Start after the network and Mosquitto (whether native or Docker) are ready
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=admin
+Group=admin
+WorkingDirectory=/opt/adsb-grid
+
+# --- Runtime configuration ---
+# Mosquitto on this server listens on localhost:1883 with allow_anonymous true.
+# MQTT_USER and MQTT_PASS are intentionally left blank so the script connects
+# anonymously. If your broker requires authentication, set them here or via a
+# drop-in EnvironmentFile (e.g. /etc/anomaly-bridge.env).
+Environment="MQTT_HOST=localhost"
+Environment="MQTT_PORT=1883"
+Environment="MQTT_USER="
+Environment="MQTT_PASS="
+Environment="INFERENCE_INTERVAL=30"
+Environment="WINDOW_SECONDS=300"
+Environment="MIN_SAMPLES=20"
+Environment="CONTAMINATION=0.02"
+Environment="PYTHONUNBUFFERED=1"
+
+ExecStart=/usr/bin/python3 /opt/adsb-grid/scripts/anomaly_bridge.py
+
+# Restart on any failure with a short back-off
+Restart=on-failure
+RestartSec=15
+
+# Keep stdout/stderr in the journal
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=anomaly-bridge
+
+[Install]
+WantedBy=multi-user.target
