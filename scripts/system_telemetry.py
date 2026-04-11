@@ -13,13 +13,15 @@
 # Deploy: copy this file to /root/system_telemetry.py on each sensor node.
 # Run permanently: enable the accompanying systemd service
 #                  (see scripts/maintenance/system_telemetry.service).
-# Credentials: set MQTT_USER and MQTT_PASS in /etc/system_telemetry.env
-#              (loaded by the systemd EnvironmentFile directive).
+# Credentials: MQTT password is read from PASS_FILE at startup (same pattern
+#              as /usr/local/bin/adsb-mqtt-publish.sh).
+#              Create the file with: echo -n 'yourpassword' > /etc/securing_skies/mqtt_secret
+#              Restrict access:      chmod 600 /etc/securing_skies/mqtt_secret
 # ==============================================================================
 import json
-import os
 import socket
 import ssl
+import sys
 import time
 import logging
 
@@ -30,12 +32,22 @@ log = logging.getLogger(__name__)
 
 # Automatically derive sensor ID from the node hostname (e.g. "sensor-east")
 SENSOR_ID = socket.gethostname()
-BROKER    = os.environ.get("MQTT_BROKER", "mqtt.securingskies.eu")
-PORT      = int(os.environ.get("MQTT_PORT", "8883"))
-MQTT_USER = os.environ.get("MQTT_USER", "team9")
-MQTT_PASS = os.environ.get("MQTT_PASS", "")
+BROKER    = "mqtt.securingskies.eu"
+PORT      = 8883
+MQTT_USER = "team9"
+PASS_FILE = "/etc/securing_skies/mqtt_secret"
 TOPIC     = f"{SENSOR_ID}/system"
 INTERVAL  = 60  # seconds between publishes
+
+
+def read_mqtt_password(path: str) -> str:
+    """Read the MQTT password from a secret file, mirroring adsb-mqtt-publish.sh."""
+    try:
+        with open(path, "r") as fh:
+            return fh.read().strip()
+    except OSError as exc:
+        log.error("ERROR: Secret file missing or unreadable: %s", exc)
+        sys.exit(1)
 
 
 def get_cpu_temp() -> float:
@@ -64,8 +76,9 @@ def build_payload() -> dict:
 
 
 def main():
+    mqtt_pass = read_mqtt_password(PASS_FILE)
     client = mqtt.Client(client_id=f"{SENSOR_ID}-telemetry")
-    client.username_pw_set(MQTT_USER, MQTT_PASS)
+    client.username_pw_set(MQTT_USER, mqtt_pass)
     client.tls_set(cert_reqs=ssl.CERT_REQUIRED)
 
     try:
