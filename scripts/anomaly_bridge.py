@@ -41,10 +41,12 @@ from sklearn.preprocessing import StandardScaler
 # ---------------------------------------------------------------------------
 # Configuration (overridable via environment variables)
 # ---------------------------------------------------------------------------
-MQTT_HOST          = os.getenv("MQTT_HOST",          "localhost")
-MQTT_PORT          = int(os.getenv("MQTT_PORT",      "1883"))
-MQTT_USER          = os.getenv("MQTT_USER",          "team9")
-MQTT_PASS          = os.getenv("MQTT_PASS",          "ResearchView2026!")
+MQTT_HOST          = os.getenv("MQTT_HOST",  "localhost")
+MQTT_PORT          = int(os.getenv("MQTT_PORT", "1883"))
+# Credentials are optional — local Mosquitto runs with allow_anonymous true.
+# Set MQTT_USER and MQTT_PASS only if your broker requires authentication.
+MQTT_USER          = os.getenv("MQTT_USER", "")
+MQTT_PASS          = os.getenv("MQTT_PASS", "")
 INFERENCE_INTERVAL = int(os.getenv("INFERENCE_INTERVAL", "30"))   # seconds
 WINDOW_SECONDS     = int(os.getenv("WINDOW_SECONDS",     "300"))  # 5 minutes
 MIN_SAMPLES        = int(os.getenv("MIN_SAMPLES",        "20"))
@@ -209,7 +211,7 @@ def run_inference(client: mqtt.Client) -> None:
 def main() -> None:
     client = mqtt.Client(client_id="anomaly-bridge")
 
-    if MQTT_USER:
+    if MQTT_USER and MQTT_PASS:
         client.username_pw_set(MQTT_USER, MQTT_PASS)
 
     client.on_message = on_message
