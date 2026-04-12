@@ -1,21 +1,13 @@
 # ==============================================================================
 # File: dashboard.py
-# Version: 3.3.0 (Enhanced: Trail History, Emergency Alerts, TDOA Uncertainty,
-#                  Connection Indicator, Fade-Out, Alt Filter, Anomaly Overlay,
-#                  Popup Enrichment, Ring Toggle, Mobile Layout)
-# Date: 2026-04-11
+# Version: 3.5.0 (TAK/Palantir tactical style + reduced spoof false-positives)
+# Date: 2026-04-12
 # Maintainer: Team-9 Secure Skies
-# Description: Ten UX/research improvements layered on top of v3.2.0.
-#   1.  Aircraft trail history  — deque(maxlen=60), fading polylines on map
-#   2.  Emergency squawk alarm  — 7500/7600/7700 → banner + CSS pulse
-#   3.  TDOA uncertainty circle — sync-error → position-uncertainty radius
-#   4.  Connection status badge — LIVE / STALE / DISCONNECTED
-#   5.  Aircraft age fade-out   — linear opacity decay over last 5 s
-#   6.  Altitude filter slider  — client-side dual-thumb range slider
-#   7.  Anomaly score overlay   — sensor-core/anomalies MQTT topic + ring
-#   8.  Popup category lookup   — ICAO ADS-B category → human label
-#   9.  Coverage rings toggle   — Leaflet layerGroup buttons
-#   10. Mobile-responsive layout — slide-up drawer with CSS media queries
+# Description: Tactical GUI restyle (TAK/Palantir-inspired dark theme with amber
+#              accents, military panel borders, plane-silhouette icons, cursor
+#              coordinates display) plus reduced spoof false-positives (altitude
+#              threshold 10k→25k ft, GS discrepancy 50→65%, JS display
+#              threshold 0.20→0.35, min 5 s between position fixes for GS check).
 # ==============================================================================
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -53,7 +45,7 @@ SENSOR_POS = {
 
 # Spoofing heuristic thresholds
 MAX_CREDIBLE_CLIMB_FPM = 6000   # ft/min — above this is physically impossible for civil AC
-MAX_GS_DISCREPANCY     = 0.50   # 50 % difference between computed and reported groundspeed
+MAX_GS_DISCREPANCY     = 0.65   # 65 % difference between computed and reported groundspeed
 
 state = {
     "aircraft": {},
@@ -122,9 +114,10 @@ def compute_spoof_score(entry):
     seen_by = entry.get("seen_by", set())
 
     # Check 1: single-sensor high-altitude
-    if len(seen_by) == 1 and isinstance(alt, (int, float)) and alt > 10000:
+    # At FL250+ all three nodes have unobstructed LoS; single-sensor is suspicious.
+    if len(seen_by) == 1 and isinstance(alt, (int, float)) and alt > 25000:
         score += 0.4
-        flags.append("1-sensor>10kft")
+        flags.append("1-sensor>25kft")
 
     # Check 2: impossible climb / descent rate
     ah = list(entry.get("alt_history", []))
@@ -146,7 +139,8 @@ def compute_spoof_score(entry):
     if len(trail) >= 2 and 0 < prev_seen < last_seen:
         d_m  = haversine_m(trail[-2][0], trail[-2][1], trail[-1][0], trail[-1][1])
         dt_s = last_seen - prev_seen
-        if dt_s > 0:
+        # Require ≥5 s between position fixes to avoid noise from very short intervals
+        if dt_s >= 5:
             computed_kt  = (d_m / dt_s) * 1.94384   # m/s → knots
             reported_gs  = entry.get("gs")
             if reported_gs and reported_gs > 20 and computed_kt > 20:
@@ -350,68 +344,69 @@ HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>SecuringSkies MLAT Hub v3.4</title>
+    <title>SECURESKIES ⬡ MLAT TACTICAL HUB v3.5</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         * { box-sizing: border-box; }
-        body { margin:0; background:#0d1117; color:#c9d1d9; font-family:'Courier New',monospace; overflow:hidden; }
+        body { margin:0; background:#060a0f; color:#a8bcc8; font-family:'Courier New',monospace; overflow:hidden; }
 
         /* ── Core layout ── */
-        #map        { height:75vh; width:100%; border-bottom:2px solid #30363d; position:relative; }
-        #dashboard  { height:25vh; display:flex; gap:8px; background:#161b22; padding:10px; overflow:hidden; }
+        #map        { height:75vh; width:100%; border-bottom:1px solid rgba(0,200,120,0.2); position:relative; }
+        #dashboard  { height:25vh; display:flex; gap:8px; background:#04080d; padding:10px; overflow:hidden; border-top:1px solid rgba(0,200,120,0.15); }
 
-        .panel         { background:#0d1117; border:1px solid #30363d; border-radius:4px; padding:10px; display:flex; flex-direction:column; }
+        .panel         { background:#08111a; border:1px solid rgba(0,200,120,0.18); border-radius:2px; padding:10px; display:flex; flex-direction:column; position:relative; overflow:hidden; }
+        .panel::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,rgba(0,200,120,0.55) 0%,transparent 80%); pointer-events:none; }
         .panel-sync    { flex:0.8; align-items:center; justify-content:center; text-align:center; }
         .panel-sensors { flex:2; }
         .panel-legend  { flex:1.2; }
 
-        .label     { font-size:0.75em; color:#8b949e; text-transform:uppercase; margin-bottom:4px; letter-spacing:0.5px; }
-        .value-big { font-size:3em; font-weight:bold; color:#3fb950; line-height:1; margin-bottom:5px; }
-        .value-sub { font-size:0.85em; color:#8b949e; margin-top:2px; }
+        .label     { font-size:0.72em; color:#3d8060; text-transform:uppercase; margin-bottom:4px; letter-spacing:1.2px; border-bottom:1px solid rgba(0,200,120,0.1); padding-bottom:3px; }
+        .value-big { font-size:3em; font-weight:bold; color:#e8b84b; line-height:1; margin-bottom:5px; }
+        .value-sub { font-size:0.85em; color:#4a8060; margin-top:2px; }
 
         /* Sensor health grid */
         .sensor-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; height:100%; }
-        .sensor-card { background:#161b22; border:1px solid #30363d; border-radius:4px; padding:6px; display:flex; flex-direction:column; gap:2px; }
-        .sensor-card .name { font-size:0.85em; font-weight:bold; margin-bottom:2px; }
-        .sensor-card .row  { display:flex; justify-content:space-between; font-size:0.75em; }
-        .sensor-card .row .k { color:#8b949e; }
-        .sensor-card .row .v { color:#c9d1d9; }
-        .snr-bar      { height:4px; background:#21262d; border-radius:2px; margin-top:auto; }
-        .snr-bar-fill { height:100%; border-radius:2px; transition:width 0.5s; }
+        .sensor-card { background:#060e18; border:1px solid rgba(0,200,120,0.12); border-radius:2px; padding:6px; display:flex; flex-direction:column; gap:2px; position:relative; }
+        .sensor-card .name { font-size:0.82em; font-weight:bold; margin-bottom:2px; letter-spacing:0.8px; }
+        .sensor-card .row  { display:flex; justify-content:space-between; font-size:0.74em; }
+        .sensor-card .row .k { color:#2e6050; }
+        .sensor-card .row .v { color:#7ecda0; }
+        .snr-bar      { height:3px; background:rgba(0,200,120,0.08); border-radius:1px; margin-top:auto; }
+        .snr-bar-fill { height:100%; border-radius:1px; transition:width 0.5s; }
 
         /* Coverage legend */
-        .legend-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px; font-size:0.8em; margin-top:5px; }
-        .legend-item { display:flex; align-items:center; }
-        .dot { width:10px; height:10px; border-radius:50%; margin-right:8px; border:1px solid rgba(255,255,255,0.15); flex-shrink:0; }
+        .legend-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px; font-size:0.78em; margin-top:5px; }
+        .legend-item { display:flex; align-items:center; color:#7ecda0; }
+        .dot { width:8px; height:8px; border-radius:50%; margin-right:7px; border:1px solid rgba(255,255,255,0.1); flex-shrink:0; }
 
         /* Popups */
-        .leaflet-popup-content-wrapper, .leaflet-popup-tip { background:#161b22; color:#c9d1d9; border:1px solid #30363d; box-shadow:0 0 15px rgba(0,0,0,0.8); }
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip { background:#04090f; color:#7ecda0; border:1px solid rgba(0,200,120,0.3); box-shadow:0 0 20px rgba(0,200,120,0.12),0 0 40px rgba(0,0,0,0.9); }
         .leaflet-popup-content { margin:10px; line-height:1.5; font-family:'Courier New',monospace; font-size:0.9em; }
 
         /* Flight labels */
-        .flight-label { background:none; border:none; color:#c9d1d9; font-family:'Courier New',monospace;
+        .flight-label { background:none; border:none; color:#d0e8d0; font-family:'Courier New',monospace;
                         font-size:11px; font-weight:bold; white-space:nowrap;
-                        text-shadow:1px 1px 2px #000, -1px -1px 2px #000; }
+                        text-shadow:1px 1px 3px #000, -1px -1px 3px #000, 0 0 6px rgba(0,200,120,0.25); }
 
         /* ── Feature 4: Connection status badge ── */
         #conn-badge {
             position:absolute; top:10px; right:10px; z-index:1000;
-            padding:4px 10px; border-radius:12px; font-size:0.75em; font-weight:bold;
-            border:1px solid rgba(255,255,255,0.2); pointer-events:none;
+            padding:3px 10px; border-radius:2px; font-size:0.7em; font-weight:bold;
+            letter-spacing:1.2px; border:1px solid rgba(255,255,255,0.2); pointer-events:none;
             transition:background 0.5s, color 0.5s;
         }
-        #conn-badge.live         { background:#0d2b1a; color:#3fb950; border-color:#3fb950; }
-        #conn-badge.stale        { background:#2b2200; color:#d29922; border-color:#d29922; }
-        #conn-badge.disconnected { background:#2b0a0a; color:#f85149; border-color:#f85149; }
+        #conn-badge.live         { background:rgba(0,200,80,0.1);  color:#00c878; border-color:rgba(0,200,80,0.5); }
+        #conn-badge.stale        { background:rgba(232,184,75,0.1); color:#e8b84b; border-color:rgba(232,184,75,0.5); }
+        #conn-badge.disconnected { background:rgba(248,81,73,0.1);  color:#f85149; border-color:rgba(248,81,73,0.5); }
 
         /* ── v3.4: Jamming alert banner ── */
         #jamming-banner {
             display:none; position:absolute; top:0; left:0; right:0; z-index:1900;
-            background:#7d4000; color:#fff; padding:6px 12px; font-size:0.85em;
-            font-weight:bold; text-align:center; border-bottom:2px solid #d29922;
-            pointer-events:none;
+            background:rgba(125,64,0,0.92); color:#ffcc00; padding:6px 12px; font-size:0.82em;
+            font-weight:bold; text-align:center; border-bottom:2px solid #e8b84b;
+            pointer-events:none; letter-spacing:1px;
         }
         /* Emergency banner sits above jamming banner */
         #emergency-banner { z-index:2000; }
@@ -427,9 +422,9 @@ HTML_TEMPLATE = """
         /* ── Feature 2: Emergency banner ── */
         #emergency-banner {
             display:none; position:absolute; top:0; left:0; right:0; z-index:2000;
-            background:#7d0000; color:#fff; padding:6px 12px; font-size:0.85em;
+            background:rgba(125,0,0,0.92); color:#ff8080; padding:6px 12px; font-size:0.82em;
             font-weight:bold; text-align:center; border-bottom:2px solid #f85149;
-            pointer-events:none;
+            pointer-events:none; letter-spacing:1px;
         }
 
         /* Emergency marker pulse animation */
@@ -443,13 +438,13 @@ HTML_TEMPLATE = """
         /* ── Feature 6: Altitude filter ── */
         #alt-filter {
             position:absolute; bottom:8px; left:50%; transform:translateX(-50%);
-            z-index:1000; background:#161b22cc; border:1px solid #30363d;
-            border-radius:6px; padding:4px 12px;
-            display:flex; align-items:center; gap:8px; font-size:0.75em;
+            z-index:1000; background:rgba(4,8,13,0.88); border:1px solid rgba(0,200,120,0.2);
+            border-radius:2px; padding:4px 12px;
+            display:flex; align-items:center; gap:8px; font-size:0.72em;
         }
-        #alt-filter label  { color:#8b949e; white-space:nowrap; }
-        #alt-filter input[type=range] { width:80px; accent-color:#58a6ff; cursor:pointer; }
-        #alt-filter span   { color:#c9d1d9; min-width:34px; text-align:right; }
+        #alt-filter label  { color:#3d8060; white-space:nowrap; letter-spacing:0.8px; }
+        #alt-filter input[type=range] { width:80px; accent-color:#00c878; cursor:pointer; }
+        #alt-filter span   { color:#e8b84b; min-width:34px; text-align:right; }
 
         /* ── Feature 9: Ring toggle buttons ── */
         #ring-controls {
@@ -457,11 +452,19 @@ HTML_TEMPLATE = """
             display:flex; flex-direction:column; gap:4px;
         }
         .ring-btn {
-            background:#161b22cc; border:1px solid #30363d; border-radius:4px;
-            color:#8b949e; font-size:0.7em; padding:3px 7px; cursor:pointer;
-            font-family:'Courier New',monospace; white-space:nowrap;
+            background:rgba(4,8,13,0.88); border:1px solid rgba(0,200,120,0.18); border-radius:2px;
+            color:#3d8060; font-size:0.7em; padding:3px 7px; cursor:pointer;
+            font-family:'Courier New',monospace; white-space:nowrap; letter-spacing:0.5px;
         }
-        .ring-btn.active { color:#c9d1d9; border-color:#58a6ff; }
+        .ring-btn.active { color:#e8b84b; border-color:rgba(0,200,120,0.45); }
+
+        /* ── Cursor coordinates display ── */
+        #cursor-coords {
+            position:absolute; bottom:40px; right:10px; z-index:1000;
+            background:rgba(4,8,13,0.82); border:1px solid rgba(0,200,120,0.2);
+            border-radius:2px; padding:2px 8px; font-size:0.7em;
+            color:#3d8060; pointer-events:none; letter-spacing:0.5px;
+        }
 
         /* ── Feature 10: Mobile layout ── */
         @media (max-width:768px) {
@@ -474,8 +477,8 @@ HTML_TEMPLATE = """
             #dashboard.expanded { max-height:600px; }
             #mobile-bar {
                 display:flex; align-items:center; justify-content:space-between;
-                padding:6px 10px; background:#161b22; cursor:pointer;
-                border-bottom:1px solid #30363d; flex-shrink:0; min-height:42px;
+                padding:6px 10px; background:#04080d; cursor:pointer;
+                border-bottom:1px solid rgba(0,200,120,0.15); flex-shrink:0; min-height:42px; color:#7ecda0;
             }
             #mobile-chevron { transition:transform 0.3s; display:inline-block; }
             #dashboard.expanded #mobile-chevron { transform:rotate(180deg); }
@@ -495,6 +498,8 @@ HTML_TEMPLATE = """
     <div id="map">
         <!-- Feature 4: Connection status badge -->
         <div id="conn-badge" class="live">● LIVE</div>
+        <!-- Cursor coordinate display -->
+        <div id="cursor-coords">—</div>
 
         <!-- Feature 9: Coverage ring toggle buttons -->
         <div id="ring-controls">
@@ -517,23 +522,23 @@ HTML_TEMPLATE = """
     <div id="dashboard">
         <!-- Feature 10: Mobile summary bar (hidden on desktop) -->
         <div id="mobile-bar" onclick="toggleMobileDashboard()">
-            <span>⬆ <span id="mob-ac">0</span> targets &nbsp;·&nbsp; Δ <span id="mob-sync">0.00</span> ms</span>
+            <span>◈ <span id="mob-ac">0</span> TRACKS &nbsp;·&nbsp; ΔT <span id="mob-sync">0.00</span> ms</span>
             <span id="mobile-chevron">∧</span>
         </div>
 
         <div class="panel panel-sync">
-            <div class="label">Array Sync Δ</div>
+            <div class="label">SYS SYNC ΔT</div>
             <div id="sync-delta" class="value-big">0.00</div>
-            <div style="font-size:1em;color:#8b949e;">ms</div>
+            <div style="font-size:0.9em;color:#3d8060;letter-spacing:1px;">MS</div>
             <div id="sync-detail" class="value-sub"></div>
             <div style="margin-top:auto;">
-                <div class="label">Targets</div>
+                <div class="label">TRACKS</div>
                 <div id="ac-count" class="value-big" style="font-size:2em;">0</div>
             </div>
         </div>
 
         <div class="panel panel-sensors">
-            <div class="label">Sensor Health (Live Telemetry)</div>
+            <div class="label">NODE HEALTH // LIVE TELEMETRY</div>
             <div class="sensor-grid">
                 <div class="sensor-card" id="card-north">
                     <div class="name" style="color:#58a6ff;">▲ NORTH</div>
@@ -575,27 +580,27 @@ HTML_TEMPLATE = """
         </div>
 
         <div class="panel panel-legend">
-            <div class="label">Coverage Legend</div>
+            <div class="label">SA COVERAGE // MLAT LOCK</div>
             <div class="legend-grid">
-                <div class="legend-item"><span class="dot" style="background:#58a6ff"></span>North <span id="cnt-n" style="color:#8b949e;margin-left:auto;">0</span></div>
-                <div class="legend-item"><span class="dot" style="background:#39c5cf"></span>N+W   <span id="cnt-nw" style="color:#8b949e;margin-left:auto;">0</span></div>
-                <div class="legend-item"><span class="dot" style="background:#3fb950"></span>West  <span id="cnt-w" style="color:#8b949e;margin-left:auto;">0</span></div>
-                <div class="legend-item"><span class="dot" style="background:#d2a8ff"></span>N+E   <span id="cnt-ne" style="color:#8b949e;margin-left:auto;">0</span></div>
-                <div class="legend-item"><span class="dot" style="background:#f85149"></span>East  <span id="cnt-e" style="color:#8b949e;margin-left:auto;">0</span></div>
-                <div class="legend-item"><span class="dot" style="background:#d29922"></span>W+E   <span id="cnt-we" style="color:#8b949e;margin-left:auto;">0</span></div>
-                <div class="legend-item" style="grid-column:span 2;margin-top:4px;padding-top:4px;border-top:1px solid #30363d;">
+                <div class="legend-item"><span class="dot" style="background:#58a6ff"></span>North <span id="cnt-n" style="color:#3d6050;margin-left:auto;">0</span></div>
+                <div class="legend-item"><span class="dot" style="background:#39c5cf"></span>N+W   <span id="cnt-nw" style="color:#3d6050;margin-left:auto;">0</span></div>
+                <div class="legend-item"><span class="dot" style="background:#3fb950"></span>West  <span id="cnt-w" style="color:#3d6050;margin-left:auto;">0</span></div>
+                <div class="legend-item"><span class="dot" style="background:#d2a8ff"></span>N+E   <span id="cnt-ne" style="color:#3d6050;margin-left:auto;">0</span></div>
+                <div class="legend-item"><span class="dot" style="background:#f85149"></span>East  <span id="cnt-e" style="color:#3d6050;margin-left:auto;">0</span></div>
+                <div class="legend-item"><span class="dot" style="background:#d29922"></span>W+E   <span id="cnt-we" style="color:#3d6050;margin-left:auto;">0</span></div>
+                <div class="legend-item" style="grid-column:span 2;margin-top:4px;padding-top:4px;border-top:1px solid rgba(0,200,120,0.15);">
                     <span class="dot" style="background:#fff;box-shadow:0 0 8px #fff;"></span>
-                    <b>FULL LOCK (N+W+E)</b>
-                    <span id="cnt-all" style="color:#8b949e;margin-left:auto;">0</span>
+                    <b style="color:#e8b84b;">TRILATERATION LOCK</b>
+                    <span id="cnt-all" style="color:#e8b84b;margin-left:auto;">0</span>
                 </div>
                 <!-- Feature 7: Anomaly count row -->
                 <div class="legend-item" style="grid-column:span 2;margin-top:2px;">
-                    <span style="margin-right:8px;">🚨</span>Anomalies
+                    <span style="margin-right:8px;color:#d29922;">⚑</span>ANOMALIES
                     <span id="cnt-anomaly" style="color:#d29922;font-weight:bold;margin-left:auto;">0</span>
                 </div>
                 <!-- v3.4: Spoofing suspects row -->
                 <div class="legend-item" style="grid-column:span 2;margin-top:2px;">
-                    <span style="margin-right:8px;">⚡</span>Spoof suspects
+                    <span style="margin-right:8px;color:#f85149;">◈</span>SPOOF SUSPECTS
                     <span id="cnt-spoof" style="color:#f85149;font-weight:bold;margin-left:auto;">0</span>
                 </div>
             </div>
@@ -672,6 +677,16 @@ map.on('zoomend', function() {
     });
 });
 
+// ── Cursor coordinates ─────────────────────────────────────────────────────
+var coordEl = document.getElementById('cursor-coords');
+map.on('mousemove', function(e) {
+    var lat = e.latlng.lat, lon = e.latlng.lng;
+    var latStr = Math.abs(lat).toFixed(4) + (lat >= 0 ? '°N' : '°S');
+    var lonStr = Math.abs(lon).toFixed(4) + (lon >= 0 ? '°E' : '°W');
+    coordEl.textContent = latStr + '  ' + lonStr;
+});
+map.on('mouseout', function() { coordEl.textContent = '—'; });
+
 // ── Feature 6: Altitude filter state ──────────────────────────────────────
 var altMin = 0, altMax = 45000;
 document.getElementById('alt-min').addEventListener('input', function() {
@@ -698,12 +713,13 @@ function getColor(sb) {
     return "#888";
 }
 
-// ── Heading arrow SVG ─────────────────────────────────────────────────────
+// ── Heading arrow SVG (top-down aircraft silhouette) ──────────────────────
 function arrowSvg(track, col) {
     var rot = track || 0;
-    return '<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
-        '<g transform="rotate('+rot+',12,12)">' +
-        '<polygon points="12,2 8,18 12,14 16,18" fill="'+col+'" stroke="#000" stroke-width="0.8" opacity="0.9"/>' +
+    return '<svg width="26" height="26" viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg">' +
+        '<g transform="rotate('+rot+',13,13)">' +
+        '<path d="M13,1 L11,11 L2,15 L11,15 L10,23 L13,21 L16,23 L15,15 L24,15 L15,11 Z"' +
+        ' fill="'+col+'" stroke="#000" stroke-width="0.7" opacity="0.95"/>' +
         '</g></svg>';
 }
 
@@ -865,12 +881,12 @@ socket.on('map_update', function(data) {
         // Feature 7: anomaly count
         if (ac.anomaly_score === -1) anomalyCount++;
 
-        // v3.4: spoof count
+        // v3.4: spoof count — threshold raised to 0.35 to reduce false positives
         var spoofScore = ac.spoof_score || 0;
-        if (spoofScore >= 0.2) spoofCount++;
+        if (spoofScore >= 0.35) spoofCount++;
 
-        // v3.4: ghost aircraft = single-sensor high-altitude
-        var isGhost = (ac.seen_by.length === 1 && typeof ac.alt === 'number' && ac.alt > 10000);
+        // v3.4: ghost aircraft = single-sensor high-altitude (matches server spoof threshold)
+        var isGhost = (ac.seen_by.length === 1 && typeof ac.alt === 'number' && ac.alt > 25000);
 
         // Sensor distances for popup
         var dN = n ? (map.distance(loc, L.latLng(nodes["sensor-north"].pos))/1000).toFixed(1)+' km' : '—';
@@ -890,8 +906,8 @@ socket.on('map_update', function(data) {
         var tdoaStr = '';
         if (ac.tdoa_uncertainty_m !== undefined) {
             var um = ac.tdoa_uncertainty_m;
-            tdoaStr = '<hr style="border:0;border-top:1px dashed #30363d;margin:6px 0;">'
-                    + '<span style="color:#8b949e;font-size:0.9em;">TDOA UNCERTAINTY:</span><br>'
+            tdoaStr = '<hr style="border:0;border-top:1px dashed rgba(0,200,120,0.2);margin:6px 0;">'
+                    + '<span style="color:#3d8060;font-size:0.9em;">TDOA UNCERTAINTY:</span><br>'
                     + (um < 1000 ? um.toFixed(0)+' m' : (um/1000).toFixed(1)+' km')+' radius<br>';
         }
 
@@ -901,9 +917,9 @@ socket.on('map_update', function(data) {
             var scol = spoofScore >= 0.5 ? '#f85149' : '#d29922';
             var pct  = Math.round(spoofScore * 100);
             var flagStr = (ac.spoof_flags && ac.spoof_flags.length) ? ac.spoof_flags.join(', ') : '';
-            spoofBadge = '<hr style="border:0;border-top:1px dashed #30363d;margin:6px 0;">'
+            spoofBadge = '<hr style="border:0;border-top:1px dashed rgba(0,200,120,0.2);margin:6px 0;">'
                 + '<span style="color:'+scol+';font-weight:bold;">&#9889; SPOOF: '+pct+'%</span>'
-                + (flagStr ? '<br><span style="color:#8b949e;font-size:0.85em;">'+flagStr+'</span>' : '');
+                + (flagStr ? '<br><span style="color:#3d8060;font-size:0.85em;">'+flagStr+'</span>' : '');
         }
 
         var popupHTML =
@@ -919,13 +935,13 @@ socket.on('map_update', function(data) {
             +'TYPE: '+(ac.type||'—')+'<br>'
             +'CAT : '+catLabel+'<br>'
             +'MLAT: '+anomalyBadge+'<br>'
-            +'<hr style="border:0;border-top:1px dashed #30363d;margin:6px 0;">'
-            +'<span style="color:#8b949e;font-size:0.9em;">RANGES:</span><br>'
+            +'<hr style="border:0;border-top:1px dashed rgba(0,200,120,0.2);margin:6px 0;">'
+            +'<span style="color:#3d8060;font-size:0.9em;">RANGES:</span><br>'
             +'<span style="color:#58a6ff">[N]</span> '+dN+'<br>'
             +'<span style="color:#3fb950">[W]</span> '+dW+'<br>'
             +'<span style="color:#f85149">[E]</span> '+dE+'<br>'
             +tdoaStr
-            +'<span style="color:#8b949e;font-size:0.85em;">Sensors: '+ac.seen_by.length+'/3</span>'
+            +'<span style="color:#3d8060;font-size:0.85em;">Sensors: '+ac.seen_by.length+'/3</span>'
             +spoofBadge
             +(isGhost ? '<br><span style="color:#d29922;font-size:0.85em;">&#9655; GHOST candidate</span>' : '')
             +'</div>';
@@ -969,7 +985,7 @@ socket.on('map_update', function(data) {
         }
 
         // ── v3.4: Spoofing score outer ring ───────────────────────────────
-        if (spoofScore >= 0.2) {
+        if (spoofScore >= 0.35) {
             var ringColor  = spoofScore >= 0.5 ? '#f85149' : '#d29922';
             var ringRadius = spoofScore >= 0.5 ? 20 : 17;
             if (spoofRings[ac.hex]) {
