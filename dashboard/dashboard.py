@@ -1,14 +1,14 @@
 # ==============================================================================
 # File: dashboard.py
-# Version: 3.6.0 (SkyGlass companion integration)
+# Version: 4.0.0 (Native 3D Sky View)
 # Date: 2026-04-13
 # Maintainer: Team-9 Secure Skies
-# Description: Integrates Aviar Labs SkyGlass (https://www.aviarlabs.com/) as a
-#              companion 3D aviation intelligence tool.  Adds a "SkyGlass 3D"
-#              quick-launch button to the map controls and a "Verify in SkyGlass"
-#              deep-link in every aircraft popup so analysts can instantly cross-
-#              reference a flagged target against global ADS-B Exchange data in
-#              the SkyGlass 3D environment.
+# Description: Adds a toggleable 3D Sky View alongside the existing Leaflet 2D
+#              map.  Built with Three.js (CDN, ~170 KB) — no tile server, no
+#              external account required.  Reuses the existing map_update
+#              SocketIO stream: aircraft cones, altitude stems, ground trails,
+#              TDOA uncertainty spheres, and spoof-pulse rings are all driven by
+#              the same server-side data as the 2D view.
 # ==============================================================================
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -345,10 +345,13 @@ HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>SECURESKIES ⬡ MLAT TACTICAL HUB v3.6 + SkyGlass</title>
+    <title>SECURESKIES ⬡ MLAT TACTICAL HUB v4.0</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <!-- Three.js r128 (last stable release with non-module OrbitControls) -->
+    <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <style>
         * { box-sizing: border-box; }
         body { margin:0; background:#060a0f; color:#a8bcc8; font-family:'Courier New',monospace; overflow:hidden; }
@@ -458,12 +461,39 @@ HTML_TEMPLATE = """
             font-family:'Courier New',monospace; white-space:nowrap; letter-spacing:0.5px;
         }
         .ring-btn.active { color:#e8b84b; border-color:rgba(0,200,120,0.45); }
-        /* SkyGlass companion link button */
-        .ring-btn.skyglass {
-            color:#7ec8e3; border-color:rgba(126,200,227,0.35);
-            text-decoration:none; display:block; text-align:left;
+
+        /* ── v4.0: View toggle (2D MAP / 3D SKY) tab bar ── */
+        #view-toggle {
+            position:fixed; top:8px; left:50%; transform:translateX(-50%);
+            z-index:1200; display:flex; gap:3px; pointer-events:auto;
         }
-        .ring-btn.skyglass:hover { color:#a8dcf0; border-color:rgba(126,200,227,0.65); }
+        .view-tab {
+            background:rgba(4,8,13,0.92); border:1px solid rgba(0,200,120,0.22); border-radius:2px;
+            color:#3d6050; font-size:0.68em; padding:4px 12px; cursor:pointer;
+            font-family:'Courier New',monospace; letter-spacing:1px; text-transform:uppercase;
+            transition:color 0.2s, border-color 0.2s;
+        }
+        .view-tab.active { color:#e8b84b; border-color:rgba(232,184,75,0.55); }
+        .view-tab:hover  { color:#7ecda0; border-color:rgba(0,200,120,0.5); }
+
+        /* ── v4.0: 3D Sky View canvas ── */
+        #canvas-3d {
+            display:none; width:100%; height:75vh;
+            background:#060a0f; border-bottom:1px solid rgba(0,200,120,0.2);
+        }
+
+        /* ── v4.0: Sky controls overlay (alt exaggeration) ── */
+        #sky-controls {
+            display:none; position:fixed; bottom:calc(25vh + 8px); left:50%;
+            transform:translateX(-50%); z-index:1100;
+            background:rgba(4,8,13,0.88); border:1px solid rgba(0,200,120,0.2);
+            border-radius:2px; padding:4px 14px;
+            align-items:center; gap:8px; font-size:0.72em;
+        }
+        #sky-controls label { color:#3d8060; white-space:nowrap; letter-spacing:0.8px; }
+        #sky-controls input[type=range] { width:80px; accent-color:#00c878; cursor:pointer; }
+        #sky-controls span.val { color:#e8b84b; min-width:34px; text-align:right; }
+        #sky-controls span.hint { color:#2a5040; font-size:0.9em; letter-spacing:0.3px; }
 
         /* ── Cursor coordinates display ── */
         #cursor-coords {
@@ -502,6 +532,12 @@ HTML_TEMPLATE = """
     <!-- v3.4: Jamming alert banner -->
     <div id="jamming-banner"></div>
 
+    <!-- v4.0: 2D MAP / 3D SKY view toggle (fixed, centered at top) -->
+    <div id="view-toggle">
+        <button id="btn-2d" class="view-tab active" onclick="setView('2d')">⊞ 2D MAP</button>
+        <button id="btn-3d" class="view-tab"        onclick="setView('3d')">⟁ 3D SKY</button>
+    </div>
+
     <div id="map">
         <!-- Feature 4: Connection status badge -->
         <div id="conn-badge" class="live">● LIVE</div>
@@ -512,7 +548,6 @@ HTML_TEMPLATE = """
         <div id="ring-controls">
             <button class="ring-btn active" id="btn-inner" onclick="toggleRings('inner')">◯ 100 km</button>
             <button class="ring-btn active" id="btn-outer" onclick="toggleRings('outer')">◯ 200 km</button>
-            <a class="ring-btn skyglass" href="https://www.aviarlabs.com/" target="_blank" rel="noopener noreferrer">✦ SkyGlass 3D</a>
         </div>
 
         <!-- Feature 6: Altitude filter -->
@@ -525,6 +560,16 @@ HTML_TEMPLATE = """
             <span id="alt-max-lbl">45k</span>
             <label>ft</label>
         </div>
+    </div>
+
+    <!-- v4.0: Three.js 3D Sky View canvas (hidden until activated) -->
+    <canvas id="canvas-3d"></canvas>
+    <!-- v4.0: Sky controls overlay — visible only in 3D mode -->
+    <div id="sky-controls">
+        <label>ALT EXAG</label>
+        <input type="range" id="alt-exag" min="1" max="50" step="1" value="10">
+        <span class="val" id="alt-exag-lbl">10×</span>
+        <span class="hint">&nbsp;|&nbsp; T: toggle view &nbsp; R: reset camera</span>
     </div>
 
     <div id="dashboard">
@@ -952,9 +997,6 @@ socket.on('map_update', function(data) {
             +'<span style="color:#3d8060;font-size:0.85em;">Sensors: '+ac.seen_by.length+'/3</span>'
             +spoofBadge
             +(isGhost ? '<br><span style="color:#d29922;font-size:0.85em;">&#9655; GHOST candidate</span>' : '')
-            +'<hr style="border:0;border-top:1px dashed rgba(0,200,120,0.15);margin:6px 0;">'
-            +'<a href="https://www.aviarlabs.com/" target="_blank" rel="noopener noreferrer"'
-            +' style="color:#7ec8e3;font-size:0.82em;text-decoration:none;">✦ Verify in SkyGlass 3D</a>'
             +'</div>';
 
         // ── Feature 1: Trail polyline ─────────────────────────────────────
@@ -1111,6 +1153,315 @@ socket.on('map_update', function(data) {
     for (hx in anomalyRings)  { if (!activeHexes.has(hx))    { map.removeLayer(anomalyRings[hx]);  delete anomalyRings[hx]; } }
     for (hx in spoofRings)    { if (!activeHexes.has(hx))    { map.removeLayer(spoofRings[hx]);    delete spoofRings[hx]; } }
     for (hx in markerLastSeen){ if (!allServerHexes.has(hx)) { delete markerLastSeen[hx]; } }
+
+    // ── v4.0: Feed the 3D scene with the same data ────────────────────────
+    lastMapData = data;
+    update3DScene(data);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// v4.0 — 3D SKY VIEW  (Three.js r128, CDN, no tile server, no external token)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── State ──────────────────────────────────────────────────────────────────
+var SKY_ACTIVE  = false;
+var lastMapData = null;
+var renderer3d  = null, camera3d = null, controls3d = null, scene3d = null;
+var ac3d        = {};      // hex → {cone, stem, shadow, trailLine, tdoaSphere, spoofRing}
+var spoof3dTime = 0;
+var altExag     = 10;      // altitude exaggeration factor (default 10×)
+
+// ── Geographic origin: centroid of sensor triangle ─────────────────────────
+var ORIG_LAT        = 60.267;
+var ORIG_LON        = 24.898;
+var KM_PER_DEG_LAT  = 111.319;
+var KM_PER_DEG_LON  = KM_PER_DEG_LAT * Math.cos(ORIG_LAT * Math.PI / 180); // ≈ 55.3
+
+// Convert WGS-84 + altitude to Three.js scene coordinates.
+// Convention: X = east, Z = south (−Z = north), Y = up.
+// 1 scene unit = 1 km.
+function latlonToVec3(lat, lon, altFt) {
+    var x = (lon - ORIG_LON) * KM_PER_DEG_LON;
+    var z = -(lat - ORIG_LAT) * KM_PER_DEG_LAT;
+    var y = (typeof altFt === 'number') ? (altFt * 0.0003048 * altExag) : 0;
+    return new THREE.Vector3(x, y, z);
+}
+
+// Sensor-coverage colour as a hex integer (mirrors getColor() for Leaflet).
+function hexColor3d(sb) {
+    var n = sb.includes("sensor-north"),
+        w = sb.includes("sensor-west"),
+        e = sb.includes("sensor-east");
+    if(n&&w&&e) return 0xffffff;
+    if(n&&w)    return 0x39c5cf;
+    if(n&&e)    return 0xd2a8ff;
+    if(w&&e)    return 0xd29922;
+    if(n)       return 0x58a6ff;
+    if(w)       return 0x3fb950;
+    if(e)       return 0xf85149;
+    return 0x888888;
+}
+
+// Build a flat ring mesh lying in the XZ plane.
+function makeRing3d(cx, cz, rKm, color, opacity) {
+    var geo = new THREE.RingGeometry(rKm - 0.5, rKm + 0.5, 72);
+    var mat = new THREE.MeshBasicMaterial({
+        color: color, side: THREE.DoubleSide, transparent: true, opacity: opacity
+    });
+    var m = new THREE.Mesh(geo, mat);
+    m.position.set(cx, 0.05, cz);
+    m.rotation.x = -Math.PI / 2;
+    return m;
+}
+
+// ── Scene initialisation (called lazily on first 3D activation) ────────────
+function init3DScene() {
+    var canvas = document.getElementById('canvas-3d');
+
+    renderer3d = new THREE.WebGLRenderer({canvas: canvas, antialias: true, alpha: false});
+    renderer3d.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer3d.setClearColor(0x060a0f);
+    renderer3d.setSize(canvas.clientWidth, canvas.clientHeight, false);
+
+    scene3d = new THREE.Scene();
+    scene3d.fog = new THREE.FogExp2(0x060a0f, 0.0006);
+
+    camera3d = new THREE.PerspectiveCamera(55, canvas.clientWidth / (canvas.clientHeight || 1), 0.5, 4000);
+    // Start top-down tactical view at ~350 km altitude; slight Z offset avoids gimbal lock
+    camera3d.position.set(0, 350, 0.1);
+    camera3d.lookAt(0, 0, 0);
+
+    controls3d = new THREE.OrbitControls(camera3d, renderer3d.domElement);
+    controls3d.enableDamping  = true;
+    controls3d.dampingFactor  = 0.06;
+    controls3d.screenSpacePanning = true;
+    controls3d.minDistance    = 5;
+    controls3d.maxDistance    = 2000;
+    controls3d.target.set(0, 0, 0);
+
+    // Lighting
+    scene3d.add(new THREE.AmbientLight(0xffffff, 0.85));
+    var sun = new THREE.DirectionalLight(0xffffff, 0.4);
+    sun.position.set(80, 200, 60);
+    scene3d.add(sun);
+
+    // Ground grid: 600 km × 600 km, 10 km cells
+    scene3d.add(new THREE.GridHelper(600, 60, 0x0e2a3a, 0x091820));
+
+    // Sensor nodes — coloured upright pyramids
+    var SNODES = [
+        {lat:60.319555, lon:24.830816, col:0x58a6ff},  // North
+        {lat:60.130919, lon:24.512869, col:0x3fb950},  // West
+        {lat:60.350000, lon:25.350000, col:0xf85149}   // East
+    ];
+    SNODES.forEach(function(s) {
+        var p = latlonToVec3(s.lat, s.lon, 0);
+        var geo = new THREE.ConeGeometry(2.5, 7, 4);
+        var mat = new THREE.MeshLambertMaterial({color: s.col});
+        var m   = new THREE.Mesh(geo, mat);
+        m.position.set(p.x, 3.5, p.z);   // sit base on ground
+        scene3d.add(m);
+        // 100 km and 200 km coverage rings matching the 2D map
+        scene3d.add(makeRing3d(p.x, p.z, 100, s.col, 0.28));
+        scene3d.add(makeRing3d(p.x, p.z, 200, s.col, 0.11));
+    });
+
+    // FL reference planes — subtle translucent slabs at FL100 / FL200 / FL350
+    // Positioned by altExag; re-adjusted in update3DScene if slider changes.
+    [{fl:100, col:0x1a2a1a}, {fl:200, col:0x1a3a30}, {fl:350, col:0x202050}].forEach(function(ref) {
+        var altKm = ref.fl * 100 * 0.3048 / 1000;
+        var geo   = new THREE.PlaneGeometry(600, 600);
+        var mat   = new THREE.MeshBasicMaterial({
+            color: ref.col, transparent: true, opacity: 0.04, side: THREE.DoubleSide
+        });
+        var plane = new THREE.Mesh(geo, mat);
+        plane.rotation.x    = -Math.PI / 2;
+        plane.position.y    = altKm * altExag;
+        plane.userData.altKm = altKm;    // store for re-positioning on slider change
+        scene3d.add(plane);
+    });
+
+    animate3d();
+    window.addEventListener('resize', on3dResize);
+}
+
+// ── Render loop ────────────────────────────────────────────────────────────
+function animate3d() {
+    requestAnimationFrame(animate3d);
+    if (!SKY_ACTIVE || !renderer3d) return;
+    controls3d.update();
+    renderer3d.render(scene3d, camera3d);
+}
+
+function on3dResize() {
+    if (!renderer3d) return;
+    var canvas = document.getElementById('canvas-3d');
+    var w = canvas.clientWidth, h = canvas.clientHeight || 1;
+    camera3d.aspect = w / h;
+    camera3d.updateProjectionMatrix();
+    renderer3d.setSize(w, h, false);
+}
+
+// ── Per-frame scene update (called from socket.on('map_update')) ───────────
+function update3DScene(data) {
+    if (!scene3d) return;
+    spoof3dTime += 0.05;
+
+    var seenHexes = new Set();
+
+    data.aircraft.forEach(function(ac) {
+        seenHexes.add(ac.hex);
+
+        var pos3d = latlonToVec3(ac.lat, ac.lon, ac.alt);
+        var gnd3d = latlonToVec3(ac.lat, ac.lon, 0);
+        var col   = hexColor3d(ac.seen_by);
+
+        var obj = ac3d[ac.hex];
+        if (!obj) { obj = {}; ac3d[ac.hex] = obj; }
+
+        // ── Aircraft cone ──────────────────────────────────────────────────
+        // ConeGeometry tip is at +Y.  Rx(−90°) rotates it to −Z (north).
+        // Ry(−trackRad) then applies clockwise heading: N→E→S→W matches
+        // track 0→90→180→270.  (Euler XYZ order, verified analytically.)
+        if (!obj.cone) {
+            var cGeo = new THREE.ConeGeometry(1.5, 5, 4);
+            var cMat = new THREE.MeshLambertMaterial({color: col});
+            obj.cone = new THREE.Mesh(cGeo, cMat);
+            scene3d.add(obj.cone);
+        }
+        obj.cone.position.copy(pos3d);
+        obj.cone.material.color.setHex(col);
+        var trackRad = (ac.track || 0) * Math.PI / 180;
+        obj.cone.rotation.set(-Math.PI / 2, -trackRad, 0);
+
+        // ── Altitude stem: vertical line from ground projection to aircraft ─
+        if (obj.stem) scene3d.remove(obj.stem);
+        var sGeo = new THREE.BufferGeometry().setFromPoints([gnd3d, pos3d]);
+        obj.stem = new THREE.Line(sGeo,
+            new THREE.LineBasicMaterial({color: col, opacity: 0.32, transparent: true}));
+        scene3d.add(obj.stem);
+
+        // ── Ground shadow dot ──────────────────────────────────────────────
+        if (!obj.shadow) {
+            var shGeo = new THREE.CircleGeometry(0.9, 8);
+            var shMat = new THREE.MeshBasicMaterial({color: col, transparent: true, opacity: 0.45});
+            obj.shadow = new THREE.Mesh(shGeo, shMat);
+            obj.shadow.rotation.x = -Math.PI / 2;
+            obj.shadow.position.y = 0.02;
+            scene3d.add(obj.shadow);
+        }
+        obj.shadow.position.x = gnd3d.x;
+        obj.shadow.position.z = gnd3d.z;
+        obj.shadow.material.color.setHex(col);
+
+        // ── Ground track trail (polyline at Y=0) ───────────────────────────
+        if (ac.trail && ac.trail.length > 1) {
+            if (obj.trailLine) scene3d.remove(obj.trailLine);
+            var tPts = ac.trail.map(function(p) { return latlonToVec3(p[0], p[1], 0); });
+            var tGeo = new THREE.BufferGeometry().setFromPoints(tPts);
+            obj.trailLine = new THREE.Line(tGeo,
+                new THREE.LineBasicMaterial({color: col, opacity: 0.38, transparent: true}));
+            scene3d.add(obj.trailLine);
+        }
+
+        // ── TDOA uncertainty sphere (full-lock aircraft only) ──────────────
+        if (ac.tdoa_uncertainty_m !== undefined && ac.tdoa_uncertainty_m > 0) {
+            var rKm = Math.min(ac.tdoa_uncertainty_m / 1000, 200);
+            if (!obj.tdoaSphere) {
+                var tsGeo = new THREE.SphereGeometry(1, 16, 12);
+                var tsMat = new THREE.MeshBasicMaterial({
+                    color: 0xf0a000, transparent: true, opacity: 0.06
+                });
+                obj.tdoaSphere = new THREE.Mesh(tsGeo, tsMat);
+                scene3d.add(obj.tdoaSphere);
+            }
+            obj.tdoaSphere.position.copy(pos3d);
+            obj.tdoaSphere.scale.setScalar(rKm);
+        } else if (obj.tdoaSphere) {
+            scene3d.remove(obj.tdoaSphere);
+            obj.tdoaSphere = null;
+        }
+
+        // ── Spoof ring — pulsing flat ring around suspect aircraft ─────────
+        var spoofScore = ac.spoof_score || 0;
+        if (spoofScore >= 0.35) {
+            if (obj.spoofRing) scene3d.remove(obj.spoofRing);
+            // Phase differs per aircraft so rings don't all pulse in unison
+            var pulse   = 0.7 + 0.3 * Math.sin(spoof3dTime * 2.5 + ac.hex.charCodeAt(0) * 0.1);
+            var rInner  = (spoofScore >= 0.5 ? 2.8 : 2.0) * pulse;
+            var sCol    = spoofScore >= 0.5 ? 0xf85149 : 0xd29922;
+            var srGeo   = new THREE.RingGeometry(rInner, rInner + 0.5, 32);
+            var srMat   = new THREE.MeshBasicMaterial({
+                color: sCol, side: THREE.DoubleSide, transparent: true, opacity: 0.72
+            });
+            obj.spoofRing = new THREE.Mesh(srGeo, srMat);
+            obj.spoofRing.position.copy(pos3d);
+            obj.spoofRing.rotation.x = -Math.PI / 2;
+            scene3d.add(obj.spoofRing);
+        } else if (obj.spoofRing) {
+            scene3d.remove(obj.spoofRing);
+            obj.spoofRing = null;
+        }
+    });
+
+    // Remove Three.js objects for aircraft that have left the server state
+    Object.keys(ac3d).forEach(function(hex) {
+        if (seenHexes.has(hex)) return;
+        var obj = ac3d[hex];
+        ['cone','stem','shadow','trailLine','tdoaSphere','spoofRing'].forEach(function(k) {
+            if (obj[k]) { scene3d.remove(obj[k]); obj[k] = null; }
+        });
+        delete ac3d[hex];
+    });
+
+    // Re-position FL reference planes if altExag was changed via slider
+    scene3d.traverse(function(o) {
+        if (o.userData.altKm !== undefined) {
+            o.position.y = o.userData.altKm * altExag;
+        }
+    });
+}
+
+// ── View toggle ────────────────────────────────────────────────────────────
+function setView(mode) {
+    SKY_ACTIVE = (mode === '3d');
+    document.getElementById('map').style.display          = SKY_ACTIVE ? 'none'  : 'block';
+    document.getElementById('canvas-3d').style.display    = SKY_ACTIVE ? 'block' : 'none';
+    document.getElementById('sky-controls').style.display = SKY_ACTIVE ? 'flex'  : 'none';
+    document.getElementById('btn-2d').classList.toggle('active', !SKY_ACTIVE);
+    document.getElementById('btn-3d').classList.toggle('active',  SKY_ACTIVE);
+    if (SKY_ACTIVE) {
+        if (!renderer3d) {
+            init3DScene();
+            // Render the last known aircraft positions immediately on first open
+            if (lastMapData) update3DScene(lastMapData);
+        } else {
+            on3dResize();
+        }
+    }
+}
+
+// ── Keyboard shortcuts ─────────────────────────────────────────────────────
+document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === 't' || e.key === 'T') {
+        setView(SKY_ACTIVE ? '2d' : '3d');
+        return;
+    }
+    if ((e.key === 'r' || e.key === 'R') && SKY_ACTIVE && camera3d) {
+        camera3d.position.set(0, 350, 0.1);
+        camera3d.lookAt(0, 0, 0);
+        controls3d.target.set(0, 0, 0);
+        controls3d.update();
+    }
+});
+
+// ── Altitude exaggeration slider ───────────────────────────────────────────
+document.getElementById('alt-exag').addEventListener('input', function() {
+    altExag = parseInt(this.value);
+    document.getElementById('alt-exag-lbl').textContent = altExag + '×';
+    // Re-render immediately so aircraft jump to their new Y positions
+    if (lastMapData && scene3d) update3DScene(lastMapData);
 });
 </script>
 </body>
