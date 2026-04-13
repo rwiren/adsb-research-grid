@@ -1,13 +1,14 @@
 # ==============================================================================
 # File: dashboard.py
-# Version: 3.5.0 (TAK/Palantir tactical style + reduced spoof false-positives)
-# Date: 2026-04-12
+# Version: 3.6.0 (SkyGlass companion integration)
+# Date: 2026-04-13
 # Maintainer: Team-9 Secure Skies
-# Description: Tactical GUI restyle (TAK/Palantir-inspired dark theme with amber
-#              accents, military panel borders, plane-silhouette icons, cursor
-#              coordinates display) plus reduced spoof false-positives (altitude
-#              threshold 10k→25k ft, GS discrepancy 50→65%, JS display
-#              threshold 0.20→0.35, min 5 s between position fixes for GS check).
+# Description: Integrates Aviar Labs SkyGlass (https://www.aviarlabs.com/) as a
+#              companion 3D aviation intelligence tool.  Adds a "SkyGlass 3D"
+#              quick-launch button to the map controls and a "Verify in SkyGlass"
+#              deep-link in every aircraft popup so analysts can instantly cross-
+#              reference a flagged target against global ADS-B Exchange data in
+#              the SkyGlass 3D environment.
 # ==============================================================================
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -344,7 +345,7 @@ HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>SECURESKIES ⬡ MLAT TACTICAL HUB v3.5</title>
+    <title>SECURESKIES ⬡ MLAT TACTICAL HUB v3.6 + SkyGlass</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
@@ -457,6 +458,12 @@ HTML_TEMPLATE = """
             font-family:'Courier New',monospace; white-space:nowrap; letter-spacing:0.5px;
         }
         .ring-btn.active { color:#e8b84b; border-color:rgba(0,200,120,0.45); }
+        /* SkyGlass companion link button */
+        .ring-btn.skyglass {
+            color:#7ec8e3; border-color:rgba(126,200,227,0.35);
+            text-decoration:none; display:block; text-align:left;
+        }
+        .ring-btn.skyglass:hover { color:#a8dcf0; border-color:rgba(126,200,227,0.65); }
 
         /* ── Cursor coordinates display ── */
         #cursor-coords {
@@ -505,6 +512,7 @@ HTML_TEMPLATE = """
         <div id="ring-controls">
             <button class="ring-btn active" id="btn-inner" onclick="toggleRings('inner')">◯ 100 km</button>
             <button class="ring-btn active" id="btn-outer" onclick="toggleRings('outer')">◯ 200 km</button>
+            <a class="ring-btn skyglass" href="https://www.aviarlabs.com/" target="_blank" rel="noopener noreferrer">✦ SkyGlass 3D</a>
         </div>
 
         <!-- Feature 6: Altitude filter -->
@@ -944,6 +952,9 @@ socket.on('map_update', function(data) {
             +'<span style="color:#3d8060;font-size:0.85em;">Sensors: '+ac.seen_by.length+'/3</span>'
             +spoofBadge
             +(isGhost ? '<br><span style="color:#d29922;font-size:0.85em;">&#9655; GHOST candidate</span>' : '')
+            +'<hr style="border:0;border-top:1px dashed rgba(0,200,120,0.15);margin:6px 0;">'
+            +'<a href="https://www.aviarlabs.com/" target="_blank" rel="noopener noreferrer"'
+            +' style="color:#7ec8e3;font-size:0.82em;text-decoration:none;">✦ Verify in SkyGlass 3D</a>'
             +'</div>';
 
         // ── Feature 1: Trail polyline ─────────────────────────────────────

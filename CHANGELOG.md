@@ -5,6 +5,23 @@ All notable changes to the **ADS-B Research Grid** project will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.2] - 2026-04-13: The "Sky Glass" Update
+**Feature Release: Aviar Labs SkyGlass Companion Integration.**
+
+### 🔭 Companion Visualization
+* **SkyGlass Quick-Launch Button:** Added a "✦ SkyGlass 3D" button to the dashboard map controls (alongside the existing coverage ring toggles). Clicking it opens [Aviar Labs SkyGlass](https://www.aviarlabs.com/) in a new tab — the next-generation 3D ADS-B intelligence platform — giving analysts immediate global situational awareness alongside the local precision grid.
+* **"Verify in SkyGlass" Popup Link:** Every aircraft click popup now contains a "✦ Verify in SkyGlass 3D" link so investigators can instantly cross-reference any flagged or anomalous target against SkyGlass's worldwide unfiltered ADS-B Exchange data and 3D historical rewind.
+* **README Companion Section:** Added a dedicated "🔭 Companion Visualization: SkyGlass by Aviar Labs" section to the project README documenting the complementary analyst workflow (local TDOA alerts → global SkyGlass cross-reference → geofence / history review).
+
+### 📖 Documentation
+* **Dashboard README:** Updated to v3.6, added SkyGlass integration to the feature list.
+* **Project README:** Added SkyGlass to the Table of Contents and added a side-by-side capability comparison table.
+
+### 🔄 Dashboard
+* **dashboard.py** bumped to v3.6.0. All spoofing heuristics, TDOA uncertainty visualisation, anomaly overlay, and TAK/Palantir tactical styling from v3.5.0 are fully preserved.
+
+---
+
 ## [0.8.1] - 2026-02-01: The "Elastic Grid" Milestone
 **Major Feature Release: TDOA Synchronization, Clock Drift Compensation, and Multi-Sensor Triangulation.**
 
