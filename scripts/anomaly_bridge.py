@@ -18,8 +18,8 @@ Usage
 Environment variables (all optional, sensible defaults for local server):
     MQTT_HOST            Broker hostname          (default: localhost)
     MQTT_PORT            Broker port              (default: 1883)
-    MQTT_USER            MQTT username            (default: team9)
-    MQTT_PASS            MQTT password            (default: ResearchView2026!)
+    MQTT_USER            MQTT username            (default: unset)
+    MQTT_PASS            MQTT password            (default: unset)
     INFERENCE_INTERVAL   Seconds between runs     (default: 30)
     WINDOW_SECONDS       Observation window size  (default: 300)
     MIN_SAMPLES          Min observations to run  (default: 20)

@@ -20,6 +20,7 @@ from flask_socketio import SocketIO
 import paho.mqtt.client as mqtt
 import json
 import math
+import os
 import ssl
 import time
 import logging
@@ -30,6 +31,11 @@ log = logging.getLogger(__name__)
 
 app = Flask(__name__)
 socketio = SocketIO(app, async_mode='eventlet')
+
+MQTT_HOST = os.getenv("MQTT_HOST", "mqtt.securingskies.eu")
+MQTT_PORT = int(os.getenv("MQTT_PORT", "8883"))
+MQTT_USER = os.getenv("MQTT_USER", "team9")
+MQTT_PASS_FILE = os.getenv("MQTT_PASS_FILE", "/etc/securing_skies/mqtt_secret")
 
 # Emergency squawk codes
 EMERGENCY_SQUAWKS = {"7500", "7600", "7700"}
@@ -179,6 +185,19 @@ def check_jamming_alerts():
     return alerts
 
 
+def _load_mqtt_password():
+    mqtt_pass = os.getenv("MQTT_PASS")
+    if mqtt_pass:
+        return mqtt_pass
+
+    try:
+        with open(MQTT_PASS_FILE, "r", encoding="utf-8") as fh:
+            return fh.read(1024).strip()
+    except OSError as exc:
+        log.warning("MQTT password file unavailable: %s", exc)
+        return ""
+
+
 def on_message(client, userdata, message):
     try:
         parts = message.topic.split('/')
@@ -322,7 +341,11 @@ def on_message(client, userdata, message):
 
 
 mqtt_client = mqtt.Client()
-mqtt_client.username_pw_set("team9", "ResearchView2026!")
+mqtt_pass = _load_mqtt_password()
+if MQTT_USER and mqtt_pass:
+    mqtt_client.username_pw_set(MQTT_USER, mqtt_pass)
+elif MQTT_USER:
+    log.warning("MQTT password missing; set MQTT_PASS or provide %s", MQTT_PASS_FILE)
 # TLS — verify broker certificate against the system CA store (no custom cert needed)
 mqtt_client.tls_set(cert_reqs=ssl.CERT_REQUIRED)
 mqtt_client.on_message = on_message
@@ -330,13 +353,13 @@ mqtt_client.on_message = on_message
 
 def start_mqtt():
     try:
-        mqtt_client.connect("mqtt.securingskies.eu", 8883, 60)
+        mqtt_client.connect(MQTT_HOST, MQTT_PORT, 60)
         mqtt_client.subscribe("+/aircraft")
         mqtt_client.subscribe("+/stats")
         mqtt_client.subscribe("+/system")           # System telemetry (temp, load)
         mqtt_client.subscribe("sensor-core/anomalies")   # Feature 7
         mqtt_client.loop_start()
-        log.warning("MQTT connected to mqtt.securingskies.eu:8883 (TLS)")
+        log.warning("MQTT connected to %s:%d (TLS)", MQTT_HOST, MQTT_PORT)
     except Exception as e:
         log.error("MQTT Connect Error: %s", e)
 
