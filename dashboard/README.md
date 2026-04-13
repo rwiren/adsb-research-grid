@@ -49,7 +49,12 @@ python dashboard.py
 # Serves on http://0.0.0.0:8080
 ```
 
-Expects a local Mosquitto broker on `127.0.0.1:1883`.  Topics consumed:
+If the broker requires authentication, provide the password outside the repo via
+`MQTT_PASS` or a secret file pointed to by `MQTT_PASS_FILE`
+(default: `/etc/securing_skies/mqtt_secret`).
+
+Defaults to `mqtt.securingskies.eu:8883`, configurable via `MQTT_HOST` and
+`MQTT_PORT`. Topics consumed:
 
 | Topic | Content |
 |---|---|
