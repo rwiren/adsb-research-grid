@@ -35,7 +35,7 @@ socketio = SocketIO(app, async_mode='eventlet')
 MQTT_HOST = os.getenv("MQTT_HOST", "mqtt.securingskies.eu")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "8883"))
 MQTT_USER = os.getenv("MQTT_USER", "team9")
-MQTT_PASS_FILE = os.getenv("MQTT_PASS_FILE")
+MQTT_PASS_FILE = os.getenv("MQTT_PASS_FILE", "/etc/securing_skies/mqtt_secret")
 
 # Emergency squawk codes
 EMERGENCY_SQUAWKS = {"7500", "7600", "7700"}
@@ -190,12 +190,8 @@ def _load_mqtt_password():
     if mqtt_pass:
         return mqtt_pass
 
-    if MQTT_PASS_FILE == "":
-        return ""
-    mqtt_pass_file = MQTT_PASS_FILE or "/etc/securing_skies/mqtt_secret"
-
     try:
-        with open(mqtt_pass_file, "r", encoding="utf-8") as fh:
+        with open(MQTT_PASS_FILE, "r", encoding="utf-8") as fh:
             return fh.read().strip()
     except OSError as exc:
         log.warning("MQTT password file unavailable: %s", exc)
@@ -346,6 +342,8 @@ def on_message(client, userdata, message):
 
 mqtt_client = mqtt.Client()
 mqtt_pass = _load_mqtt_password()
+if MQTT_USER and not mqtt_pass:
+    log.warning("MQTT password missing; set MQTT_PASS or provide %s", MQTT_PASS_FILE)
 if MQTT_USER and mqtt_pass:
     mqtt_client.username_pw_set(MQTT_USER, mqtt_pass)
 # TLS — verify broker certificate against the system CA store (no custom cert needed)
