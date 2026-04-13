@@ -35,7 +35,7 @@ socketio = SocketIO(app, async_mode='eventlet')
 MQTT_HOST = os.getenv("MQTT_HOST", "mqtt.securingskies.eu")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "8883"))
 MQTT_USER = os.getenv("MQTT_USER", "team9")
-MQTT_PASS_FILE = os.getenv("MQTT_PASS_FILE", "/etc/securing_skies/mqtt_secret")
+MQTT_PASS_FILE = os.getenv("MQTT_PASS_FILE")
 
 # Emergency squawk codes
 EMERGENCY_SQUAWKS = {"7500", "7600", "7700"}
@@ -190,11 +190,12 @@ def _load_mqtt_password():
     if mqtt_pass:
         return mqtt_pass
 
-    if not MQTT_PASS_FILE:
+    mqtt_pass_file = MQTT_PASS_FILE if MQTT_PASS_FILE is not None else "/etc/securing_skies/mqtt_secret"
+    if not mqtt_pass_file:
         return ""
 
     try:
-        with open(MQTT_PASS_FILE, "r", encoding="utf-8") as fh:
+        with open(mqtt_pass_file, "r", encoding="utf-8") as fh:
             return fh.read().strip()
     except OSError as exc:
         log.warning("MQTT password file unavailable: %s", exc)
