@@ -1,17 +1,24 @@
-# 📡 ADS-B Grid Audit: run_2026-04-13_1525
+# 📡 ADS-B Grid Audit: run_2026-01-15_0143
 
-**Generated:** 2026-04-13 15:26
-**Analysis Window:** 24 Hours (N/A to N/A)
+**Generated:** 2026-01-15 01:43
+**Analysis Window:** 24 Hours (2026-01-13 23:43 to 23:42 UTC)
 
 ## 1. Data Volume Summary
 | Metric | Count | Description |
 |---|---:|:---|
-| **Total Historical Data** | **0** | All packets collected since inception |
-| **Window Analysis Data** | **0** | Packets analyzed in this report |
-| **Global Dataset Span** | N/A to N/A | Full range of collected data |
+| **Total Historical Data** | **4,327,464** | All packets collected since inception |
+| **Window Analysis Data** | **1,558,738** | Packets analyzed in this report |
+| **Utilization** | 36.0% | Slice of total history |
+| **Global Dataset Span** | 1970-01-01 00:00 to 2026-01-14 23:42 | Full range of collected data |
+
+### 1.1 Fleet Performance Matrix (Windowed)
+| sensor_id   |   Packets |
+|:------------|----------:|
+| sensor-east |    656407 |
+| sensor-west |    902331 |
 
 > ⚠️ **WARNING: Missing Telemetry**
-> Sensors: **sensor-east, sensor-north, sensor-west** produced NO data in the last 24 hours.
+> Sensors: **sensor-north** produced NO data in the last 24 hours.
 > *Check Infrastructure Dashboard (D5/D7) for possible disk fill or thermal shutdown events.*
 
 ## 2. Visual Evidence
@@ -19,6 +26,22 @@
 ![D3](figures/D3_Spatial.png)
 ![D2](figures/D2_Physics.png)
 ![D4](figures/D4_Forensics.png)
+
+## 3. 👻 Anomaly Detection (Ensemble Tier 1)
+**Models:** Isolation Forest + Local Outlier Factor (LOF)
+
+- **Total Anomalies (Union):** 13,816 (0.97%)
+- **💀 Confirmed Ghosts (Dual Model Agreement):** 0
+
+### 3.1 High Signal Anomalies (Potential Spoofing)
+| hex    | sensor_id   |   alt |   ground_speed |   rssi |   ensemble_score |
+|:-------|:------------|------:|---------------:|-------:|-----------------:|
+| 4601fa | sensor-west |  1800 |          173.8 |   -2   |                1 |
+| 4601fa | sensor-west |  1825 |          175   |   -2.1 |                1 |
+| 4601fa | sensor-west |  1900 |          173.8 |   -2.1 |                1 |
+| 461f67 | sensor-west |  3775 |          251   |   -2.2 |                1 |
+| 461f9b | sensor-west |  2700 |          201.7 |   -2.2 |                1 |
+
 ### 3.2 Forensic Maps
 ![D6](figures/D6_ML_Analysis.png)
 ![D7](figures/D7_Ghost_Confidence.png)
