@@ -192,7 +192,7 @@ def _load_mqtt_password():
 
     try:
         with open(MQTT_PASS_FILE, "r", encoding="utf-8") as fh:
-            return fh.read().strip()
+            return fh.read(1024).strip()
     except OSError as exc:
         log.warning("MQTT password file unavailable: %s", exc)
         return ""
@@ -342,10 +342,10 @@ def on_message(client, userdata, message):
 
 mqtt_client = mqtt.Client()
 mqtt_pass = _load_mqtt_password()
-if MQTT_USER and not mqtt_pass:
-    log.warning("MQTT password missing; set MQTT_PASS or provide %s", MQTT_PASS_FILE)
 if MQTT_USER and mqtt_pass:
     mqtt_client.username_pw_set(MQTT_USER, mqtt_pass)
+elif MQTT_USER:
+    log.warning("MQTT password missing; set MQTT_PASS or provide %s", MQTT_PASS_FILE)
 # TLS — verify broker certificate against the system CA store (no custom cert needed)
 mqtt_client.tls_set(cert_reqs=ssl.CERT_REQUIRED)
 mqtt_client.on_message = on_message
