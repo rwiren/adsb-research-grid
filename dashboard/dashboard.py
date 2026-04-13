@@ -1169,7 +1169,10 @@ var lastMapData = null;
 var renderer3d  = null, camera3d = null, controls3d = null, scene3d = null;
 var ac3d        = {};      // hex → {cone, stem, shadow, trailLine, tdoaSphere, spoofRing}
 var spoof3dTime = 0;
-var altExag     = 10;      // altitude exaggeration factor (default 10×)
+var altExag     = 10;      // altitude exaggeration factor (default 10x)
+
+// Unit conversion: feet to kilometres
+var FT_TO_KM = 0.0003048;
 
 // ── Geographic origin: centroid of sensor triangle ─────────────────────────
 var ORIG_LAT        = 60.267;
@@ -1183,7 +1186,7 @@ var KM_PER_DEG_LON  = KM_PER_DEG_LAT * Math.cos(ORIG_LAT * Math.PI / 180); // �
 function latlonToVec3(lat, lon, altFt) {
     var x = (lon - ORIG_LON) * KM_PER_DEG_LON;
     var z = -(lat - ORIG_LAT) * KM_PER_DEG_LAT;
-    var y = (typeof altFt === 'number') ? (altFt * 0.0003048 * altExag) : 0;
+    var y = (typeof altFt === 'number') ? (altFt * FT_TO_KM * altExag) : 0;
     return new THREE.Vector3(x, y, z);
 }
 
@@ -1269,7 +1272,7 @@ function init3DScene() {
     // FL reference planes — subtle translucent slabs at FL100 / FL200 / FL350
     // Positioned by altExag; re-adjusted in update3DScene if slider changes.
     [{fl:100, col:0x1a2a1a}, {fl:200, col:0x1a3a30}, {fl:350, col:0x202050}].forEach(function(ref) {
-        var altKm = ref.fl * 100 * 0.3048 / 1000;
+        var altKm = ref.fl * 100 * FT_TO_KM;
         var geo   = new THREE.PlaneGeometry(600, 600);
         var mat   = new THREE.MeshBasicMaterial({
             color: ref.col, transparent: true, opacity: 0.04, side: THREE.DoubleSide
@@ -1321,7 +1324,7 @@ function update3DScene(data) {
 
         // ── Aircraft cone ──────────────────────────────────────────────────
         // ConeGeometry tip is at +Y.  Rx(−90°) rotates it to −Z (north).
-        // Ry(−trackRad) then applies clockwise heading: N→E→S→W matches
+        // Ry(-trackRad) then applies clockwise heading: N->E->S->W matches
         // track 0→90→180→270.  (Euler XYZ order, verified analytically.)
         if (!obj.cone) {
             var cGeo = new THREE.ConeGeometry(1.5, 5, 4);
