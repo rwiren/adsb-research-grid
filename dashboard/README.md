@@ -1,4 +1,4 @@
-# SecuringSkies MLAT Dashboard v3.3
+# SecuringSkies MLAT Dashboard v3.6
 
 Real-time ADS-B surveillance dashboard for the 3-node sensor array (North/West/East).
 
@@ -23,6 +23,7 @@ Real-time ADS-B surveillance dashboard for the 3-node sensor array (North/West/E
 - **Popup enrichment** — ICAO ADS-B category codes (`A1`–`C7`) decoded to human-readable labels in the click popup
 - **Coverage rings toggle** — two buttons let you show/hide the 100 km and 200 km sensor-range rings independently
 - **Mobile-responsive layout** — on screens narrower than 768 px the dashboard panel collapses to a one-line summary bar with a tap-to-expand chevron
+- **SkyGlass integration (v3.6)** — a "✦ SkyGlass 3D" quick-launch button in the map controls opens [Aviar Labs SkyGlass](https://www.aviarlabs.com/) for global 3D context; every aircraft popup also contains a "Verify in SkyGlass 3D" link for instant cross-referencing of flagged targets
 
 ## Architecture
 

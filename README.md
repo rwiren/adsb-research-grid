@@ -15,8 +15,9 @@
 3. [Architecture (Hardware Grid)](#-architecture-distributed-sensor-grid)
 4. [Research Workflow (Usage)](#-research-workflow-usage)
 5. [Repository Structure](#-repository-structure)
-6. [Project Heritage](#-project-heritage)
-7. [License & Citation](#-license--citation)
+6. [Companion Visualization: SkyGlass](#-companion-visualization-skyglass-by-aviar-labs)
+7. [Project Heritage](#-project-heritage)
+8. [License & Citation](#-license--citation)
 
 ---
 
@@ -223,6 +224,30 @@ make ml
     * `ds_pipeline_master.py`: Machine Learning pipeline (v3.0).
     * `check_signal_health.py`: Real-time sensor diagnostics.
     * `archive/`: Deprecated prototype scripts (v0.1 - v0.4).
+
+---
+
+## 🔭 Companion Visualization: SkyGlass by Aviar Labs
+
+The research grid is used in conjunction with [**SkyGlass by Aviar Labs**](https://www.aviarlabs.com/) — a next-generation 3D aviation intelligence platform powered by ADS-B Exchange data.
+
+**Why SkyGlass complements the local sensor grid:**
+
+| SecuringSkies Research Grid (Local) | SkyGlass by Aviar Labs (Global) |
+|---|---|
+| Nanosecond-precision TDOA localization | Immersive real-time 3D flight visualization |
+| 18-model ensemble spoofing detection | Unlimited watchlists & AI-driven geofence alerts |
+| Raw I/Q RF fingerprinting (Hailo-8 NPU) | Historical data rewind & incident replay |
+| 3-node MLAT over the Helsinki FIR | Worldwide unfiltered ADS-B Exchange coverage |
+| Physics-informed anomaly scoring | 3D airspace layers (TFRs, SIGMETs, weather) |
+
+**Analyst workflow:**
+1. Monitor the local grid dashboard for TDOA-confirmed alerts and ML anomaly scores.
+2. Click **"✦ Verify in SkyGlass 3D"** in any aircraft popup to cross-reference the flagged target in SkyGlass's global 3D view.
+3. Set SkyGlass geofences around the Helsinki FIR boundary to catch approach/departure anomalies that the local grid may miss at extended range.
+4. Use SkyGlass historical rewind to investigate incidents after the fact with full global trajectory context.
+
+> **[→ Start a free trial at aviarlabs.com](https://www.aviarlabs.com/)**
 
 ---
 
