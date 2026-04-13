@@ -1,10 +1,10 @@
-# SecuringSkies MLAT Dashboard v3.3
+# SecuringSkies MLAT Dashboard v4.0
 
 Real-time ADS-B surveillance dashboard for the 3-node sensor array (North/West/East).
 
 **Live instance:** [http://www.securingskies.eu:8080/](http://www.securingskies.eu:8080/)
 
-## Features (v3.3 additions in bold)
+## Features
 
 - Real-time aircraft tracking via MQTT (`aircraft.json` + `stats.json` per sensor)
 - **Array Lock coloring** — RGB scheme shows which sensor combination sees each target
@@ -23,6 +23,7 @@ Real-time ADS-B surveillance dashboard for the 3-node sensor array (North/West/E
 - **Popup enrichment** — ICAO ADS-B category codes (`A1`–`C7`) decoded to human-readable labels in the click popup
 - **Coverage rings toggle** — two buttons let you show/hide the 100 km and 200 km sensor-range rings independently
 - **Mobile-responsive layout** — on screens narrower than 768 px the dashboard panel collapses to a one-line summary bar with a tap-to-expand chevron
+- **3D Sky View (v4.0)** — a `⟁ 3D SKY` tab switches from the Leaflet 2D map to a native Three.js 3D scene.  Press `T` to toggle, `R` to reset camera.  Features aircraft cones with altitude stems, ground track trails, TDOA uncertainty spheres, and pulsing spoof rings.  An "ALT EXAG" slider (1×–50×, default 10×) exaggerates vertical separation so FL100/FL200/FL350 traffic layers become clearly visible.  No tile server or external account required — Three.js loads from CDN (~170 KB).
 
 ## Architecture
 
