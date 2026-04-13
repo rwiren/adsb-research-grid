@@ -15,7 +15,7 @@
 3. [Architecture (Hardware Grid)](#-architecture-distributed-sensor-grid)
 4. [Research Workflow (Usage)](#-research-workflow-usage)
 5. [Repository Structure](#-repository-structure)
-6. [Companion Visualization: SkyGlass](#-companion-visualization-skyglass-by-aviar-labs)
+6. [3D Sky View](#-3d-sky-view-native-three-js-visualization)
 7. [Project Heritage](#-project-heritage)
 8. [License & Citation](#-license--citation)
 
@@ -227,27 +227,51 @@ make ml
 
 ---
 
-## 🔭 Companion Visualization: SkyGlass by Aviar Labs
+## 🛰 3D Sky View — Native Three.js Visualization
 
-The research grid is used in conjunction with [**SkyGlass by Aviar Labs**](https://www.aviarlabs.com/) — a next-generation 3D aviation intelligence platform powered by ADS-B Exchange data.
+The dashboard includes a built-in **3D Sky View** tab alongside the standard Leaflet 2D map.  It is implemented entirely in [Three.js](https://threejs.org/) (MIT licence, ~170 KB CDN, no tile server, no external account) and reuses the same `map_update` SocketIO stream that powers the 2D view — switching between modes costs zero additional server requests.
 
-**Why SkyGlass complements the local sensor grid:**
+### Why Three.js and not CesiumJS?
 
-| SecuringSkies Research Grid (Local) | SkyGlass by Aviar Labs (Global) |
+| | **CesiumJS** | **Three.js (chosen)** |
+|---|---|---|
+| Bundle size | ~3.5 MB + tile server | ~170 KB CDN core |
+| Globe model | Real WGS-84 ellipsoid | Flat XZ plane (sufficient for ~300 km FIR area) |
+| External dependency | Cesium Ion token or self-hosted terrain | None — fully offline-capable |
+| Coordinate maths | Built-in ECEF helpers | ~10 lines of manual lat/lon → km projection |
+| Fit for this project | Overkill for a regional sensor grid | Ideal — lightweight, single-file, zero signup |
+
+CesiumJS excels when you need a planetary-scale globe with streaming terrain and satellite imagery. For the Helsinki FIR sensor triangle (~50–80 km baselines), a flat Three.js scene with a 10 km ground grid is the right tool.
+
+### What the 3D view reveals that 2D cannot
+
+- **Altitude layering** — at 10× exaggeration, FL100 / FL200 / FL350 become clearly separated vertical layers.  A "ghost" aircraft reported at FL350 that is geometrically impossible at that altitude becomes immediately obvious.
+- **TDOA uncertainty volumes** — the TDOA error radius becomes a 3D semi-transparent sphere instead of a flat circle, giving a more scientifically honest representation of localisation quality.
+- **Altitude stems** — a vertical line from the ground projection to the aircraft position makes altitude discrepancies visually striking (e.g., an aircraft "teleporting" between altitude layers shows as an abrupt stem change).
+- **Sensor LoS geometry** — orbiting the camera to a side angle shows which sensor nodes have unobstructed geometric line-of-sight to a target at its reported altitude.
+
+### Controls
+
+| Control | Action |
 |---|---|
-| Nanosecond-precision TDOA localization | Immersive real-time 3D flight visualization |
-| 18-model ensemble spoofing detection | Unlimited watchlists & AI-driven geofence alerts |
-| Raw I/Q RF fingerprinting (Hailo-8 NPU) | Historical data rewind & incident replay |
-| 3-node MLAT over the Helsinki FIR | Worldwide unfiltered ADS-B Exchange coverage |
-| Physics-informed anomaly scoring | 3D airspace layers (TFRs, SIGMETs, weather) |
+| Left drag | Orbit camera |
+| Right drag / two-finger pan | Pan |
+| Scroll | Zoom |
+| `T` | Toggle 2D ↔ 3D |
+| `R` | Reset camera to top-down tactical view |
+| ALT EXAG slider | Live altitude exaggeration 1× – 50× (default 10×) |
 
-**Analyst workflow:**
-1. Monitor the local grid dashboard for TDOA-confirmed alerts and ML anomaly scores.
-2. Click **"✦ Verify in SkyGlass 3D"** in any aircraft popup to cross-reference the flagged target in SkyGlass's global 3D view.
-3. Set SkyGlass geofences around the Helsinki FIR boundary to catch approach/departure anomalies that the local grid may miss at extended range.
-4. Use SkyGlass historical rewind to investigate incidents after the fact with full global trajectory context.
+### Scene elements
 
-> **[→ Start a free trial at aviarlabs.com](https://www.aviarlabs.com/)**
+- **Ground grid** — 600 km × 600 km, 10 km cells, TAK dark palette
+- **Sensor nodes** — coloured upright pyramids (blue North / green West / red East)
+- **Coverage rings** — 100 km and 200 km rings per node (matching 2D toggles)
+- **FL reference planes** — translucent horizontal slabs at FL100, FL200, FL350
+- **Aircraft cones** — 4-sided cones pointing in the direction of travel, coloured by sensor coverage (white = trilateration lock)
+- **Altitude stems** — vertical line from ground shadow to aircraft position
+- **Ground track trails** — polyline of last 60 position fixes at ground level
+- **TDOA uncertainty spheres** — amber semi-transparent sphere for full-lock aircraft
+- **Spoof rings** — pulsing red/amber flat rings around suspect aircraft, driven by `spoof_score`
 
 ---
 
