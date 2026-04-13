@@ -5,6 +5,34 @@ All notable changes to the **ADS-B Research Grid** project will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-04-13: The "Sky View" Update
+**Feature Release: Native 3D ADS-B Visualization (Three.js).**
+
+### 🛰 3D Sky View
+* **`⟁ 3D SKY` tab:** A new tab bar at the top of the page switches between the existing Leaflet 2D map and a native Three.js 3D scene.  Switching costs zero additional server requests — both views share the same `map_update` SocketIO stream.
+* **Aircraft cones:** 4-sided cones pointing in the direction of travel (heading derived from `track`), coloured by the existing sensor-coverage scheme (white = trilateration lock).
+* **Altitude stems:** Each aircraft has a vertical line from its ground-projection dot to its altitude-exaggerated 3D position — makes altitude discrepancies and "teleportation" spoofing immediately visible.
+* **Ground track trails:** Last 60 position fixes rendered as a polyline at ground level, matching the 2D dashed-trail feature.
+* **TDOA uncertainty spheres:** For full-lock (N+W+E) aircraft the 2D amber circle becomes a semi-transparent 3D sphere, radius driven by `tdoa_uncertainty_m`.
+* **Spoof rings:** Pulsing flat rings around aircraft with `spoof_score ≥ 0.35` (red for ≥ 0.5, amber otherwise), matching the 2D spoof-ring style.
+* **FL reference planes:** Subtle translucent horizontal slabs at FL100, FL200, and FL350 provide altitude context without cluttering the scene.
+* **Sensor node pyramids:** North (blue) / West (green) / East (red) upright pyramids with 100 km and 200 km coverage rings matching the 2D map toggles.
+* **Altitude exaggeration slider:** "ALT EXAG" overlay (1× – 50×, default 10×) scales the Y axis live so traffic layers at FL100/200/350 become clearly separated; updates instantly without waiting for the next SocketIO event.
+* **OrbitControls:** Left-drag to orbit, right-drag/two-finger to pan, scroll to zoom. `T` toggles 2D ↔ 3D; `R` resets camera to top-down tactical view (~350 km altitude).
+* **Engine choice — Three.js vs CesiumJS:** Three.js (~170 KB CDN, MIT) was chosen over CesiumJS (~3.5 MB + tile server/Ion token) because the Helsinki FIR sensor triangle spans only ~300 km — a flat XZ plane with ~10 lines of lat/lon projection maths is sufficient and keeps the dashboard fully self-contained with no external account required.
+
+### 🗑 Removed
+* All Aviar Labs / external 3D platform references removed from `dashboard.py`, `README.md`, `dashboard/README.md`, and `CHANGELOG.md`.  The dashboard no longer links to or depends on any third-party commercial aviation platform.
+
+### 📖 Documentation
+* **`dashboard/README.md`**: bumped to v4.0; replaced the third-party integration bullet with the full 3D Sky View feature description.
+* **`README.md`**: replaced the "Companion Visualization" section with a "🛰 3D Sky View" section including a Three.js vs CesiumJS comparison table, scene element inventory, and control reference.
+
+### 🔄 Dashboard
+* **`dashboard.py`** bumped to v4.0.0.  All spoofing heuristics, TDOA uncertainty visualisation, anomaly overlay, jamming detection, and TAK/Palantir tactical styling from v3.5.0 are fully preserved.  No new Python dependencies.
+
+---
+
 ## [0.8.1] - 2026-02-01: The "Elastic Grid" Milestone
 **Major Feature Release: TDOA Synchronization, Clock Drift Compensation, and Multi-Sensor Triangulation.**
 
