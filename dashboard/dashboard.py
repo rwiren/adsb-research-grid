@@ -190,9 +190,9 @@ def _load_mqtt_password():
     if mqtt_pass:
         return mqtt_pass
 
-    mqtt_pass_file = MQTT_PASS_FILE if MQTT_PASS_FILE is not None else "/etc/securing_skies/mqtt_secret"
-    if not mqtt_pass_file:
+    if MQTT_PASS_FILE == "":
         return ""
+    mqtt_pass_file = MQTT_PASS_FILE or "/etc/securing_skies/mqtt_secret"
 
     try:
         with open(mqtt_pass_file, "r", encoding="utf-8") as fh:

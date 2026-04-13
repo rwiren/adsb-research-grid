@@ -53,7 +53,8 @@ If the broker requires authentication, provide the password outside the repo via
 `MQTT_PASS` or a secret file pointed to by `MQTT_PASS_FILE`
 (default: `/etc/securing_skies/mqtt_secret`).
 
-Expects a local Mosquitto broker on `127.0.0.1:1883`.  Topics consumed:
+Defaults to `mqtt.securingskies.eu:8883`, configurable via `MQTT_HOST` and
+`MQTT_PORT`. Topics consumed:
 
 | Topic | Content |
 |---|---|
