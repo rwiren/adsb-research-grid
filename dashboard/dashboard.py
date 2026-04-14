@@ -428,6 +428,22 @@ HTML_TEMPLATE = """
         #conn-badge.stale        { background:rgba(232,184,75,0.1); color:#e8b84b; border-color:rgba(232,184,75,0.5); }
         #conn-badge.disconnected { background:rgba(248,81,73,0.1);  color:#f85149; border-color:rgba(248,81,73,0.5); }
 
+        /* ── Audio toggle button ── */
+        #audio-toggle {
+            position:absolute; top:10px; right:110px; z-index:1100;
+            background:rgba(4,8,13,0.88);
+            border:1px solid rgba(0,200,120,0.18);
+            border-radius:2px;
+            color:#3d8060;
+            font-size:0.7em;
+            padding:3px 8px;
+            cursor:pointer;
+            font-family:'Courier New',monospace;
+            letter-spacing:0.8px;
+        }
+        #audio-toggle.on  { color:#3fb950; border-color:rgba(63,185,80,0.55); }
+        #audio-toggle.off { color:#f85149; border-color:rgba(248,81,73,0.55); }
+
         /* ── v3.4: Jamming alert banner ── */
         #jamming-banner {
             display:none; position:absolute; top:0; left:0; right:0; z-index:1900;
@@ -564,6 +580,8 @@ HTML_TEMPLATE = """
     <div id="map">
         <!-- Feature 4: Connection status badge -->
         <div id="conn-badge" class="live">● LIVE</div>
+        <!-- Audio callout toggle (defaults OFF to respect browser autoplay policy) -->
+        <button id="audio-toggle" class="off" onclick="toggleAudio()">AUDIO: OFF</button>
         <!-- Cursor coordinate display -->
         <div id="cursor-coords">—</div>
 
@@ -838,6 +856,119 @@ var connBadge = document.getElementById('conn-badge');
 
 var socket = io();
 
+// ── Feature 11: Audio callouts (Web Speech API) ───────────────────────────
+// Defaults to OFF to comply with browser autoplay/audio policies.
+// User must click the AUDIO toggle to enable.
+var AUDIO_ENABLED = false;
+var AUDIO_VOLUME  = 1.0;
+var AUDIO_RATE    = 1.05;
+var AUDIO_PITCH   = 1.0;
+
+var AUDIO_COOLDOWN_GLOBAL_S = 2.5;  // minimum spacing between any two callouts
+var AUDIO_COOLDOWN_PER_KEY_S = 90;  // de-dupe per aircraft+event type
+
+var audioLastGlobalTs = 0;
+var audioLastByKey    = {};
+
+function _audioNowS() { return Date.now() / 1000; }
+
+function _isSpeechAvailable() {
+    return (typeof window !== 'undefined'
+        && 'speechSynthesis' in window
+        && typeof SpeechSynthesisUtterance !== 'undefined');
+}
+
+// Speak digits individually: "7400" -> "7 4 0 0"
+function _speakSquawkDigits(sq) {
+    if (!sq) return '';
+    return String(sq).split('').join(' ');
+}
+
+function _audioCanFire(key) {
+    var t = _audioNowS();
+    if ((t - audioLastGlobalTs) < AUDIO_COOLDOWN_GLOBAL_S) return false;
+    var last = audioLastByKey[key] || 0;
+    if ((t - last) < AUDIO_COOLDOWN_PER_KEY_S) return false;
+    return true;
+}
+
+function _audioMarkFired(key) {
+    var t = _audioNowS();
+    audioLastGlobalTs = t;
+    audioLastByKey[key] = t;
+}
+
+function speakOnce(key, text) {
+    if (!AUDIO_ENABLED) return;
+    if (!_isSpeechAvailable()) return;
+    if (!text) return;
+    if (!_audioCanFire(key)) return;
+    try {
+        var u = new SpeechSynthesisUtterance(text);
+        u.volume = AUDIO_VOLUME;
+        u.rate   = AUDIO_RATE;
+        u.pitch  = AUDIO_PITCH;
+        var voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
+        var v = voices.find(function(x) { return x.lang && x.lang.toLowerCase().startsWith('en'); });
+        if (v) u.voice = v;
+        window.speechSynthesis.speak(u);
+        _audioMarkFired(key);
+    } catch (e) {}
+}
+
+function toggleAudio() {
+    AUDIO_ENABLED = !AUDIO_ENABLED;
+    var btn = document.getElementById('audio-toggle');
+    if (btn) {
+        btn.classList.toggle('on',  AUDIO_ENABLED);
+        btn.classList.toggle('off', !AUDIO_ENABLED);
+        btn.textContent = AUDIO_ENABLED ? 'AUDIO: ON' : 'AUDIO: OFF';
+    }
+    if (!AUDIO_ENABLED && _isSpeechAvailable()) {
+        try { window.speechSynthesis.cancel(); } catch (e) {}
+    }
+}
+
+var _audioSeenHex = {};
+
+function _getAudioEvents(ac) {
+    var events = [];
+    var callsign = (ac.flight || ac.hex).toUpperCase();
+    var sq = ac.squawk ? String(ac.squawk).trim() : null;
+    // UAV: squawk 7400 only
+    if (sq === '7400') {
+        events.push({
+            key:  'uav:7400:' + ac.hex,
+            text: 'Unmanned aerial vehicle. Squawk ' + _speakSquawkDigits(sq) + '. ' + callsign + '.'
+        });
+    }
+    // Emergency squawks: 7500 / 7600 / 7700
+    if (sq === '7500' || sq === '7600' || sq === '7700') {
+        events.push({
+            key:  'emerg:' + sq + ':' + ac.hex,
+            text: 'Emergency squawk ' + _speakSquawkDigits(sq) + '. ' + callsign + '.'
+        });
+    }
+    return events;
+}
+
+function runAudioUpdate(data) {
+    if (!data || !data.aircraft || !data.aircraft.length) return;
+    for (var i = 0; i < data.aircraft.length; i++) {
+        var ac = data.aircraft[i];
+        if (!ac || !ac.hex) continue;
+        var isNew = !_audioSeenHex[ac.hex];
+        _audioSeenHex[ac.hex] = true;
+        var events = _getAudioEvents(ac);
+        if (!events.length) continue;
+        // Speak at most one callout per update tick; cooldowns prevent spam.
+        speakOnce(events[0].key, events[0].text);
+        // Stop after the first announcement to keep audio readable.
+        return;
+    }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 socket.on('connect', function() {
     connBadge.className = 'live';
     connBadge.textContent = '● LIVE';
@@ -998,9 +1129,16 @@ socket.on('map_update', function(data) {
                 + (flagStr ? '<br><span style="color:#3d8060;font-size:0.85em;">'+flagStr+'</span>' : '');
         }
 
+        // UAV popup indicator: squawk 7400
+        var isUavSquawk = (String(ac.squawk || '').trim() === '7400');
+        var uavLine = isUavSquawk
+            ? '<div style="color:#d29922;font-weight:bold;margin-bottom:4px;">&#9672; UAV (SQUAWK 7400)</div>'
+            : '';
+
         var popupHTML =
             '<div style="font-family:monospace;min-width:175px;">'
             +(ac.emergency ? '<div style="color:#f85149;font-weight:bold;margin-bottom:4px;">⚠ EMERGENCY SQUAWK</div>' : '')
+            +uavLine
             +'<b style="color:'+col+';font-size:1.2em;">'+callsign+'</b><br>'
             +'ICAO: '+ac.hex+'<br>'
             +'SQWK: '+(ac.squawk||'—')+(ac.emergency?' <b style="color:#f85149;">⚠</b>':'')+'<br>'
@@ -1179,6 +1317,8 @@ socket.on('map_update', function(data) {
 
     // ── v4.0: Feed the 3D scene with the same data ────────────────────────
     lastMapData = data;
+    // ── Feature 11: Audio callouts ────────────────────────────────────────
+    runAudioUpdate(data);
     update3DScene(data);
 });
 
