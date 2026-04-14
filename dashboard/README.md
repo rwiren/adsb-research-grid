@@ -1,4 +1,4 @@
-# SecuringSkies MLAT Dashboard v4.0
+# SecuringSkies MLAT Dashboard v4.1
 
 Real-time ADS-B surveillance dashboard for the 3-node sensor array (North/West/East).
 
@@ -24,6 +24,11 @@ Real-time ADS-B surveillance dashboard for the 3-node sensor array (North/West/E
 - **Coverage rings toggle** — two buttons let you show/hide the 100 km and 200 km sensor-range rings independently
 - **Mobile-responsive layout** — on screens narrower than 768 px the dashboard panel collapses to a one-line summary bar with a tap-to-expand chevron
 - **3D Sky View (v4.0)** — a `⟁ 3D SKY` tab switches from the Leaflet 2D map to a native Three.js 3D scene.  Press `T` to toggle, `R` to reset camera.  Features aircraft cones with altitude stems, ground track trails, TDOA uncertainty spheres, and pulsing spoof rings.  An "ALT EXAG" slider (1×–50×, default 10×) exaggerates vertical separation so FL100/FL200/FL350 traffic layers become clearly visible.  No tile server or external account required — Three.js loads from CDN (~170 KB).
+- **Audio callouts (v4.1)** — a `🔇 AUDIO` toggle button activates browser-native speech synthesis (Web Speech API, no external service).  Audio fires **only on state transitions** — a new emergency squawk or a newly-detected unmanned aircraft — so the same target never triggers repeated announcements.  Phrases: *"Emergency squawk 7700 CALLSIGN"* and *"Unmanned aircraft CALLSIGN"*.
+- **UAV / unmanned aircraft detection (v4.1)** — aircraft are flagged as unmanned when either:
+  1. Their squawk code is in `UAV_SQUAWKS` (default: `7400` — UAS lost C2 link per ICAO Doc 10019), **or**
+  2. Their ADS-B emitter category is `B4` (UAV/Drone), `B6` (UAV), or `B7` (UAV).
+  Detected UAVs show a pulsing cyan ring on the map, a `⬡ UNMANNED AIRCRAFT` badge in the popup, an entry in the status banner above the map, and a UAV count in the legend.  The `UAV_SQUAWKS` set is centralised in `dashboard.py` and is easy to extend.
 
 ## Architecture
 
