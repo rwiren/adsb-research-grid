@@ -207,10 +207,10 @@ class TestAudioStateChangeLogic(unittest.TestCase):
 
             if is_emerg and not prev.get("emergency"):
                 alerts.append(
-                    "Emergency squawk {} {}".format(ac.get("squawk", "unknown"), callsign)
+                    f"Emergency squawk {ac.get('squawk', 'unknown')} {callsign}"
                 )
             if is_uav and not prev.get("uav"):
-                alerts.append("Unmanned aircraft {}".format(callsign))
+                alerts.append(f"Unmanned aircraft {callsign}")
 
             new_state[hex_id] = {"emergency": is_emerg, "uav": is_uav}
 

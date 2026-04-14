@@ -797,6 +797,10 @@ function toggleAudio() {
     }
 }
 
+// Speech-synthesis tuning (adjust to taste).
+var SPEECH_RATE  = 1.05;   // slightly faster than default (1.0) for conciseness
+var SPEECH_PITCH = 1.0;
+
 function speakAlert(text) {
     if (!audioEnabled || !window.speechSynthesis) return;
     speechQueue.push(text);
@@ -807,8 +811,8 @@ function flushSpeechQueue() {
     if (speechBusy || speechQueue.length === 0) return;
     speechBusy = true;
     var msg = new SpeechSynthesisUtterance(speechQueue.shift());
-    msg.rate  = 1.05;
-    msg.pitch = 1.0;
+    msg.rate  = SPEECH_RATE;
+    msg.pitch = SPEECH_PITCH;
     msg.onend = function() {
         speechBusy = false;
         flushSpeechQueue();
