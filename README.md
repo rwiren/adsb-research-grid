@@ -231,6 +231,8 @@ make ml
 
 The dashboard includes a built-in **3D Sky View** tab alongside the standard Leaflet 2D map.  It is implemented entirely in [Three.js](https://threejs.org/) (MIT licence, ~170 KB CDN, no tile server, no external account) and reuses the same `map_update` SocketIO stream that powers the 2D view — switching between modes costs zero additional server requests.
 
+**Live dashboard:** [http://www.securingskies.eu:8080/](http://www.securingskies.eu:8080/)
+
 ### Why Three.js and not CesiumJS?
 
 | | **CesiumJS** | **Three.js (chosen)** |
@@ -272,6 +274,10 @@ CesiumJS excels when you need a planetary-scale globe with streaming terrain and
 - **Ground track trails** — polyline of last 60 position fixes at ground level
 - **TDOA uncertainty spheres** — amber semi-transparent sphere for full-lock aircraft
 - **Spoof rings** — pulsing red/amber flat rings around suspect aircraft, driven by `spoof_score`
+
+### 🔊 Audio Callouts (v4.1)
+
+The dashboard now includes an **AUDIO** toggle that enables browser-native speech synthesis (Web Speech API). Announcements are emitted only on **state transitions** (for example, newly detected emergency squawk or unmanned aircraft), preventing repeated audio spam for the same target.
 
 ---
 
