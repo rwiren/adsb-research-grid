@@ -40,6 +40,27 @@ MQTT_PASS_FILE = os.getenv("MQTT_PASS_FILE", "/etc/securing_skies/mqtt_secret")
 # Emergency squawk codes
 EMERGENCY_SQUAWKS = {"7500", "7600", "7700"}
 
+# UAV / unmanned aircraft squawk codes.
+# These are the internationally recognised codes for UAS operations; extend this
+# set as new national or procedural codes are introduced.
+#
+#   7400  — UAS lost C2 (command-and-control) link.  Defined in ICAO Doc 10019
+#            and adopted by many FIRs as the standard "lost-link" squawk for UAS.
+#
+# Category-based detection (ADS-B emitter category B4 / B6 / B7) is performed
+# separately by is_uav_category() below, so an aircraft can be flagged as a UAV
+# even when it squawks a non-UAV code or no squawk is present.
+UAV_SQUAWKS = {"7400"}
+
+# ADS-B emitter categories that indicate an unmanned aircraft (see CAT_LABELS in
+# the client-side JS for the full human-readable mapping).
+_UAV_CATEGORIES = {"B4", "B6", "B7"}
+
+
+def is_uav_category(category: str) -> bool:
+    """Return True if the ADS-B emitter category indicates an unmanned aircraft."""
+    return category in _UAV_CATEGORIES if category else False
+
 # Speed of light (m/s) — for TDOA uncertainty calculation
 C = 299792458.0
 
@@ -293,6 +314,11 @@ def on_message(client, userdata, message):
                     "last_seen": time.time(),
                     # Feature 2: mark emergency squawks server-side
                     "emergency": squawk in EMERGENCY_SQUAWKS if squawk else False,
+                    # UAV/unmanned detection: squawk-based OR ADS-B category-based
+                    "uav": (
+                        (squawk in UAV_SQUAWKS if squawk else False)
+                        or is_uav_category(ac.get("category"))
+                    ),
                 })
                 entry["seen_by"].add(sensor)
 
@@ -417,6 +443,32 @@ HTML_TEMPLATE = """
                         font-size:11px; font-weight:bold; white-space:nowrap;
                         text-shadow:1px 1px 3px #000, -1px -1px 3px #000, 0 0 6px rgba(0,200,120,0.25); }
 
+        /* ── UAV banner ── */
+        #uav-banner {
+            display:none; position:absolute; top:0; left:0; right:0; z-index:1950;
+            background:rgba(0,80,120,0.92); color:#5dd8ff; padding:6px 12px; font-size:0.82em;
+            font-weight:bold; text-align:center; border-bottom:2px solid #39c5cf;
+            pointer-events:none; letter-spacing:1px;
+        }
+
+        /* UAV marker ring animation */
+        @keyframes uav-pulse {
+            0%   { opacity:0.9; }
+            50%  { opacity:0.35; }
+            100% { opacity:0.9; }
+        }
+        .uav-ring { animation:uav-pulse 2s ease-in-out infinite; }
+
+        /* ── Audio toggle button ── */
+        #audio-btn {
+            position:absolute; top:10px; right:130px; z-index:1000;
+            background:rgba(4,8,13,0.88); border:1px solid rgba(0,200,120,0.22); border-radius:2px;
+            color:#3d6050; font-size:0.7em; padding:3px 8px; cursor:pointer;
+            font-family:'Courier New',monospace; white-space:nowrap; letter-spacing:0.8px;
+            transition:color 0.2s, border-color 0.2s;
+        }
+        #audio-btn.active { color:#e8b84b; border-color:rgba(232,184,75,0.55); }
+
         /* ── Feature 4: Connection status badge ── */
         #conn-badge {
             position:absolute; top:10px; right:10px; z-index:1000;
@@ -427,22 +479,6 @@ HTML_TEMPLATE = """
         #conn-badge.live         { background:rgba(0,200,80,0.1);  color:#00c878; border-color:rgba(0,200,80,0.5); }
         #conn-badge.stale        { background:rgba(232,184,75,0.1); color:#e8b84b; border-color:rgba(232,184,75,0.5); }
         #conn-badge.disconnected { background:rgba(248,81,73,0.1);  color:#f85149; border-color:rgba(248,81,73,0.5); }
-
-        /* ── Audio toggle button ── */
-        #audio-toggle {
-            position:absolute; top:10px; right:110px; z-index:1100;
-            background:rgba(4,8,13,0.88);
-            border:1px solid rgba(0,200,120,0.18);
-            border-radius:2px;
-            color:#3d8060;
-            font-size:0.7em;
-            padding:3px 8px;
-            cursor:pointer;
-            font-family:'Courier New',monospace;
-            letter-spacing:0.8px;
-        }
-        #audio-toggle.on  { color:#3fb950; border-color:rgba(63,185,80,0.55); }
-        #audio-toggle.off { color:#f85149; border-color:rgba(248,81,73,0.55); }
 
         /* ── v3.4: Jamming alert banner ── */
         #jamming-banner {
@@ -568,6 +604,8 @@ HTML_TEMPLATE = """
 <body>
     <!-- Feature 2: Emergency banner (shown above the map) -->
     <div id="emergency-banner"></div>
+    <!-- UAV/unmanned aircraft banner -->
+    <div id="uav-banner"></div>
     <!-- v3.4: Jamming alert banner -->
     <div id="jamming-banner"></div>
 
@@ -580,8 +618,8 @@ HTML_TEMPLATE = """
     <div id="map">
         <!-- Feature 4: Connection status badge -->
         <div id="conn-badge" class="live">● LIVE</div>
-        <!-- Audio callout toggle (defaults OFF to respect browser autoplay policy) -->
-        <button id="audio-toggle" class="off" onclick="toggleAudio()">AUDIO: OFF</button>
+        <!-- Audio callout toggle -->
+        <button id="audio-btn" title="Toggle audio callouts" onclick="toggleAudio()">🔇 AUDIO</button>
         <!-- Cursor coordinate display -->
         <div id="cursor-coords">—</div>
 
@@ -697,6 +735,11 @@ HTML_TEMPLATE = """
                     <span style="margin-right:8px;color:#f85149;">◈</span>SPOOF SUSPECTS
                     <span id="cnt-spoof" style="color:#f85149;font-weight:bold;margin-left:auto;">0</span>
                 </div>
+                <!-- UAV/unmanned aircraft row -->
+                <div class="legend-item" style="grid-column:span 2;margin-top:2px;">
+                    <span style="margin-right:8px;color:#5dd8ff;">⬡</span>UAV / UNMANNED
+                    <span id="cnt-uav" style="color:#5dd8ff;font-weight:bold;margin-left:auto;">0</span>
+                </div>
             </div>
         </div>
     </div>
@@ -723,10 +766,63 @@ var map = L.map('map', {zoomControl:false});
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:''}).addTo(map);
 
 // Per-aircraft layer stores
-var markers = {}, labels = {}, arrows = {}, trails = {}, tdoaCircles = {}, anomalyRings = {}, spoofRings = {};
+var markers = {}, labels = {}, arrows = {}, trails = {}, tdoaCircles = {}, anomalyRings = {}, spoofRings = {}, uavRings = {};
 
 // Client-side last-seen timestamps (Date.now()/1000) for opacity fade
 var markerLastSeen = {};
+
+// ── Audio callout system ────────────────────────────────────────────────────
+// Uses the Web Speech API (built into all modern browsers, no external deps).
+// Audio fires only on STATE TRANSITIONS — entering emergency/UAV status — so
+// the same aircraft does not trigger repeated announcements every update cycle.
+var audioEnabled = false;
+// Previous per-aircraft state for change detection: hex → {emergency, uav}
+var acPrevState  = {};
+// Speech queue: spoken one at a time to avoid overlap.
+var speechQueue  = [];
+var speechBusy   = false;
+
+function toggleAudio() {
+    audioEnabled = !audioEnabled;
+    var btn = document.getElementById('audio-btn');
+    if (audioEnabled) {
+        btn.textContent = '🔊 AUDIO';
+        btn.classList.add('active');
+    } else {
+        btn.textContent = '🔇 AUDIO';
+        btn.classList.remove('active');
+        window.speechSynthesis.cancel();
+        speechQueue  = [];
+        speechBusy   = false;
+    }
+}
+
+// Speech-synthesis tuning (adjust to taste).
+var SPEECH_RATE  = 1.05;   // slightly faster than default (1.0) for conciseness
+var SPEECH_PITCH = 1.0;
+
+function speakAlert(text) {
+    if (!audioEnabled || !window.speechSynthesis) return;
+    speechQueue.push(text);
+    flushSpeechQueue();
+}
+
+function flushSpeechQueue() {
+    if (speechBusy || speechQueue.length === 0) return;
+    speechBusy = true;
+    var msg = new SpeechSynthesisUtterance(speechQueue.shift());
+    msg.rate  = SPEECH_RATE;
+    msg.pitch = SPEECH_PITCH;
+    msg.onend = function() {
+        speechBusy = false;
+        flushSpeechQueue();
+    };
+    msg.onerror = function() {
+        speechBusy = false;
+        flushSpeechQueue();
+    };
+    window.speechSynthesis.speak(msg);
+}
 
 var nodes = {
     "sensor-north": {pos:[60.319555,24.830816], col:"#58a6ff", lbl:"N"},
@@ -856,119 +952,6 @@ var connBadge = document.getElementById('conn-badge');
 
 var socket = io();
 
-// ── Feature 11: Audio callouts (Web Speech API) ───────────────────────────
-// Defaults to OFF to comply with browser autoplay/audio policies.
-// User must click the AUDIO toggle to enable.
-var AUDIO_ENABLED = false;
-var AUDIO_VOLUME  = 1.0;
-var AUDIO_RATE    = 1.05;
-var AUDIO_PITCH   = 1.0;
-
-var AUDIO_COOLDOWN_GLOBAL_S = 2.5;  // minimum spacing between any two callouts
-var AUDIO_COOLDOWN_PER_KEY_S = 90;  // de-dupe per aircraft+event type
-
-var audioLastGlobalTs = 0;
-var audioLastByKey    = {};
-
-function _audioNowS() { return Date.now() / 1000; }
-
-function _isSpeechAvailable() {
-    return (typeof window !== 'undefined'
-        && 'speechSynthesis' in window
-        && typeof SpeechSynthesisUtterance !== 'undefined');
-}
-
-// Speak digits individually: "7400" -> "7 4 0 0"
-function _speakSquawkDigits(sq) {
-    if (!sq) return '';
-    return String(sq).split('').join(' ');
-}
-
-function _audioCanFire(key) {
-    var t = _audioNowS();
-    if ((t - audioLastGlobalTs) < AUDIO_COOLDOWN_GLOBAL_S) return false;
-    var last = audioLastByKey[key] || 0;
-    if ((t - last) < AUDIO_COOLDOWN_PER_KEY_S) return false;
-    return true;
-}
-
-function _audioMarkFired(key) {
-    var t = _audioNowS();
-    audioLastGlobalTs = t;
-    audioLastByKey[key] = t;
-}
-
-function speakOnce(key, text) {
-    if (!AUDIO_ENABLED) return;
-    if (!_isSpeechAvailable()) return;
-    if (!text) return;
-    if (!_audioCanFire(key)) return;
-    try {
-        var u = new SpeechSynthesisUtterance(text);
-        u.volume = AUDIO_VOLUME;
-        u.rate   = AUDIO_RATE;
-        u.pitch  = AUDIO_PITCH;
-        var voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
-        var v = voices.find(function(x) { return x.lang && x.lang.toLowerCase().startsWith('en'); });
-        if (v) u.voice = v;
-        window.speechSynthesis.speak(u);
-        _audioMarkFired(key);
-    } catch (e) {}
-}
-
-function toggleAudio() {
-    AUDIO_ENABLED = !AUDIO_ENABLED;
-    var btn = document.getElementById('audio-toggle');
-    if (btn) {
-        btn.classList.toggle('on',  AUDIO_ENABLED);
-        btn.classList.toggle('off', !AUDIO_ENABLED);
-        btn.textContent = AUDIO_ENABLED ? 'AUDIO: ON' : 'AUDIO: OFF';
-    }
-    if (!AUDIO_ENABLED && _isSpeechAvailable()) {
-        try { window.speechSynthesis.cancel(); } catch (e) {}
-    }
-}
-
-var _audioSeenHex = {};
-
-function _getAudioEvents(ac) {
-    var events = [];
-    var callsign = (ac.flight || ac.hex).toUpperCase();
-    var sq = ac.squawk ? String(ac.squawk).trim() : null;
-    // UAV: squawk 7400 only
-    if (sq === '7400') {
-        events.push({
-            key:  'uav:7400:' + ac.hex,
-            text: 'Unmanned aerial vehicle. Squawk ' + _speakSquawkDigits(sq) + '. ' + callsign + '.'
-        });
-    }
-    // Emergency squawks: 7500 / 7600 / 7700
-    if (sq === '7500' || sq === '7600' || sq === '7700') {
-        events.push({
-            key:  'emerg:' + sq + ':' + ac.hex,
-            text: 'Emergency squawk ' + _speakSquawkDigits(sq) + '. ' + callsign + '.'
-        });
-    }
-    return events;
-}
-
-function runAudioUpdate(data) {
-    if (!data || !data.aircraft || !data.aircraft.length) return;
-    for (var i = 0; i < data.aircraft.length; i++) {
-        var ac = data.aircraft[i];
-        if (!ac || !ac.hex) continue;
-        var isNew = !_audioSeenHex[ac.hex];
-        _audioSeenHex[ac.hex] = true;
-        var events = _getAudioEvents(ac);
-        if (!events.length) continue;
-        // Speak at most one callout per update tick; cooldowns prevent spam.
-        speakOnce(events[0].key, events[0].text);
-        // Stop after the first announcement to keep audio readable.
-        return;
-    }
-}
-// ─────────────────────────────────────────────────────────────────────────────
-
 socket.on('connect', function() {
     connBadge.className = 'live';
     connBadge.textContent = '● LIVE';
@@ -1055,8 +1038,10 @@ socket.on('map_update', function(data) {
     var allServerHexes = new Set(data.aircraft.map(function(a) { return a.hex; }));
     var counts         = {n:0, w:0, e:0, nw:0, ne:0, we:0, all:0};
     var emergencyMsgs  = [];
+    var uavMsgs        = [];
     var anomalyCount   = 0;
     var spoofCount     = 0;
+    var uavCount       = 0;
 
     filtered.forEach(function(ac) {
         activeHexes.add(ac.hex);
@@ -1084,6 +1069,25 @@ socket.on('map_update', function(data) {
 
         // Feature 2: collect emergency squawks
         if (ac.emergency) emergencyMsgs.push('⚠ '+callsign+' SQUAWK '+ac.squawk);
+
+        // UAV/unmanned aircraft detection
+        var isUav = !!ac.uav;
+        if (isUav) {
+            uavCount++;
+            uavMsgs.push('⬡ '+callsign+' UNMANNED');
+        }
+
+        // ── Audio: speak on state transitions only ────────────────────────
+        // Compare current emergency/uav flags to what they were last cycle;
+        // announce only when an aircraft ENTERS a flagged state.
+        var prev = acPrevState[ac.hex] || {};
+        if (ac.emergency && !prev.emergency) {
+            speakAlert('Emergency squawk ' + (ac.squawk || 'unknown') + ' ' + callsign);
+        }
+        if (isUav && !prev.uav) {
+            speakAlert('Unmanned aircraft ' + callsign);
+        }
+        acPrevState[ac.hex] = {emergency: !!ac.emergency, uav: isUav};
 
         // Feature 7: anomaly count
         if (ac.anomaly_score === -1) anomalyCount++;
@@ -1129,19 +1133,13 @@ socket.on('map_update', function(data) {
                 + (flagStr ? '<br><span style="color:#3d8060;font-size:0.85em;">'+flagStr+'</span>' : '');
         }
 
-        // UAV popup indicator: squawk 7400
-        var isUavSquawk = (String(ac.squawk || '').trim() === '7400');
-        var uavLine = isUavSquawk
-            ? '<div style="color:#d29922;font-weight:bold;margin-bottom:4px;">&#9672; UAV (SQUAWK 7400)</div>'
-            : '';
-
         var popupHTML =
             '<div style="font-family:monospace;min-width:175px;">'
             +(ac.emergency ? '<div style="color:#f85149;font-weight:bold;margin-bottom:4px;">⚠ EMERGENCY SQUAWK</div>' : '')
-            +uavLine
+            +(isUav ? '<div style="color:#5dd8ff;font-weight:bold;margin-bottom:4px;">⬡ UNMANNED AIRCRAFT</div>' : '')
             +'<b style="color:'+col+';font-size:1.2em;">'+callsign+'</b><br>'
             +'ICAO: '+ac.hex+'<br>'
-            +'SQWK: '+(ac.squawk||'—')+(ac.emergency?' <b style="color:#f85149;">⚠</b>':'')+'<br>'
+            +'SQWK: '+(ac.squawk||'—')+(ac.emergency?' <b style="color:#f85149;">⚠</b>':'')+(isUav?' <b style="color:#5dd8ff;">⬡</b>':'')+'<br>'
             +'ALT : '+altStr+'<br>'
             +'GS  : '+(ac.gs ? ac.gs.toFixed(0)+' kt' : '—')+'<br>'
             +'HDG : '+(ac.track != null ? ac.track.toFixed(0)+'°' : '—')+'<br>'
@@ -1230,6 +1228,22 @@ socket.on('map_update', function(data) {
             }
         }
 
+        // ── UAV/unmanned aircraft ring ────────────────────────────────────
+        if (isUav) {
+            if (uavRings[ac.hex]) {
+                uavRings[ac.hex].setLatLng(loc);
+            } else {
+                uavRings[ac.hex] = L.circleMarker(loc, {
+                    radius:12, fillColor:'transparent', color:'#5dd8ff',
+                    weight:2, fillOpacity:0, pane:'markerPane', interactive:false,
+                    className:'uav-ring'
+                }).addTo(map);
+            }
+        } else if (uavRings[ac.hex]) {
+            map.removeLayer(uavRings[ac.hex]);
+            delete uavRings[ac.hex];
+        }
+
         // ── Heading arrow / circle marker ─────────────────────────────────
         var markerCol  = ac.emergency ? '#f85149' : col;
         var emClass    = ac.emergency ? ' class="emergency-marker"' : '';
@@ -1279,6 +1293,15 @@ socket.on('map_update', function(data) {
         banner.style.display = 'none';
     }
 
+    // ── UAV banner ────────────────────────────────────────────────────────
+    var uavBanner = document.getElementById('uav-banner');
+    if (uavMsgs.length > 0) {
+        uavBanner.style.display = 'block';
+        uavBanner.textContent = uavMsgs.join('   |   ');
+    } else {
+        uavBanner.style.display = 'none';
+    }
+
     // ── v3.4: Jamming alert banner ────────────────────────────────────────
     var jammingBanner = document.getElementById('jamming-banner');
     var jamList = data.jamming || [];
@@ -1301,6 +1324,7 @@ socket.on('map_update', function(data) {
     document.getElementById('cnt-all').textContent     = counts.all;
     document.getElementById('cnt-anomaly').textContent = anomalyCount;
     document.getElementById('cnt-spoof').textContent   = spoofCount;
+    document.getElementById('cnt-uav').textContent     = uavCount;
 
     // Clean up markers for aircraft no longer in the current display set
     // Use allServerHexes for markerLastSeen cleanup (keep data for off-screen filtered aircraft)
@@ -1313,12 +1337,11 @@ socket.on('map_update', function(data) {
     for (hx in tdoaCircles)   { if (!activeHexes.has(hx))    { map.removeLayer(tdoaCircles[hx]);   delete tdoaCircles[hx]; } }
     for (hx in anomalyRings)  { if (!activeHexes.has(hx))    { map.removeLayer(anomalyRings[hx]);  delete anomalyRings[hx]; } }
     for (hx in spoofRings)    { if (!activeHexes.has(hx))    { map.removeLayer(spoofRings[hx]);    delete spoofRings[hx]; } }
-    for (hx in markerLastSeen){ if (!allServerHexes.has(hx)) { delete markerLastSeen[hx]; } }
+    for (hx in uavRings)      { if (!activeHexes.has(hx))    { map.removeLayer(uavRings[hx]);      delete uavRings[hx]; } }
+    for (hx in markerLastSeen){ if (!allServerHexes.has(hx)) { delete markerLastSeen[hx]; delete acPrevState[hx]; } }
 
     // ── v4.0: Feed the 3D scene with the same data ────────────────────────
     lastMapData = data;
-    // ── Feature 11: Audio callouts ────────────────────────────────────────
-    runAudioUpdate(data);
     update3DScene(data);
 });
 
