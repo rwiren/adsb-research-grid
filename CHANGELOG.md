@@ -5,6 +5,18 @@ All notable changes to the **ADS-B Research Grid** project will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-04-16: The "Telemetry Transformation" Update
+**Feature Release: Stage 2 Data Transformation & Processing Pipeline.**
+
+### ⚙️ Data Pipeline
+*   **Telemetry Transformation Layer:** Implemented `src/processing/transformer.py` to process raw JSON telemetry into strictly typed, ML-ready datasets.
+*   **Validation Layer:** Enforces strict sanity checks on ICAO Hex formats (6-character hex strings) and spatial coordinate bounds (Latitude -90 to 90, Longitude -180 to 180).
+*   **Data Transformation:** Flattens hierarchical JSON payloads into standardized tabular records.
+*   **Storage & Partitioning:** Converts and loads sanitized data into time-series Parquet format (with CSV fallback) optimized for batch ML workloads, partitioned by date (YYYY-MM-DD).
+*   **Metadata Integration:** Seamlessly incorporates Stage 1 `anomaly_corrected` metadata flags into the final ML schema.
+
+---
+
 ## [0.9.0] - 2026-04-13: The "Sky View" Update
 **Feature Release: Native 3D ADS-B Visualization (Three.js).**
 

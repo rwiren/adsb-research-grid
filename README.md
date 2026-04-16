@@ -1,23 +1,24 @@
 # Securing the Skies: ADS-B Spoofing Detection Grid
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/github/v/tag/rwiren/adsb-research-grid?label=Version&color=green)](https://github.com/rwiren/adsb-research-grid/tags)
+[![Version](https://img.shields.io/github/v/tag/rwiren/hermes-learning?label=Version&color=green)](https://github.com/rwiren/hermes-learning/tags)
 [![Status](https://img.shields.io/badge/Status-Phase%203%3A%20Validation-success.svg)](#)
-[![Wiki](https://img.shields.io/badge/Docs-Project%20Wiki-purple?style=flat-square)](https://github.com/rwiren/adsb-research-grid/wiki)
+[![Wiki](https://img.shields.io/badge/Docs-Project%20Wiki-purple?style=flat-square)](https://github.com/rwiren/hermes-learning/wiki)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](#)
-![Last Updated](https://img.shields.io/github/last-commit/rwiren/adsb-research-grid?label=Last%20Updated&color=orange)
+![Last Updated](https://img.shields.io/github/last-commit/rwiren/hermes-learning?label=Last%20Updated&color=orange)
 
 [![Audit Report](https://img.shields.io/badge/View-Latest%20Report-blue?style=for-the-badge&logo=github)](docs/showcase/latest/REPORT.md)
 
 ## 📋 Table of Contents
 1. [Research Goal](#-research-goal)
-2. [The Model Zoo (18 Architectures)](#-the-model-zoo-18-architecture-ensemble)
-3. [Architecture (Hardware Grid)](#-architecture-distributed-sensor-grid)
-4. [Research Workflow (Usage)](#-research-workflow-usage)
-5. [Repository Structure](#-repository-structure)
-6. [3D Sky View](#-3d-sky-view-native-three-js-visualization)
-7. [Project Heritage](#-project-heritage)
-8. [License & Citation](#-license--citation)
+2. [Data Pipeline](#-data-pipeline)
+3. [The Model Zoo (18 Architectures)](#-the-model-zoo-18-architecture-ensemble)
+4. [Architecture (Hardware Grid)](#-architecture-distributed-sensor-grid)
+5. [Research Workflow (Usage)](#-research-workflow-usage)
+6. [Repository Structure](#-repository-structure)
+7. [3D Sky View](#-3d-sky-view-native-three-js-visualization)
+8. [Project Heritage](#-project-heritage)
+9. [License & Citation](#-license--citation)
 
 ---
 
@@ -26,6 +27,25 @@
 To detect and mitigate GNSS spoofing attacks on civilian aviation tracking systems (ADS-B) using a distributed sensor grid and a **Hybrid AI Model Zoo**. This project moves beyond simple signal strength thresholding to a multi-layered defense strategy capable of identifying sophisticated trajectory modification attacks, "ghost" aircraft injections, and hardware-level signal cloning.
 
 The core innovation is the **Elastic Manifold Architecture**: a system that validates aircraft not just by physics (speed/altitude), but by **topology** (mathematical constraints), **time** (elastic synchronization), and **hardware signatures** (RF fingerprinting).
+
+---
+
+# ⚙️ Data Pipeline
+This section details the various stages of data processing, from raw ingestion to ML-ready datasets.
+
+### Stage 1: Ingestion & Scraper (Conceptual)
+Responsible for extracting raw JSON telemetry. This stage is external to this repository's core processing logic but provides the input to Stage 2.
+
+### Stage 2: Telemetry Transformation & Processing (`src/processing/transformer.py`)
+This crucial layer processes raw JSON telemetry into strictly typed, validated, and ML-ready tabular datasets.
+
+*   **Validation Layer:** Enforces strict sanity checks on:
+    *   **ICAO Hex formats:** 6-character hexadecimal strings.
+    *   **Spatial coordinate bounds:** Latitude (-90 to 90), Longitude (-180 to 180).
+*   **Data Transformation:** Flattens hierarchical JSON payloads into standardized tabular records.
+*   **Storage Encoding:** Converts and loads sanitized data into time-series Parquet format (with CSV fallback if needed), optimized for batch ML workloads.
+*   **Partitioning Strategy:** Implements robust data partitioning by date (YYYY-MM-DD) for efficient data retrieval.
+*   **Metadata Integration:** Seamlessly incorporates `anomaly_corrected` metadata flags from Stage 1 into the final ML schema.
 
 ---
 
@@ -219,6 +239,8 @@ make ml
     * `demo_manifold_guard.py`: Complete demo of spoofing detection with normal and spoofed scenarios.
 * **`research_data/`**: Local repository for ingested sensor logs (Ignored by Git).
 * **`docs/showcase/`**: Versioned output of scientific runs (The "Evidence").
+* **`src/processing/`**: Data transformation and processing scripts.
+    * `transformer.py`: Stage 2 data transformation layer (validation, flattening, storage, partitioning, metadata integration).
 * **`scripts/`**: Python analysis tools.
     * `academic_eda.py`: Forensic reporting engine (v0.5.0).
     * `ds_pipeline_master.py`: Machine Learning pipeline (v3.0).
@@ -289,7 +311,7 @@ This project supersedes the original **Central Brain PoC**.
 ### Citation
 If you use this dataset, architecture, or tooling in your research, please cite:
 
-> Wiren, Richard. (2026). *ADS-B Research Grid: Distributed Sensor Network for Spoofing Detection* [Software]. https://github.com/rwiren/adsb-research-grid
+> Wiren, Richard. (2026). *ADS-B Research Grid: Distributed Sensor Network for Spoofing Detection* [Software]. https://github.com/rwiren/hermes-learning
 
 See [CITATION.cff](CITATION.cff) for BibTeX format.
 
