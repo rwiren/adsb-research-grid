@@ -1,0 +1,44 @@
+# ==============================================================================
+# Systemd Unit: adsb-ml-inference.service
+# Version: 1.0.0
+# Date: 2026-04-29
+# Path: /etc/systemd/system/adsb-ml-inference.service
+# ==============================================================================
+# Description:
+#   Real-time ML inference service for ADS-B spoofing detection.
+#   Runs the GRU Autoencoder (79K params, trained on 144h multi-sensor dataset)
+#   in parallel with the heuristic anomaly_bridge_v2.
+#
+#   Subscribes to sensor MQTT feeds, maintains per-aircraft T=30 sliding
+#   windows, and publishes per-feature reconstruction errors to
+#   sensor-core/ml-anomaly when anomaly_score > τ (0.005050).
+#
+#   Designed to run continuously alongside:
+#     - adsb-dashboard.service (Flask UI, port 8080)
+#     - anomaly-bridge-v2.service (heuristic scoring)
+#     - accuracy-monitor.service (GNSS/sync metrics)
+#
+#   Resource footprint: ~200MB RAM (PyTorch CPU), <5% CPU at 1Hz inference.
+# ==============================================================================
+
+[Unit]
+Description=SecuringSkies ML Inference (GRU Autoencoder)
+After=network-online.target mosquitto.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/adsb-dashboard
+ExecStart=/root/adsb-dashboard/venv/bin/python3 /root/adsb-dashboard/ml_inference_service.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ml-inference
+
+# Resource limits
+MemoryMax=512M
+CPUQuota=50%
+
+[Install]
+WantedBy=multi-user.target
