@@ -33,7 +33,7 @@ HTML_TEMPLATE = """
 
         .panel         { background:#08111a; border:1px solid rgba(0,200,120,0.18); border-radius:2px; padding:10px; display:flex; flex-direction:column; position:relative; overflow:hidden; }
         .panel::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,rgba(0,200,120,0.55) 0%,transparent 80%); pointer-events:none; }
-        .panel-sync    { flex:0.8; align-items:center; justify-content:center; text-align:center; }
+        .panel-sync    { flex:0.8; align-items:center; justify-content:flex-start; padding-top:12px; text-align:center; }
         .panel-sensors { flex:2; }
         .panel-legend  { flex:1.2; }
 

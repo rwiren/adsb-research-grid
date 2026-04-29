@@ -34,12 +34,31 @@ Real-time ADS-B surveillance dashboard for the 3-node sensor array (North/West/E
 
 ```
 Sensor Nodes (RPi4)          Helsinki Server
-┌──────────────┐             ┌──────────────────────────────────────┐
-│ sensor-north ├──MQTT──┐    │  Mosquitto :1883 (local)             │
-│ sensor-west  ├──MQTT──┼───►│  dashboard.py  (Flask + SocketIO)   │──► :8080
-│ sensor-east  ├──MQTT──┘    │  ML pipeline → sensor-core/anomalies │
-└──────────────┘             └──────────────────────────────────────┘
+┌──────────────┐             ┌──────────────────────────────────────────────┐
+│ sensor-north ├──MQTT──┐    │  Mosquitto :1883 (local) / :8443 (WSS)      │
+│ sensor-west  ├──MQTT──┼───►│  dashboard.py  (Flask + SocketIO) ──► :8080  │
+│ sensor-east  ├──MQTT──┘    │  anomaly_bridge_v2.py (heuristic scoring)    │
+│              │             │  ml_inference_service.py (autoencoder, below) │
+└──────────────┘             └──────────────────────────────────────────────┘
 ```
+
+### ML Inference Service (`ml_inference_service.py`)
+
+Runs in parallel with the heuristic anomaly bridge. Performs real-time autoencoder
+inference using the GRU model trained on the 144h multi-sensor dataset.
+
+**Pipeline:**
+1. Subscribes to `sensor-{north,west,east}/aircraft` (1 Hz)
+2. Maintains a T=30 sliding window buffer per aircraft (ICAO hex)
+3. Computes 7 engineered features per timestep (velocity_calculated, velocity_error,
+   velocity_drift, distance_to_sensor, rssi_expected, rssi_error, rssi_error_normalized)
+4. Applies the fitted StandardScaler (Z-score normalization)
+5. Runs GRU Autoencoder forward pass → reconstruction error
+6. Decomposes error per feature dimension (Paper Eq. 2)
+7. Publishes anomalies (score > τ) to `sensor-core/ml-anomaly`
+
+**Model:** GRU Autoencoder, 79K params, hidden=64, latent=8, τ=0.005050
+**Checkpoint:** `models/adsb_gru_w30_144h_7feat.pth`
 
 ## Dependencies
 
