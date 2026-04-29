@@ -276,6 +276,19 @@ HTML_TEMPLATE = """
             animation: trilat-pulse 2s ease-in-out infinite;
             border-radius: 50%;
         }
+
+        /* Anomaly toast notification */
+        #anomaly-toast {
+            position:fixed; top:60px; right:12px; z-index:2000;
+            background:rgba(248,81,73,0.15); border:1px solid rgba(248,81,73,0.5);
+            border-radius:6px; padding:8px 14px; color:#f85149;
+            font-family:'Courier New',monospace; font-size:0.8em;
+            opacity:0; transform:translateX(100px); transition:all 0.4s ease;
+            pointer-events:none; backdrop-filter:blur(4px);
+        }
+        #anomaly-toast.show {
+            opacity:1; transform:translateX(0);
+        }
 </style>
 </head>
 <body>
@@ -446,6 +459,7 @@ HTML_TEMPLATE = """
     </div>
 
 <button id="collapse-btn" onclick="toggleDashboard()">▲ PANELS</button>
+    <div id="anomaly-toast"></div>
 <script>
 function toggleDashboard() {
     var d = document.getElementById('dashboard');
@@ -1239,6 +1253,14 @@ socket.on('map_update', function(data) {
     document.getElementById('cnt-all').textContent     = counts.all;
     document.getElementById('cnt-anomaly').textContent = anomalyCount;
     document.getElementById('cnt-spoof').textContent   = spoofCount;
+            if (spoofCount > (window._lastSpoofCount || 0)) {
+                var toast = document.getElementById('anomaly-toast');
+                toast.textContent = '⚠ SPOOF SUSPECT (' + spoofCount + ')';
+                toast.classList.add('show');
+                clearTimeout(window._toastTimer);
+                window._toastTimer = setTimeout(function(){ toast.classList.remove('show'); }, 5000);
+            }
+            window._lastSpoofCount = spoofCount;
     document.getElementById('cnt-uav').textContent     = uavCount;
 
     // Clean up markers for aircraft no longer in the current display set
