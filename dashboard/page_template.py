@@ -296,6 +296,55 @@ HTML_TEMPLATE = """
             50% { opacity:0.4; }
         }
         .sensor-active { animation: sensor-pulse 1.5s ease-in-out infinite; }
+
+        /* Feature Attribution panel (Paper Eq. 2) */
+        #attribution-panel {
+            display:none; position:fixed; bottom:26vh; right:12px; z-index:1100;
+            background:rgba(4,8,13,0.95); border:1px solid rgba(248,81,73,0.3);
+            border-radius:6px; padding:10px 14px; min-width:200px;
+            font-family:'Courier New',monospace; font-size:0.75em; color:#c9d1d9;
+            backdrop-filter:blur(4px);
+        }
+        #attribution-panel .attr-title {
+            color:#f85149; font-weight:bold; margin-bottom:6px; font-size:0.9em;
+        }
+        #attribution-panel .attr-bar {
+            display:flex; align-items:center; margin:3px 0; gap:6px;
+        }
+        #attribution-panel .attr-bar .bar-fill {
+            height:4px; border-radius:2px; transition:width 0.5s ease;
+        }
+        #attribution-panel .attr-label { width:90px; color:#8b949e; }
+        #attribution-panel .attr-pct { width:35px; text-align:right; color:#c9d1d9; }
+
+        /* Persistence Filter gauge (Paper Section 4.3, k=5) */
+        #persist-gauge {
+            display:none; position:fixed; bottom:26vh; left:12px; z-index:1100;
+            background:rgba(4,8,13,0.95); border:1px solid rgba(210,153,34,0.3);
+            border-radius:6px; padding:8px 12px; min-width:160px;
+            font-family:'Courier New',monospace; font-size:0.75em; color:#c9d1d9;
+            backdrop-filter:blur(4px);
+        }
+        #persist-gauge.confirmed {
+            border-color:rgba(248,81,73,0.6);
+        }
+        #persist-gauge .gauge-title { color:#d29922; font-weight:bold; margin-bottom:4px; }
+        #persist-gauge.confirmed .gauge-title { color:#f85149; }
+        #persist-gauge .gauge-blocks {
+            display:flex; gap:3px; margin:4px 0;
+        }
+        #persist-gauge .gauge-block {
+            width:20px; height:8px; border-radius:2px;
+            background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.1);
+            transition: background 0.3s ease;
+        }
+        #persist-gauge .gauge-block.filled {
+            background:rgba(210,153,34,0.7); border-color:rgba(210,153,34,0.5);
+        }
+        #persist-gauge.confirmed .gauge-block.filled {
+            background:rgba(248,81,73,0.8); border-color:rgba(248,81,73,0.5);
+        }
+        #persist-gauge .gauge-status { color:#8b949e; margin-top:3px; }
 </style>
 </head>
 <body>
@@ -399,6 +448,8 @@ HTML_TEMPLATE = """
                     <div class="row expert-row" style="display:none;"><span class="k">Load</span><span class="v" id="n-load">—</span></div>
                     <div class="row expert-row" style="display:none;"><span class="k">GNSS std</span><span class="v" id="n-gnss-std">&mdash;</span></div>
                     <div class="row expert-row" style="display:none;"><span class="k">GNSS eph</span><span class="v" id="n-gnss-eph">&mdash;</span></div>
+                    <div class="row expert-row" style="display:none;"><span class="k">GNSS HW</span><span class="v" style="color:#58a6ff;font-size:0.85em;">F9P RTK</span></div>
+                    <div class="row expert-row" style="display:none;"><span class="k">RSSI cal</span><span class="v" style="color:#8b949e;font-size:0.85em;">1.00×</span></div>
                     <div class="snr-bar"><div class="snr-bar-fill" id="n-bar" style="width:0%;background:#58a6ff;"></div></div>
                 </div>
                 <div class="sensor-card" id="card-west">
@@ -413,6 +464,8 @@ HTML_TEMPLATE = """
                     <div class="row expert-row" style="display:none;"><span class="k">Load</span><span class="v" id="w-load">—</span></div>
                     <div class="row expert-row" style="display:none;"><span class="k">GNSS std</span><span class="v" id="w-gnss-std">&mdash;</span></div>
                     <div class="row expert-row" style="display:none;"><span class="k">GNSS eph</span><span class="v" id="w-gnss-eph">&mdash;</span></div>
+                    <div class="row expert-row" style="display:none;"><span class="k">GNSS HW</span><span class="v" style="color:#3fb950;font-size:0.85em;">G-STAR IV</span></div>
+                    <div class="row expert-row" style="display:none;"><span class="k">RSSI cal</span><span class="v" style="color:#8b949e;font-size:0.85em;">1.12×</span></div>
                     <div class="snr-bar"><div class="snr-bar-fill" id="w-bar" style="width:0%;background:#3fb950;"></div></div>
                 </div>
                 <div class="sensor-card" id="card-east">
@@ -427,6 +480,8 @@ HTML_TEMPLATE = """
                     <div class="row expert-row" style="display:none;"><span class="k">Load</span><span class="v" id="e-load">—</span></div>
                     <div class="row expert-row" style="display:none;"><span class="k">GNSS std</span><span class="v" id="e-gnss-std">&mdash;</span></div>
                     <div class="row expert-row" style="display:none;"><span class="k">GNSS eph</span><span class="v" id="e-gnss-eph">&mdash;</span></div>
+                    <div class="row expert-row" style="display:none;"><span class="k">GNSS HW</span><span class="v" style="color:#f85149;font-size:0.85em;">G-STAR IV</span></div>
+                    <div class="row expert-row" style="display:none;"><span class="k">RSSI cal</span><span class="v" style="color:#8b949e;font-size:0.85em;">0.94×</span></div>
                     <div class="snr-bar"><div class="snr-bar-fill" id="e-bar" style="width:0%;background:#f85149;"></div></div>
                 </div>
             </div>
@@ -468,6 +523,23 @@ HTML_TEMPLATE = """
 
 <button id="collapse-btn" onclick="toggleDashboard()">▲ PANELS</button>
     <div id="anomaly-toast"></div>
+    <!-- Feature Attribution Panel (Paper Section 4.2, Eq. 2) -->
+    <div id="attribution-panel">
+        <div class="attr-title">⚑ FEATURE ATTRIBUTION</div>
+        <div id="attr-bars"></div>
+    </div>
+    <!-- Persistence Filter Gauge (Paper Section 4.3, k=5 consecutive windows) -->
+    <div id="persist-gauge">
+        <div class="gauge-title">THREAT CONFIDENCE</div>
+        <div class="gauge-blocks">
+            <div class="gauge-block" id="gb-1"></div>
+            <div class="gauge-block" id="gb-2"></div>
+            <div class="gauge-block" id="gb-3"></div>
+            <div class="gauge-block" id="gb-4"></div>
+            <div class="gauge-block" id="gb-5"></div>
+        </div>
+        <div class="gauge-status" id="persist-status">0/5 windows</div>
+    </div>
 <script>
 function toggleDashboard() {
     var d = document.getElementById('dashboard');
@@ -1278,6 +1350,61 @@ socket.on('map_update', function(data) {
                 window._toastTimer = setTimeout(function(){ toast.classList.remove('show'); }, 5000);
             }
             window._lastSpoofCount = spoofCount;
+            // ── Feature Attribution (Paper Eq. 2): decompose detection flags ──
+            var attrPanel = document.getElementById('attribution-panel');
+            if (spoofCount > 0) {
+                attrPanel.style.display = 'block';
+                // Aggregate flags across all suspects
+                var flagCounts = {};
+                data.aircraft.forEach(function(a) {
+                    if (a.spoof_score > 0 && a.spoof_flags) {
+                        a.spoof_flags.forEach(function(f) {
+                            var key = f.replace(/[0-9>.:]+/g, '').replace('fpm','').replace('vs','_vs_').replace('kt','');
+                            if (key === 'climb') key = 'velocity_error';
+                            else if (key.indexOf('GS') >= 0) key = 'velocity_calc';
+                            else if (key === 'suspicious-ICAO') key = 'identity';
+                            else if (key === 'INJECTED-DEMO') key = 'injected_demo';
+                            flagCounts[key] = (flagCounts[key] || 0) + 1;
+                        });
+                    }
+                });
+                var total = Object.values(flagCounts).reduce(function(a,b){return a+b;}, 0) || 1;
+                var barsHtml = '';
+                var colors = {velocity_error:'#f85149', velocity_calc:'#d29922', identity:'#d2a8ff', injected_demo:'#58a6ff'};
+                Object.keys(flagCounts).sort(function(a,b){return flagCounts[b]-flagCounts[a];}).forEach(function(k) {
+                    var pct = Math.round(flagCounts[k] / total * 100);
+                    var col = colors[k] || '#8b949e';
+                    barsHtml += '<div class="attr-bar"><span class="attr-label">'+k+'</span><div style="flex:1;background:rgba(255,255,255,0.05);border-radius:2px;"><div class="bar-fill" style="width:'+pct+'%;background:'+col+';"></div></div><span class="attr-pct">'+pct+'%</span></div>';
+                });
+                document.getElementById('attr-bars').innerHTML = barsHtml;
+            } else {
+                attrPanel.style.display = 'none';
+            }
+            // ── Persistence Filter (Paper Section 4.3, k=5) ──────────────────
+            // Increment counter when suspects present, reset when clear.
+            // Escalate to CONFIRMED THREAT at k=5 consecutive detections.
+            var K_PERSIST = 5;
+            window._persistCount = window._persistCount || 0;
+            if (spoofCount > 0) {
+                window._persistCount = Math.min(window._persistCount + 1, K_PERSIST);
+            } else {
+                window._persistCount = Math.max(window._persistCount - 1, 0);
+            }
+            var pg = document.getElementById('persist-gauge');
+            if (window._persistCount > 0) {
+                pg.style.display = 'block';
+                var confirmed = (window._persistCount >= K_PERSIST);
+                pg.className = confirmed ? 'confirmed' : '';
+                pg.querySelector('.gauge-title').textContent = confirmed ? '⚠ CONFIRMED THREAT' : 'THREAT CONFIDENCE';
+                document.getElementById('persist-status').textContent = window._persistCount + '/' + K_PERSIST + ' windows' + (confirmed ? ' — ALERT' : '');
+                for (var gi = 1; gi <= K_PERSIST; gi++) {
+                    var block = document.getElementById('gb-' + gi);
+                    if (gi <= window._persistCount) block.classList.add('filled');
+                    else block.classList.remove('filled');
+                }
+            } else {
+                pg.style.display = 'none';
+            }
     document.getElementById('cnt-uav').textContent     = uavCount;
 
     // Clean up markers for aircraft no longer in the current display set
