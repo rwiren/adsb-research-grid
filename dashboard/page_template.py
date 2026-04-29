@@ -365,14 +365,15 @@ HTML_TEMPLATE = """
     <!-- Info popup for first-time visitors -->
     <button id="info-btn" onclick="toggleInfo()" style="position:absolute;top:50px;left:12px;z-index:1000;background:rgba(4,8,13,0.85);border:1px solid rgba(0,200,120,0.3);color:#11caa0;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px;font-weight:bold;line-height:26px;text-align:center;">?</button>
     <div id="info-popup" style="display:none;position:absolute;top:88px;left:12px;z-index:1000;background:rgba(4,8,13,0.95);border:1px solid rgba(0,200,120,0.25);border-radius:8px;padding:16px 20px;max-width:360px;color:#c9d1d9;font-size:12px;line-height:1.6;box-shadow:0 4px 20px rgba(0,0,0,0.5);">
-        <div style="font-size:14px;font-weight:bold;color:#11caa0;margin-bottom:10px;">SecuringSkies MLAT Hub</div>
-        <p style="margin-bottom:8px;">Real-time ADS-B surveillance from a 3-node distributed sensor network in the Helsinki metropolitan area.</p>
+        <div style="font-size:14px;font-weight:bold;color:#11caa0;margin-bottom:10px;">SecuringSkies — Live ADS-B Spoofing Detection</div>
+        <p style="margin-bottom:8px;">Real-time distributed surveillance with <b>ML autoencoder inference</b> from a 3-node sensor network in the Helsinki metropolitan area.</p>
         <p style="margin-bottom:8px;"><span style="color:#58a6ff;">▲</span> <b>North</b> (Helsinki-Vantaa) &middot; <span style="color:#3fb950;">◀</span> <b>West</b> (Jorvas) &middot; <span style="color:#f85149;">▶</span> <b>East</b> (Sipoo)</p>
-        <p style="margin-bottom:8px;"><b>Colors:</b> Aircraft color shows which sensors detect it. White = all 3 sensors (trilateration lock).</p>
-        <p style="margin-bottom:8px;"><b>Sync ΔT:</b> Sub-millisecond clock alignment between sensors (PPS-disciplined via u-blox F9P RTK).</p>
-        <p style="margin-bottom:8px;"><b>Anomalies:</b> Physics-based spoofing detection &mdash; flags aircraft violating momentum, RF propagation, or kinematic constraints.</p>
-        <p style="margin-bottom:8px;"><b>GPS Health:</b> Monitors ground sensor EPH (estimated position error). Green = all sensors &lt;20m. Yellow = degraded. Red = possible jamming.</p>
-        <p style="margin-bottom:4px;color:#8b949e;"><b>+ EXPERT</b> reveals GNSS accuracy, CPU temp, and system load per sensor.</p>
+        <p style="margin-bottom:8px;"><b>Colors:</b> Aircraft color = sensor coverage. White + glow = trilateration lock (all 3).</p>
+        <p style="margin-bottom:8px;"><b>ML Score:</b> GRU Autoencoder (79K params) scores each aircraft in real-time. Per-feature reconstruction error decomposes detections into velocity, RSSI, and kinematic dimensions.</p>
+        <p style="margin-bottom:8px;"><b>Persistence (k=5):</b> Threat Confidence gauge fills over 5 consecutive anomalous windows before confirming a threat.</p>
+        <p style="margin-bottom:8px;"><b>GPS Health:</b> Ground sensor EPH monitoring. Green = normal. Yellow = degraded. Red = possible jamming.</p>
+        <p style="margin-bottom:8px;"><b>Sync ΔT:</b> Sub-millisecond clock alignment (PPS-disciplined, Stratum 1).</p>
+        <p style="margin-bottom:4px;color:#8b949e;"><b>+ EXPERT</b> reveals GNSS hardware, RSSI calibrations, CPU/load, and the ⚡ INJECT demo button.</p>
         <div style="margin-top:10px;padding-top:8px;border-top:1px solid #30363d;color:#8b949e;font-size:11px;">Team 9 · AI Neural Networks 2026 · AI Academy</div>
         <button onclick="toggleInfo()" style="position:absolute;top:8px;right:12px;background:none;border:none;color:#8b949e;cursor:pointer;font-size:16px;">✕</button>
     </div>

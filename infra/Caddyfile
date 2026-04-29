@@ -1,0 +1,42 @@
+# ==============================================================================
+# Caddyfile — SecuringSkies Dashboard (HTTPS)
+# Version: 1.1.0
+# Date: 2026-04-29
+# Path: /etc/caddy/Caddyfile
+# ==============================================================================
+#
+# PORT TOPOLOGY:
+# ┌─────────┬────────────────────────────────────────────────────────────────┐
+# │ Port    │ Service / Purpose                                             │
+# ├─────────┼────────────────────────────────────────────────────────────────┤
+# │ 443/tcp │ MQTT TLS (iptables PREROUTING → 8883). Workaround for        │
+# │         │ sensor-west corporate firewall that only allows outbound 443. │
+# │ 8080    │ Dashboard HTTP (direct, Flask+SocketIO via eventlet)          │
+# │ 8443    │ Mosquitto WebSocket Secure (WSS). Used by browser MQTT.       │
+# │ 8883    │ Mosquitto MQTTS (native TLS). Used by RPi sensors.           │
+# │ 9443    │ Dashboard HTTPS (this Caddy instance). Reverse proxy → 8080. │
+# └─────────┴────────────────────────────────────────────────────────────────┘
+#
+# NOTE: Port 443 cannot serve HTTPS because an iptables PREROUTING REDIRECT
+# rule forwards all TCP/443 traffic to Mosquitto on 8883 for sensor-west.
+# ==============================================================================
+
+https://www.securingskies.eu:9443 {
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+		Access-Control-Allow-Origin "*"
+	}
+
+	encode gzip
+
+	log {
+		output file /var/log/caddy/dashboard-access.log
+		format json
+	}
+
+	reverse_proxy localhost:8080
+}

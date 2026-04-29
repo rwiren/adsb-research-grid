@@ -450,28 +450,28 @@ class MLInferenceService:
 
                     if result["is_anomaly"]:
                         self.stats["anomalies"] += 1
-                        self._publish_anomaly(hex_id, ac, result, sensor)
                     else:
                         self.stats["below_threshold"] += 1
-                        # Log first few normal scores for calibration verification
-                        if self.stats["below_threshold"] <= 10:
-                            log.info(f"NORMAL {hex_id} ({(ac.get('flight') or '').strip()}): score={result['anomaly_score']:.6f}")
+                    # Publish ALL scores so dashboard can show ML activity status
+                    self._publish_score(hex_id, ac, result, sensor)
 
         except Exception as e:
             log.warning(f"Error: {e}")
 
-    def _publish_anomaly(self, hex_id, ac, result, sensor):
+    def _publish_score(self, hex_id, ac, result, sensor):
+        """Publish all ML scores (normal and anomalous) to MQTT for dashboard."""
         payload = {
             "ts": time.time(), "hex": hex_id,
             "flight": (ac.get("flight") or "").strip(),
             "sensor": sensor,
             "anomaly_score": result["anomaly_score"],
             "threshold": result["threshold"],
-            "is_anomaly": True,
+            "is_anomaly": result["is_anomaly"],
             "per_feature_error": result["per_feature_error"],
         }
         self.mqtt_client.publish(PUBLISH_TOPIC, json.dumps(payload), qos=0)
-        log.info(f"ANOMALY {hex_id} ({(ac.get('flight') or '').strip()}): score={result['anomaly_score']:.6f} > τ={result['threshold']:.6f}")
+        if result["is_anomaly"]:
+            log.info(f"ANOMALY {hex_id} ({(ac.get('flight') or '').strip()}): score={result['anomaly_score']:.6f} > τ={result['threshold']:.6f}")
 
 
 if __name__ == "__main__":
