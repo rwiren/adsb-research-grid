@@ -439,7 +439,7 @@ HTML_TEMPLATE = """
             <div class="label">NODE HEALTH <button id="expert-btn" onclick="toggleExpert()" style="background:none;border:1px solid #30363d;color:#8b949e;font-size:1em;padding:4px 10px;cursor:pointer;border-radius:3px;margin-left:8px;font-family:monospace;">+ EXPERT</button>
                 <button id="inject-btn" class="expert-row" style="display:none;background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.4);color:#f85149;font-size:0.75em;padding:3px 8px;border-radius:3px;cursor:pointer;font-family:'Courier New',monospace;margin-left:6px;" onclick="injectSpoof()">⚡ INJECT</button> <span id="accuracy-score" style="font-size:0.85em;margin-left:6px;color:#8b949e;"></span></div>
             <div class="sensor-grid">
-                <div class="sensor-card" id="card-north">
+                <div class="sensor-card" id="card-north" style="order:2;">
                     <div class="name" style="color:#58a6ff;">▲ NORTH</div>
                     <div class="row"><span class="k">Signal</span><span class="v" id="n-sig">—</span></div>
                     <div class="row"><span class="k">SNR</span><span class="v" id="n-snr">—</span></div>
@@ -455,7 +455,7 @@ HTML_TEMPLATE = """
                     <div class="row expert-row" style="display:none;"><span class="k">RSSI cal</span><span class="v" style="color:#8b949e;font-size:0.85em;">1.00×</span></div>
                     <div class="snr-bar"><div class="snr-bar-fill" id="n-bar" style="width:0%;background:#58a6ff;"></div></div>
                 </div>
-                <div class="sensor-card" id="card-west">
+                <div class="sensor-card" id="card-west" style="order:1;">
                     <div class="name" style="color:#3fb950;">◀ WEST</div>
                     <div class="row"><span class="k">Signal</span><span class="v" id="w-sig">—</span></div>
                     <div class="row"><span class="k">SNR</span><span class="v" id="w-snr">—</span></div>
@@ -471,7 +471,7 @@ HTML_TEMPLATE = """
                     <div class="row expert-row" style="display:none;"><span class="k">RSSI cal</span><span class="v" style="color:#8b949e;font-size:0.85em;">1.12×</span></div>
                     <div class="snr-bar"><div class="snr-bar-fill" id="w-bar" style="width:0%;background:#3fb950;"></div></div>
                 </div>
-                <div class="sensor-card" id="card-east">
+                <div class="sensor-card" id="card-east" style="order:3;">
                     <div class="name" style="color:#f85149;">▶ EAST</div>
                     <div class="row"><span class="k">Signal</span><span class="v" id="e-sig">—</span></div>
                     <div class="row"><span class="k">SNR</span><span class="v" id="e-snr">—</span></div>
@@ -1369,7 +1369,7 @@ socket.on('map_update', function(data) {
             // Phase 3: Prefer ML autoencoder per-feature decomposition when available.
             // Falls back to heuristic flag mapping when ML scores are absent.
             var attrPanel = document.getElementById('attribution-panel');
-            var mlAircraft = data.aircraft.filter(function(a) { return a.ml_is_anomaly; });
+            var mlAircraft = data.aircraft.filter(function(a) { return a.ml_score > 0.015; });
             var hasML = mlAircraft.length > 0;
             var showAttr = hasML || spoofCount > 0;
 
@@ -1425,7 +1425,7 @@ socket.on('map_update', function(data) {
             var K_PERSIST = 5;
             window._persistCount = window._persistCount || 0;
             // Use ML anomalies if available, otherwise fall back to heuristic spoof count
-            var mlCount = data.aircraft.filter(function(a) { return a.ml_is_anomaly; }).length;
+            var mlCount = data.aircraft.filter(function(a) { return a.ml_score > 0.015; }).length;
             var threatActive = mlCount > 0 || spoofCount > 0;
             if (threatActive) {
                 window._persistCount = Math.min(window._persistCount + 1, K_PERSIST);
