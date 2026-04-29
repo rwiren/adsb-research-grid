@@ -384,7 +384,8 @@ HTML_TEMPLATE = """
         </div>
 
         <div class="panel panel-sensors">
-            <div class="label">NODE HEALTH <button id="expert-btn" onclick="toggleExpert()" style="background:none;border:1px solid #30363d;color:#8b949e;font-size:1em;padding:4px 10px;cursor:pointer;border-radius:3px;margin-left:8px;font-family:monospace;">+ EXPERT</button> <span id="accuracy-score" style="font-size:0.85em;margin-left:6px;color:#8b949e;"></span></div>
+            <div class="label">NODE HEALTH <button id="expert-btn" onclick="toggleExpert()" style="background:none;border:1px solid #30363d;color:#8b949e;font-size:1em;padding:4px 10px;cursor:pointer;border-radius:3px;margin-left:8px;font-family:monospace;">+ EXPERT</button>
+                <button id="inject-btn" class="expert-row" style="display:none;background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.4);color:#f85149;font-size:0.75em;padding:3px 8px;border-radius:3px;cursor:pointer;font-family:'Courier New',monospace;margin-left:6px;" onclick="injectSpoof()">⚡ INJECT</button> <span id="accuracy-score" style="font-size:0.85em;margin-left:6px;color:#8b949e;"></span></div>
             <div class="sensor-grid">
                 <div class="sensor-card" id="card-north">
                     <div class="name" style="color:#58a6ff;">▲ NORTH</div>
@@ -1603,6 +1604,31 @@ document.getElementById('alt-exag').addEventListener('input', function() {
     // Re-render immediately so aircraft jump to their new Y positions
     if (lastMapData && scene3d) update3DScene(lastMapData);
 });
+
+// ── Inject Spoof Demo (expert mode only) ─────────────────────────────────────
+function injectSpoof() {
+    var fakeHex = '00dead';
+    var baseLat = 60.32 + (Math.random() - 0.5) * 0.1;
+    var baseLon = 24.95 + (Math.random() - 0.5) * 0.2;
+    var fakeAc = {
+        hex: fakeHex, flight: 'SPOOF01', lat: baseLat, lon: baseLon,
+        alt_baro: 15000 + Math.floor(Math.random()*10000),
+        gs: 350 + Math.floor(Math.random()*100),
+        track: Math.floor(Math.random()*360),
+        seen_by: ['sensor-north'],
+        spoof_score: 0.85,
+        spoof_flags: ['INJECTED-DEMO'],
+        squawk: '7777', category: 'A3'
+    };
+    // Inject into next map update cycle
+    socket.emit('inject_demo', fakeAc);
+    // Also show locally immediately
+    var toast = document.getElementById('anomaly-toast');
+    toast.textContent = '⚡ DEMO: Spoofed aircraft injected ('+fakeHex+')';
+    toast.classList.add('show');
+    clearTimeout(window._toastTimer);
+    window._toastTimer = setTimeout(function(){ toast.classList.remove('show'); }, 6000);
+}
 </script>
 
 <!-- Footer with contact -->
