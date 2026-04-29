@@ -429,6 +429,7 @@ HTML_TEMPLATE = """
                 <div id="ac-count" class="value-big" style="font-size:2em;">0</div>
                 <div id="last-update" style="font-size:0.65em;color:#8b949e;margin-top:2px;">—</div>
                 <div id="gps-health" style="font-size:0.7em;margin-top:4px;padding:2px 6px;border-radius:3px;background:rgba(63,185,80,0.15);color:#3fb950;border:1px solid rgba(63,185,80,0.3);">GPS: OK</div>
+                <div id="ml-status" style="font-size:0.65em;margin-top:3px;padding:1px 6px;border-radius:3px;background:rgba(88,166,255,0.1);color:#58a6ff;border:1px solid rgba(88,166,255,0.25);">ML: —</div>
             </div>
         </div>
 
@@ -1350,32 +1351,68 @@ socket.on('map_update', function(data) {
                 window._toastTimer = setTimeout(function(){ toast.classList.remove('show'); }, 5000);
             }
             window._lastSpoofCount = spoofCount;
-            // ── Feature Attribution (Paper Eq. 2): decompose detection flags ──
+            // ML status indicator
+            var mlEl = document.getElementById('ml-status');
+            if (mlEl) {
+                var mlScored = data.aircraft.filter(function(a) { return a.ml_score !== undefined && a.ml_score !== null; }).length;
+                if (mlScored > 0) {
+                    mlEl.textContent = 'ML: ' + mlScored + ' scored';
+                    mlEl.style.color = mlCount > 0 ? '#f85149' : '#58a6ff';
+                } else {
+                    mlEl.textContent = 'ML: warming up';
+                    mlEl.style.color = '#8b949e';
+                }
+            }
+            // ── Feature Attribution (Paper Eq. 2) ─────────────────────────────
+            // Phase 3: Prefer ML autoencoder per-feature decomposition when available.
+            // Falls back to heuristic flag mapping when ML scores are absent.
             var attrPanel = document.getElementById('attribution-panel');
-            if (spoofCount > 0) {
+            var mlAircraft = data.aircraft.filter(function(a) { return a.ml_is_anomaly; });
+            var hasML = mlAircraft.length > 0;
+            var showAttr = hasML || spoofCount > 0;
+
+            if (showAttr) {
                 attrPanel.style.display = 'block';
-                // Aggregate flags across all suspects
-                var flagCounts = {};
-                data.aircraft.forEach(function(a) {
-                    if (a.spoof_score > 0 && a.spoof_flags) {
-                        a.spoof_flags.forEach(function(f) {
-                            var key = f.replace(/[0-9>.:]+/g, '').replace('fpm','').replace('vs','_vs_').replace('kt','');
-                            if (key === 'climb') key = 'velocity_error';
-                            else if (key.indexOf('GS') >= 0) key = 'velocity_calc';
-                            else if (key === 'suspicious-ICAO') key = 'identity';
-                            else if (key === 'INJECTED-DEMO') key = 'injected_demo';
-                            flagCounts[key] = (flagCounts[key] || 0) + 1;
-                        });
-                    }
-                });
-                var total = Object.values(flagCounts).reduce(function(a,b){return a+b;}, 0) || 1;
                 var barsHtml = '';
-                var colors = {velocity_error:'#f85149', velocity_calc:'#d29922', identity:'#d2a8ff', injected_demo:'#58a6ff'};
-                Object.keys(flagCounts).sort(function(a,b){return flagCounts[b]-flagCounts[a];}).forEach(function(k) {
-                    var pct = Math.round(flagCounts[k] / total * 100);
-                    var col = colors[k] || '#8b949e';
-                    barsHtml += '<div class="attr-bar"><span class="attr-label">'+k+'</span><div style="flex:1;background:rgba(255,255,255,0.05);border-radius:2px;"><div class="bar-fill" style="width:'+pct+'%;background:'+col+';"></div></div><span class="attr-pct">'+pct+'%</span></div>';
-                });
+                var colors = {velocity_calculated:'#f85149', velocity_error:'#d29922', velocity_drift:'#d2a8ff', distance_to_sensor:'#58a6ff', rssi_expected:'#39c5cf', rssi_error:'#3fb950', rssi_error_normalized:'#8b949e'};
+
+                if (hasML) {
+                    // ML source: aggregate per-feature MSE across all ML-flagged aircraft
+                    var featureAgg = {};
+                    mlAircraft.forEach(function(a) {
+                        var mf = a.ml_features || {};
+                        for (var k in mf) { featureAgg[k] = (featureAgg[k] || 0) + mf[k].pct; }
+                    });
+                    var totalPct = Object.values(featureAgg).reduce(function(a,b){return a+b;}, 0) || 1;
+                    document.querySelector('#attribution-panel .attr-title').textContent = '⚙ ML FEATURE ATTRIBUTION';
+                    Object.keys(featureAgg).sort(function(a,b){return featureAgg[b]-featureAgg[a];}).forEach(function(k) {
+                        var pct = Math.round(featureAgg[k] / totalPct * 100);
+                        var col = colors[k] || '#8b949e';
+                        barsHtml += '<div class="attr-bar"><span class="attr-label">'+k.replace('_',' ')+'</span><div style="flex:1;background:rgba(255,255,255,0.05);border-radius:2px;"><div class="bar-fill" style="width:'+pct+'%;background:'+col+';"></div></div><span class="attr-pct">'+pct+'%</span></div>';
+                    });
+                } else {
+                    // Heuristic fallback
+                    document.querySelector('#attribution-panel .attr-title').textContent = '⚠ HEURISTIC ATTRIBUTION';
+                    var flagCounts = {};
+                    data.aircraft.forEach(function(a) {
+                        if (a.spoof_score > 0 && a.spoof_flags) {
+                            a.spoof_flags.forEach(function(f) {
+                                var key = f.replace(/[0-9>.:]+/g, '').replace('fpm','').replace('vs','_vs_').replace('kt','');
+                                if (key === 'climb') key = 'velocity_error';
+                                else if (key.indexOf('GS') >= 0) key = 'velocity_calc';
+                                else if (key === 'suspicious-ICAO') key = 'identity';
+                                else if (key === 'INJECTED-DEMO') key = 'injected_demo';
+                                flagCounts[key] = (flagCounts[key] || 0) + 1;
+                            });
+                        }
+                    });
+                    var total = Object.values(flagCounts).reduce(function(a,b){return a+b;}, 0) || 1;
+                    Object.keys(flagCounts).sort(function(a,b){return flagCounts[b]-flagCounts[a];}).forEach(function(k) {
+                        var pct = Math.round(flagCounts[k] / total * 100);
+                        var col = colors[k] || '#8b949e';
+                        barsHtml += '<div class="attr-bar"><span class="attr-label">'+k+'</span><div style="flex:1;background:rgba(255,255,255,0.05);border-radius:2px;"><div class="bar-fill" style="width:'+pct+'%;background:'+col+';"></div></div><span class="attr-pct">'+pct+'%</span></div>';
+                    });
+                }
                 document.getElementById('attr-bars').innerHTML = barsHtml;
             } else {
                 attrPanel.style.display = 'none';
@@ -1385,7 +1422,10 @@ socket.on('map_update', function(data) {
             // Escalate to CONFIRMED THREAT at k=5 consecutive detections.
             var K_PERSIST = 5;
             window._persistCount = window._persistCount || 0;
-            if (spoofCount > 0) {
+            // Use ML anomalies if available, otherwise fall back to heuristic spoof count
+            var mlCount = data.aircraft.filter(function(a) { return a.ml_is_anomaly; }).length;
+            var threatActive = mlCount > 0 || spoofCount > 0;
+            if (threatActive) {
                 window._persistCount = Math.min(window._persistCount + 1, K_PERSIST);
             } else {
                 window._persistCount = Math.max(window._persistCount - 1, 0);

@@ -60,6 +60,20 @@ inference using the GRU model trained on the 144h multi-sensor dataset.
 **Model:** GRU Autoencoder, 79K params, hidden=64, latent=8, τ=0.005050
 **Checkpoint:** `models/adsb_gru_w30_144h_7feat.pth`
 
+### Dashboard Integration (Phase 3)
+
+The dashboard backend (`mqtt_handler.py`) subscribes to `sensor-core/ml-anomaly`
+and attaches ML scores to each aircraft in the SocketIO `map_update` payload:
+- `ml_score`: overall reconstruction error (float)
+- `ml_threshold`: anomaly threshold τ (float)
+- `ml_is_anomaly`: score > τ (bool)
+- `ml_features`: per-feature MSE decomposition (dict)
+
+The frontend (`page_template.py`) uses ML data to drive:
+- **Feature Attribution panel**: shows "⚙ ML FEATURE ATTRIBUTION" with per-feature bars
+- **Persistence gauge (k=5)**: increments on ML anomalies
+- **ML status badge**: "ML: N scored" indicator in the sync panel
+
 ## Dependencies
 
 ```
