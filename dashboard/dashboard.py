@@ -57,4 +57,24 @@ def index():
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
     mqtt.start_mqtt()
-    socketio.run(app, host="0.0.0.0", port=8080)
+    
+@socketio.on('inject_demo')
+def handle_inject(data):
+    """Expert mode: inject a fake aircraft for demo purposes."""
+    import time
+    data['_injected'] = True
+    data['_inject_ts'] = time.time()
+    # Add to state so it appears in next map_update
+    from state import state
+    hex_id = data.get('hex', '00dead')
+    state['aircraft'][hex_id] = data
+    state['aircraft'][hex_id]['trail'] = [(data['lat'], data['lon'])]
+    state['aircraft'][hex_id]['last_seen'] = time.time()
+    state['aircraft'][hex_id]['seen_by'] = data.get('seen_by', ['sensor-north'])
+    # Auto-remove after 30 seconds
+    import threading
+    def cleanup():
+        state['aircraft'].pop(hex_id, None)
+    threading.Timer(30.0, cleanup).start()
+
+socketio.run(app, host="0.0.0.0", port=8080)
