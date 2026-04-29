@@ -5,6 +5,32 @@ All notable changes to the **ADS-B Research Grid** project will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-04-29: The "ML Inference" Update
+
+### Added
+- **ML Inference Service** (`ml_inference_service.py`): Real-time GRU Autoencoder inference on live ADS-B traffic. Maintains T=30 sliding window per aircraft, computes 7 engineered features, publishes per-feature reconstruction errors to `sensor-core/ml-anomaly`.
+- **Feature Attribution UI**: Live decomposition panel showing which feature dimension (velocity_error, rssi_error, etc.) contributes most to a detection (Paper Eq. 2).
+- **Persistence Filter Visual (k=5)**: Threat Confidence gauge that fills over 5 consecutive anomalous windows before escalating to CONFIRMED THREAT (Paper Section 4.3).
+- **Hardware Calibrations**: Per-sensor GNSS hardware labels and RSSI calibration multipliers in Expert panel.
+- **GPS Health Badge**: Monitors ground sensor EPH; green (<50m), yellow (50-200m), red (>200m).
+- **Anomaly Alert Toast**: Slide-in notification when new spoof suspects appear.
+- **Sensor Pulsing Dots**: Map markers pulse on data receive, dim when stale.
+- **Inject Spoof Demo Button**: Expert-mode button injects fake aircraft for 30s to demonstrate detection.
+- **Responsive Panels**: flex-wrap layout + collapse/expand toggle for projector demos.
+- **HTTPS on port 9443**: Caddy reverse proxy with Let's Encrypt cert.
+
+### Changed
+- **Position smoothing**: Strict sensor lock — aircraft position locked to one sensor, eliminates cross-sensor jumping.
+- **Spoof scoring**: Raised climb rate threshold to 8000 fpm, GS discrepancy to 1.5×, minimum 5s altitude delta.
+- **Trail rendering**: Min distance 200m, maxlen 30 points (reduces visual noise).
+- **Sensor-east position**: Corrected to GNSS-verified coordinates (60.374069, 25.249015).
+- **Sensor-north gain**: Fixed at 15.7 dB (autogain disabled).
+
+### Fixed
+- Extra `</div>` tag that caused blank page rendering.
+- Broken if/else chain from `ac._trilat` insertion.
+- GPS Health badge was using RSSI anomalies instead of actual EPH values.
+
 ## [0.9.0] - 2026-04-13: The "Sky View" Update
 **Feature Release: Native 3D ADS-B Visualization (Three.js).**
 
