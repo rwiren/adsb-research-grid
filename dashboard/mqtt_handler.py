@@ -119,7 +119,7 @@ def on_message(client, userdata, message):
 
                 entry = state["aircraft"].setdefault(hex_id, {
                     "seen_by":     set(),
-                    "trail":       deque(maxlen=60),   # Feature 1
+                    "trail":       deque(maxlen=30),   # Feature 1
                     "alt_history": deque(maxlen=10),   # climb-rate check
                     "prev_seen":   0,
                     # MLAT persistence: hold last valid solution with decay
@@ -150,30 +150,20 @@ def on_message(client, userdata, message):
                 raw_lat, raw_lon = ac["lat"], ac["lon"]
                 seen_pos = ac.get("seen_pos", 0)
 
-                # ── Position smoothing: only accept freshest position ──────
-                # Each sensor reports seen_pos = seconds since last position decode
-                # Lower = fresher. Only update if this is fresher than what we have.
-                prev_lat = entry.get("lat")
-                prev_lon = entry.get("lon")
-                prev_seen_pos = entry.get("_seen_pos", 999)
-
-                if prev_lat is not None and prev_lon is not None:
-                    # Accept if: fresher position, OR same sensor, OR >2s stale
-                    if seen_pos <= prev_seen_pos or sensor == entry.get("_pos_sensor") or prev_seen_pos > 2:
-                        lat, lon = raw_lat, raw_lon
-                        entry["_seen_pos"] = seen_pos
-                        entry["_pos_sensor"] = sensor
-                    else:
-                        # Staler position from different sensor — keep current
-                        lat, lon = prev_lat, prev_lon
-                else:
+                # ── Position: lock to one sensor, ignore others unless stale ──
+                prev_sensor = entry.get("_pos_sensor")
+                if prev_sensor is None or sensor == prev_sensor or seen_pos < entry.get("_seen_pos", 999):
+                    # Same sensor or fresher — accept
                     lat, lon = raw_lat, raw_lon
                     entry["_seen_pos"] = seen_pos
                     entry["_pos_sensor"] = sensor
+                else:
+                    # Different sensor, not fresher — ignore
+                    lat, lon = entry.get("lat", raw_lat), entry.get("lon", raw_lon)
 
                 # ── Feature 1: append position to trail ──────────────────────
                 trail = entry["trail"]
-                if not trail or haversine_m(lat, lon, trail[-1][0], trail[-1][1]) > 50:
+                if not trail or haversine_m(lat, lon, trail[-1][0], trail[-1][1]) > 200:
                     trail.append((lat, lon))
 
                 squawk  = ac.get("squawk")
