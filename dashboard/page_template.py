@@ -289,6 +289,13 @@ HTML_TEMPLATE = """
         #anomaly-toast.show {
             opacity:1; transform:translateX(0);
         }
+
+        /* Sensor marker pulse when receiving data */
+        @keyframes sensor-pulse {
+            0%, 100% { opacity:1; transform:scale(1); }
+            50% { opacity:0.6; transform:scale(1.3); }
+        }
+        .sensor-active { animation: sensor-pulse 2s ease-in-out infinite; }
 </style>
 </head>
 <body>
@@ -610,9 +617,10 @@ var innerRingLayer = L.layerGroup().addTo(map);
 var outerRingLayer = L.layerGroup().addTo(map);
 var ringsVisible   = {inner:true, outer:true};
 
+window.sensorMarkers = {};
 Object.keys(nodes).forEach(function(id) {
     var n = nodes[id];
-    L.circleMarker(n.pos, {radius:8, fillColor:n.col, color:"#fff", weight:2, fillOpacity:1, pane:'markerPane'})
+    window.sensorMarkers[id] = L.circleMarker(n.pos, {radius:8, fillColor:n.col, color:"#fff", weight:2, fillOpacity:1, pane:'markerPane', className:'sensor-dot'})
      .addTo(map)
      .bindPopup('<b style="font-family:monospace">NODE: '+id.toUpperCase()+'</b>');
     L.circle(n.pos, {radius:100000, color:n.col, weight:1,   fillOpacity:0, dashArray:'3,8'} ).addTo(innerRingLayer);
@@ -690,6 +698,12 @@ function arrowSvg(track, col) {
 
 // ── Sensor health row updater ──────────────────────────────────────────────
 function updateSensor(prefix, s) {
+    // Pulse the sensor map marker
+    var sensorName = 'sensor-' + (prefix==='n'?'north':prefix==='w'?'west':'east');
+    if (window.sensorMarkers && window.sensorMarkers[sensorName]) {
+        var el = window.sensorMarkers[sensorName].getElement();
+        if (el) { el.classList.add('sensor-active'); clearTimeout(window['_pulse_'+prefix]); window['_pulse_'+prefix] = setTimeout(function(){ el.classList.remove('sensor-active'); }, 3000); }
+    }
     var snr = (s.signal && s.noise) ? (s.signal - s.noise).toFixed(1) : '—';
     document.getElementById(prefix+'-sig').textContent   = s.signal      ? s.signal.toFixed(1)+' dB'  : '—';
     document.getElementById(prefix+'-snr').textContent   = snr !== '—'   ? snr+' dB'                  : '—';
