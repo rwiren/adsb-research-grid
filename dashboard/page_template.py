@@ -367,7 +367,7 @@ HTML_TEMPLATE = """
     <div id="info-popup" style="display:none;position:absolute;top:88px;left:12px;z-index:1000;background:rgba(4,8,13,0.95);border:1px solid rgba(0,200,120,0.25);border-radius:8px;padding:16px 20px;max-width:360px;color:#c9d1d9;font-size:12px;line-height:1.6;box-shadow:0 4px 20px rgba(0,0,0,0.5);">
         <div style="font-size:14px;font-weight:bold;color:#11caa0;margin-bottom:10px;">SecuringSkies — Live ADS-B Spoofing Detection</div>
         <p style="margin-bottom:8px;">Real-time distributed surveillance with <b>ML autoencoder inference</b> from a 3-node sensor network in the Helsinki metropolitan area.</p>
-        <p style="margin-bottom:8px;"><span style="color:#58a6ff;">▲</span> <b>North</b> (Helsinki-Vantaa) &middot; <span style="color:#3fb950;">◀</span> <b>West</b> (Jorvas) &middot; <span style="color:#f85149;">▶</span> <b>East</b> (Sipoo)</p>
+        <p style="margin-bottom:8px;"><span style="color:#3fb950;">◀</span> <b>West</b> (Jorvas) &middot; <span style="color:#58a6ff;">▲</span> <b>North</b> (Helsinki-Vantaa) &middot; <span style="color:#f85149;">▶</span> <b>East</b> (Sipoo)</p>
         <p style="margin-bottom:8px;"><b>Colors:</b> Aircraft color = sensor coverage. White + glow = trilateration lock (all 3).</p>
         <p style="margin-bottom:8px;"><b>ML Score:</b> GRU Autoencoder (79K params) scores each aircraft in real-time. Per-feature reconstruction error decomposes detections into velocity, RSSI, and kinematic dimensions.</p>
         <p style="margin-bottom:8px;"><b>Persistence (k=5):</b> Threat Confidence gauge fills over 5 consecutive anomalous windows before confirming a threat.</p>
