@@ -292,10 +292,10 @@ HTML_TEMPLATE = """
 
         /* Sensor marker pulse when receiving data */
         @keyframes sensor-pulse {
-            0%, 100% { opacity:1; transform:scale(1); }
-            50% { opacity:0.6; transform:scale(1.3); }
+            0%, 100% { opacity:1; }
+            50% { opacity:0.4; }
         }
-        .sensor-active { animation: sensor-pulse 2s ease-in-out infinite; }
+        .sensor-active { animation: sensor-pulse 1.5s ease-in-out infinite; }
 </style>
 </head>
 <body>
@@ -699,11 +699,13 @@ function arrowSvg(track, col) {
 
 // ── Sensor health row updater ──────────────────────────────────────────────
 function updateSensor(prefix, s) {
-    // Pulse the sensor map marker
+    // Pulse sensor marker opacity
     var sensorName = 'sensor-' + (prefix==='n'?'north':prefix==='w'?'west':'east');
     if (window.sensorMarkers && window.sensorMarkers[sensorName]) {
-        var el = window.sensorMarkers[sensorName].getElement();
-        if (el) { el.classList.add('sensor-active'); clearTimeout(window['_pulse_'+prefix]); window['_pulse_'+prefix] = setTimeout(function(){ el.classList.remove('sensor-active'); }, 3000); }
+        var m = window.sensorMarkers[sensorName];
+        m.setStyle({fillOpacity:1, opacity:1});
+        clearTimeout(window['_pulse_'+prefix]);
+        window['_pulse_'+prefix] = setTimeout(function(){ m.setStyle({fillOpacity:0.4, opacity:0.4}); }, 5000);
     }
     var snr = (s.signal && s.noise) ? (s.signal - s.noise).toFixed(1) : '—';
     document.getElementById(prefix+'-sig').textContent   = s.signal      ? s.signal.toFixed(1)+' dB'  : '—';
