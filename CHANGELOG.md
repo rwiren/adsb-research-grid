@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Responsive Panels**: flex-wrap layout + collapse/expand toggle for projector demos.
 - **HTTPS on port 9443**: Caddy reverse proxy with Let's Encrypt cert.
 
+### Added (Phase 3 — Dashboard Integration)
+- **ML scores on frontend**: Dashboard subscribes to `sensor-core/ml-anomaly`, forwards per-aircraft ML scores and per-feature decomposition to web clients via SocketIO.
+- **ML Feature Attribution panel**: When ML scores are available, the attribution panel shows autoencoder per-feature reconstruction error (Paper Eq. 2) with label "⚙ ML FEATURE ATTRIBUTION". Falls back to "⚠ HEURISTIC ATTRIBUTION" when ML data is absent.
+- **ML status badge**: Shows "ML: N scored" in the sync panel, indicating how many aircraft are being scored by the live autoencoder.
+- **Persistence gauge ML integration**: The k=5 threat confidence gauge now triggers on ML anomalies in addition to heuristic spoof suspects.
+
 ### Changed
 - **Position smoothing**: Strict sensor lock — aircraft position locked to one sensor, eliminates cross-sensor jumping.
 - **Spoof scoring**: Raised climb rate threshold to 8000 fpm, GS discrepancy to 1.5×, minimum 5s altitude delta.

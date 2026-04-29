@@ -47,6 +47,19 @@ def on_message(client, userdata, message):
             state["accuracy"] = payload
             return
 
+        # ── Phase 3: ML autoencoder inference scores ──────────────────────────
+        # Published by ml_inference_service.py (GRU Autoencoder, 79K params).
+        # Payload: {hex, flight, anomaly_score, threshold, is_anomaly, per_feature_error}
+        # Per-feature error decomposes reconstruction error by dimension (Paper Eq. 2).
+        if sensor == "sensor-core" and dtype == "ml-anomaly":
+            hex_id = payload.get("hex")
+            if hex_id and hex_id in state["aircraft"]:
+                state["aircraft"][hex_id]["ml_score"] = payload.get("anomaly_score")
+                state["aircraft"][hex_id]["ml_threshold"] = payload.get("threshold")
+                state["aircraft"][hex_id]["ml_is_anomaly"] = payload.get("is_anomaly")
+                state["aircraft"][hex_id]["ml_features"] = payload.get("per_feature_error", {})
+            return
+
         if sensor == "sensor-core" and dtype == "anomalies-v2":
             # v2.0 enriched payload:
             #   {"ts": ..., "model": "ensemble-v2.0", "anomalies": {
@@ -328,6 +341,7 @@ def start_mqtt():
         mqtt_client.subscribe("sensor-core/anomalies")   # Feature 7
         mqtt_client.subscribe("sensor-core/anomalies-v2")
         mqtt_client.subscribe("sensor-core/accuracy") # Feature 7v2: enriched
+        mqtt_client.subscribe("sensor-core/ml-anomaly")  # Phase 3: live autoencoder scores
         mqtt_client.loop_start()
         log.warning("MQTT connected to %s:%d (TLS=%s)", MQTT_HOST, MQTT_PORT, MQTT_TLS)
     except Exception as e:
