@@ -375,6 +375,7 @@ HTML_TEMPLATE = """
         <p style="margin-bottom:8px;"><b>Sync ΔT:</b> Sub-millisecond clock alignment (PPS-disciplined, Stratum 1).</p>
         <p style="margin-bottom:4px;color:#8b949e;"><b>+ EXPERT</b> reveals GNSS hardware, RSSI calibrations, CPU/load, and the ⚡ INJECT demo button.</p>
         <div style="margin-top:10px;padding-top:8px;border-top:1px solid #30363d;color:#8b949e;font-size:11px;">Team 9 · AI Neural Networks 2026 · AI Academy</div>
+        <p style="margin-top:8px;font-size:0.85em;font-style:italic;color:#555;">If you feel the font on this page is too small, you have options: search for products similar to “Intatuntamium” or “Spacsaver” — or consider <a href="https://github.com/rwiren/adsb-research-grid?tab=contributing-ov-file#readme" target="_blank" style="color:#58a6ff;text-decoration:none;">contributing</a> to the project.</p>
         <button onclick="toggleInfo()" style="position:absolute;top:8px;right:12px;background:none;border:none;color:#8b949e;cursor:pointer;font-size:16px;">✕</button>
     </div>
 
