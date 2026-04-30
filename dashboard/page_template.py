@@ -299,7 +299,7 @@ HTML_TEMPLATE = """
 
         /* Feature Attribution panel (Paper Eq. 2) */
         #attribution-panel {
-            display:none; position:fixed; bottom:26vh; right:12px; z-index:1100;
+            display:none; position:fixed; top:100px; right:12px; z-index:1100;
             background:rgba(4,8,13,0.95); border:1px solid rgba(248,81,73,0.3);
             border-radius:6px; padding:10px 14px; min-width:200px;
             font-family:'Courier New',monospace; font-size:0.75em; color:#c9d1d9;
@@ -319,7 +319,7 @@ HTML_TEMPLATE = """
 
         /* Persistence Filter gauge (Paper Section 4.3, k=5) */
         #persist-gauge {
-            display:none; position:fixed; bottom:26vh; left:12px; z-index:1100;
+            display:none; position:fixed; top:100px; left:12px; z-index:1100;
             background:rgba(4,8,13,0.95); border:1px solid rgba(210,153,34,0.3);
             border-radius:6px; padding:8px 12px; min-width:160px;
             font-family:'Courier New',monospace; font-size:0.75em; color:#c9d1d9;
@@ -529,7 +529,7 @@ HTML_TEMPLATE = """
     <!-- Feature Attribution Panel (Paper Section 4.2, Eq. 2) -->
     <div id="attribution-panel">
         <div class="attr-title">⚑ FEATURE ATTRIBUTION</div>
-        <div id="attr-bars"></div>
+        <div style="font-size:0.85em;color:#8b949e;margin-bottom:5px;">Feature deviation from learned normal patterns:</div><div id="attr-bars"></div>
     </div>
     <!-- Persistence Filter Gauge (Paper Section 4.3, k=5 consecutive windows) -->
     <div id="persist-gauge">
@@ -1430,7 +1430,7 @@ socket.on('map_update', function(data) {
             if (threatActive) {
                 window._persistCount = Math.min(window._persistCount + 1, K_PERSIST);
             } else {
-                window._persistCount = Math.max(window._persistCount - 1, 0);
+                window._persistCount = Math.max(window._persistCount - 2, 0);
             }
             var pg = document.getElementById('persist-gauge');
             if (window._persistCount > 0) {
@@ -1778,24 +1778,27 @@ document.getElementById('alt-exag').addEventListener('input', function() {
 
 // ── Inject Spoof Demo (expert mode only) ─────────────────────────────────────
 function injectSpoof() {
+    var attacks = ['kinematic_jump', 'rf_shadow', 'velocity_drift'];
+    var attack = attacks[Math.floor(Math.random() * attacks.length)];
     var fakeHex = '00dead';
-    var baseLat = 60.32 + (Math.random() - 0.5) * 0.1;
-    var baseLon = 24.95 + (Math.random() - 0.5) * 0.2;
+    var baseLat = 60.32 + (Math.random() - 0.5) * 0.05;
+    var baseLon = 24.95 + (Math.random() - 0.5) * 0.1;
     var fakeAc = {
-        hex: fakeHex, flight: 'SPOOF01', lat: baseLat, lon: baseLon,
+        hex: fakeHex, flight: 'SPOOF1', lat: baseLat, lon: baseLon,
         alt_baro: 15000 + Math.floor(Math.random()*10000),
         gs: 350 + Math.floor(Math.random()*100),
         track: Math.floor(Math.random()*360),
         seen_by: ['sensor-north'],
         spoof_score: 0.85,
-        spoof_flags: ['INJECTED-DEMO'],
-        squawk: '7777', category: 'A3'
+        spoof_flags: ['INJECTED:' + attack],
+        squawk: '7777', category: 'A3',
+        ml_score: 0.08 + Math.random() * 0.1,
+        ml_is_anomaly: true,
+        ml_features: {velocity_calculated:{mse:0.04,pct:35}, velocity_error:{mse:0.03,pct:25}, rssi_error:{mse:0.02,pct:20}, distance_to_sensor:{mse:0.01,pct:10}, velocity_drift:{mse:0.005,pct:5}, rssi_expected:{mse:0.003,pct:3}, rssi_error_normalized:{mse:0.002,pct:2}}
     };
-    // Inject into next map update cycle
     socket.emit('inject_demo', fakeAc);
-    // Also show locally immediately
     var toast = document.getElementById('anomaly-toast');
-    toast.textContent = '⚡ DEMO: Spoofed aircraft injected ('+fakeHex+')';
+    toast.textContent = '⚡ INJECTED: ' + attack.replace('_',' ').toUpperCase() + ' (' + fakeHex + ')';
     toast.classList.add('show');
     clearTimeout(window._toastTimer);
     window._toastTimer = setTimeout(function(){ toast.classList.remove('show'); }, 6000);
