@@ -437,7 +437,11 @@ HTML_TEMPLATE = """
 
         <div class="panel panel-sensors">
             <div class="label">NODE HEALTH <button id="expert-btn" onclick="toggleExpert()" style="background:none;border:1px solid #30363d;color:#8b949e;font-size:1em;padding:4px 10px;cursor:pointer;border-radius:3px;margin-left:8px;font-family:monospace;">+ EXPERT</button>
-                <button id="inject-btn" class="expert-row" style="display:none;background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.4);color:#f85149;font-size:0.75em;padding:3px 8px;border-radius:3px;cursor:pointer;font-family:'Courier New',monospace;margin-left:6px;" onclick="injectSpoof()">⚡ INJECT</button> <span id="accuracy-score" style="font-size:0.85em;margin-left:6px;color:#8b949e;"></span></div>
+                <span class="expert-row" style="display:none;margin-left:6px;">
+                <button style="background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.4);color:#f85149;font-size:0.7em;padding:2px 6px;border-radius:3px;cursor:pointer;font-family:monospace;" onclick="injectSpoof('kinematic_jump')" title="50km position teleport">⚡ JUMP</button>
+                <button style="background:rgba(210,153,34,0.1);border:1px solid rgba(210,153,34,0.4);color:#d29922;font-size:0.7em;padding:2px 6px;border-radius:3px;cursor:pointer;font-family:monospace;" onclick="injectSpoof('rf_shadow')" title="20dB RSSI drop">⚡ RF</button>
+                <button style="background:rgba(210,168,255,0.1);border:1px solid rgba(210,168,255,0.4);color:#d2a8ff;font-size:0.7em;padding:2px 6px;border-radius:3px;cursor:pointer;font-family:monospace;" onclick="injectSpoof('velocity_drift')" title="Gradual speed manipulation">⚡ DRIFT</button>
+                </span> <span id="accuracy-score" style="font-size:0.85em;margin-left:6px;color:#8b949e;"></span></div>
             <div class="sensor-grid">
                 <div class="sensor-card" id="card-north" style="order:2;">
                     <div class="name" style="color:#58a6ff;">▲ NORTH</div>
@@ -1777,9 +1781,8 @@ document.getElementById('alt-exag').addEventListener('input', function() {
 });
 
 // ── Inject Spoof Demo (expert mode only) ─────────────────────────────────────
-function injectSpoof() {
-    var attacks = ['kinematic_jump', 'rf_shadow', 'velocity_drift'];
-    var attack = attacks[Math.floor(Math.random() * attacks.length)];
+function injectSpoof(attackType) {
+    var attack = attackType || 'kinematic_jump';
     var fakeHex = '00dead';
     var baseLat = 60.32 + (Math.random() - 0.5) * 0.05;
     var baseLon = 24.95 + (Math.random() - 0.5) * 0.1;

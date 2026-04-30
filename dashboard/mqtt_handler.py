@@ -224,7 +224,12 @@ def on_message(client, userdata, message):
 
             aircraft_list = []
             for k, v in state["aircraft"].items():
-                spoof_score, spoof_flags = compute_spoof_score(v)
+                # Preserve injected demo scores (bypass heuristic)
+                if v.get("_injected") and v.get("spoof_score"):
+                    spoof_score = v["spoof_score"]
+                    spoof_flags = v.get("spoof_flags", ["INJECTED"])
+                else:
+                    spoof_score, spoof_flags = compute_spoof_score(v)
                 entry_data = {
                     **{kk: vv for kk, vv in v.items() if kk not in ("seen_by", "trail", "alt_history", "prev_seen")},
                     "hex":          k,
