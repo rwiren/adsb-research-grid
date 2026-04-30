@@ -329,7 +329,7 @@ HTML_TEMPLATE = """
             border-color:rgba(248,81,73,0.6);
         }
         #persist-gauge .gauge-title { color:#d29922; font-weight:bold; margin-bottom:4px; }
-        #persist-gauge.confirmed .gauge-title { color:#f85149; }
+        #persist-gauge.confirmed .gauge-title { color:#d29922; }
         #persist-gauge .gauge-blocks {
             display:flex; gap:3px; margin:4px 0;
         }
@@ -529,7 +529,7 @@ HTML_TEMPLATE = """
     <!-- Feature Attribution Panel (Paper Section 4.2, Eq. 2) -->
     <div id="attribution-panel">
         <div class="attr-title">⚑ FEATURE ATTRIBUTION</div>
-        <div style="font-size:0.85em;color:#8b949e;margin-bottom:5px;">Feature deviation from learned normal patterns:</div><div id="attr-bars"></div>
+        <div style="font-size:0.85em;color:#8b949e;margin-bottom:5px;">Autoencoder reconstruction error by feature (higher % = larger deviation from normal flight physics):</div><div id="attr-bars"></div>
     </div>
     <!-- Persistence Filter Gauge (Paper Section 4.3, k=5 consecutive windows) -->
     <div id="persist-gauge">
@@ -1369,7 +1369,7 @@ socket.on('map_update', function(data) {
             // Phase 3: Prefer ML autoencoder per-feature decomposition when available.
             // Falls back to heuristic flag mapping when ML scores are absent.
             var attrPanel = document.getElementById('attribution-panel');
-            var mlAircraft = data.aircraft.filter(function(a) { return a.ml_score > 0.015; });
+            var mlAircraft = data.aircraft.filter(function(a) { return a.ml_score > 0.05; });
             var hasML = mlAircraft.length > 0;
             var showAttr = hasML || spoofCount > 0;
 
@@ -1425,7 +1425,7 @@ socket.on('map_update', function(data) {
             var K_PERSIST = 5;
             window._persistCount = window._persistCount || 0;
             // Use ML anomalies if available, otherwise fall back to heuristic spoof count
-            var mlCount = data.aircraft.filter(function(a) { return a.ml_score > 0.015; }).length;
+            var mlCount = data.aircraft.filter(function(a) { return a.ml_score > 0.05; }).length;
             var threatActive = mlCount > 0 || spoofCount > 0;
             if (threatActive) {
                 window._persistCount = Math.min(window._persistCount + 1, K_PERSIST);
