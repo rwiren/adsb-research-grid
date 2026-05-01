@@ -58,8 +58,11 @@ if not MQTT_PASS and MQTT_PASS_FILE and os.path.isfile(MQTT_PASS_FILE):
         logging.getLogger(__name__).warning(
             "Could not read MQTT password from %s: %s", MQTT_PASS_FILE, exc
         )
-if not MQTT_PASS:
-    MQTT_PASS = "ResearchView2026!"
+if not MQTT_PASS and not MQTT_PASS_FILE:
+    raise SystemExit(
+        "ERROR: MQTT password required. Set MQTT_PASS_FILE (e.g. /etc/securing-skies/mqtt_secret) "
+        "or MQTT_PASS environment variable."
+    )
 
 
 INFERENCE_INTERVAL = int(os.getenv("INFERENCE_INTERVAL", "30"))   # seconds
