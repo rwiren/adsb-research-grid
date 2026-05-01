@@ -15,8 +15,8 @@
 #                  (see scripts/maintenance/system_telemetry.service).
 # Credentials: MQTT password is read from PASS_FILE at startup (same pattern
 #              as /usr/local/bin/adsb-mqtt-publish.sh).
-#              Create the file with: echo -n 'yourpassword' > /etc/securing_skies/mqtt_secret
-#              Restrict access:      chmod 600 /etc/securing_skies/mqtt_secret
+#              Create the file with: echo -n 'yourpassword' > /etc/securing-skies/mqtt_secret
+#              Restrict access:      chmod 600 /etc/securing-skies/mqtt_secret
 # ==============================================================================
 import json
 import socket
@@ -35,7 +35,7 @@ SENSOR_ID = socket.gethostname()
 BROKER    = "mqtt.securingskies.eu"
 PORT      = 8883
 MQTT_USER = "team9"
-PASS_FILE = "/etc/securing_skies/mqtt_secret"
+PASS_FILE = "/etc/securing-skies/mqtt_secret"
 TOPIC     = f"{SENSOR_ID}/system"
 INTERVAL  = 60  # seconds between publishes
 

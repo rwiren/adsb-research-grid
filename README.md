@@ -231,9 +231,9 @@ make ml
 
 The dashboard includes a built-in **3D Sky View** tab alongside the standard Leaflet 2D map.  It is implemented entirely in [Three.js](https://threejs.org/) (MIT licence, ~170 KB CDN, no tile server, no external account) and reuses the same `map_update` SocketIO stream that powers the 2D view — switching between modes costs zero additional server requests.
 
-**Live dashboard:** [https://www.securingskies.eu:9443/](https://www.securingskies.eu:9443/) (HTTPS) | [http://www.securingskies.eu:8080/](http://www.securingskies.eu:8080/) (HTTP fallback)
+**Live dashboard:** [https://www.securingskies.eu:9443/](https://www.securingskies.eu:9443/) (HTTPS)
 
-> **NEW (2026-04-29):** The dashboard now runs a live GRU Autoencoder (79K params, trained on 144h dataset) scoring aircraft in real-time. Click **+ EXPERT** to see GNSS hardware calibrations and the **⚡ INJECT** demo button. The **Feature Attribution** panel decomposes detections into per-feature reconstruction errors (Paper Eq. 2).
+> **NEW (2026-04-30):** The dashboard now runs a live GRU Autoencoder (79K params, trained on 144h dataset) scoring aircraft in real-time. Click **+ EXPERT** to see GNSS hardware calibrations and the **⚡ INJECT** demo buttons: **JUMP** (50km position teleport), **RF** (20dB signal drop), and **DRIFT** (gradual speed manipulation). The **Feature Attribution** panel decomposes detections into per-feature reconstruction errors (Paper Eq. 2).
 
 ### Why Three.js and not CesiumJS?
 
