@@ -15,7 +15,7 @@ Welcome! We follow a strict DevOps workflow to ensure scientific integrity acros
 
 ## 3. Environment Setup
 - Run `make setup` to initialize the Python environment.
-- Data is not stored in the repo. You must fetch `.bin` files from the sensor or `sensor-north`.
+- Data is not stored in the repo. You must fetch `.bin` files from the sensors or `sensor- west / north/ east`.
 - **Vault Password:** Ask the maintainer for the vault password, then store it securely:
   ```bash
   read -rs VAULT_PASS && echo "$VAULT_PASS" > .vault_pass
