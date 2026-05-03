@@ -2,7 +2,7 @@
 # File: dashboard.py
 # Version: 5.0.0 (Modular refactor)
 # Date: 2026-04-26
-# Maintainer: Team-9 Secure Skies
+# Maintainer: Richard Wirén
 # Description: Entry-point for the SECURESKIES MLAT Tactical Hub.
 #              All heavy logic has been moved to sibling modules so this
 #              file is limited to Flask/SocketIO bootstrap and glue.

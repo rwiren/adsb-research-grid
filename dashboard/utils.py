@@ -2,7 +2,7 @@
 # File: utils.py
 # Version: 5.0.0
 # Date: 2026-04-26
-# Maintainer: Team-9 Secure Skies
+# Maintainer: Richard Wirén
 # Description: Stateless helper functions — geodesy, spoof scoring, jamming
 #              detection, and MQTT credential loading.  No Flask or MQTT side
 #              effects live here.

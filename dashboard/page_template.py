@@ -2,7 +2,7 @@
 # File: html.py
 # Version: 5.0.0
 # Date: 2026-04-26
-# Maintainer: Team-9 Secure Skies
+# Maintainer: Richard Wirén
 # Description: The single-page HTML/JS/CSS template string served by Flask.
 #              Kept in a dedicated file so editors can fold/syntax-highlight the
 #              front-end code independently from the Python back-end.
@@ -29,7 +29,7 @@ HTML_TEMPLATE = """
         #dashboard  { height:25vh; display:flex; flex-wrap:wrap; gap:8px; background:#04080d; padding:10px; overflow-y:auto; border-top:1px solid rgba(0,200,120,0.15); transition:height 0.3s ease; }
         #dashboard.collapsed { height:0; padding:0 10px; overflow:hidden; border-top:none; }
         #dashboard.collapsed ~ #collapse-btn { bottom:8px; }
-        #collapse-btn { position:fixed; bottom:25vh; right:12px; z-index:1100; background:rgba(4,8,13,0.9); border:1px solid rgba(0,200,120,0.3); color:#11caa0; padding:4px 10px; border-radius:4px; cursor:pointer; font-family:'Courier New',monospace; font-size:0.75em; transition:bottom 0.3s ease; }
+        #collapse-btn { position:fixed; bottom:12px; right:12px; z-index:1100; background:rgba(4,8,13,0.9); border:1px solid rgba(0,200,120,0.3); color:#11caa0; padding:4px 10px; border-radius:4px; cursor:pointer; font-family:'Courier New',monospace; font-size:0.75em; transition:bottom 0.3s ease; }
 
         .panel         { background:#08111a; border:1px solid rgba(0,200,120,0.18); border-radius:2px; padding:10px; display:flex; flex-direction:column; position:relative; overflow:hidden; }
         .panel::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,rgba(0,200,120,0.55) 0%,transparent 80%); pointer-events:none; }
@@ -83,7 +83,7 @@ HTML_TEMPLATE = """
 
         /* ── Audio toggle button ── */
         #audio-btn {
-            position:absolute; top:48px; right:130px; z-index:1000;
+            position:absolute; top:80px; right:10px; z-index:1000;
             background:rgba(4,8,13,0.88); border:1px solid rgba(0,200,120,0.22); border-radius:2px;
             color:#3d6050; font-size:0.7em; padding:3px 8px; cursor:pointer;
             font-family:'Courier New',monospace; white-space:nowrap; letter-spacing:0.8px;
@@ -278,8 +278,9 @@ HTML_TEMPLATE = """
         }
 
         /* Anomaly toast notification */
+        
         #anomaly-toast {
-            position:fixed; top:60px; right:12px; z-index:2000;
+            position:fixed; top:160px; right:12px; z-index:2000;
             background:rgba(248,81,73,0.15); border:1px solid rgba(248,81,73,0.5);
             border-radius:6px; padding:8px 14px; color:#f85149;
             font-family:'Courier New',monospace; font-size:0.8em;
@@ -299,9 +300,9 @@ HTML_TEMPLATE = """
 
         /* Feature Attribution panel (Paper Eq. 2) */
         #attribution-panel {
-            display:none; position:fixed; top:100px; right:12px; z-index:1100;
+            display:none; position:fixed; top:220px; right:12px; z-index:1100;
             background:rgba(4,8,13,0.95); border:1px solid rgba(248,81,73,0.3);
-            border-radius:6px; padding:10px 14px; min-width:200px;
+            border-radius:6px; padding:10px 14px; min-width:260px; max-width:320px;
             font-family:'Courier New',monospace; font-size:0.75em; color:#c9d1d9;
             backdrop-filter:blur(4px);
         }
@@ -314,7 +315,7 @@ HTML_TEMPLATE = """
         #attribution-panel .attr-bar .bar-fill {
             height:4px; border-radius:2px; transition:width 0.5s ease;
         }
-        #attribution-panel .attr-label { width:90px; color:#8b949e; }
+        #attribution-panel .attr-label { width:120px; color:#8b949e; }
         #attribution-panel .attr-pct { width:35px; text-align:right; color:#c9d1d9; }
 
         /* Persistence Filter gauge (Paper Section 4.3, k=5) */
@@ -364,17 +365,20 @@ HTML_TEMPLATE = """
     <div id="map" style="position:relative;">
     <!-- Info popup for first-time visitors -->
     <button id="info-btn" onclick="toggleInfo()" style="position:absolute;top:50px;left:12px;z-index:1000;background:rgba(4,8,13,0.85);border:1px solid rgba(0,200,120,0.3);color:#11caa0;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px;font-weight:bold;line-height:26px;text-align:center;">?</button>
-    <div id="info-popup" style="display:none;position:absolute;top:88px;left:12px;z-index:1000;background:rgba(4,8,13,0.95);border:1px solid rgba(0,200,120,0.25);border-radius:8px;padding:16px 20px;max-width:360px;color:#c9d1d9;font-size:12px;line-height:1.6;box-shadow:0 4px 20px rgba(0,0,0,0.5);">
+    <div id="info-popup" style="display:none;position:absolute;top:88px;left:12px;z-index:1000;background:rgba(4,8,13,0.95);border:1px solid rgba(0,200,120,0.25);border-radius:8px;padding:14px 18px;max-width:440px;color:#c9d1d9;font-size:11px;line-height:1.6;box-shadow:0 4px 20px rgba(0,0,0,0.5);">
         <div style="font-size:14px;font-weight:bold;color:#11caa0;margin-bottom:10px;">SecuringSkies — Live ADS-B Spoofing Detection</div>
-        <p style="margin-bottom:8px;">Real-time distributed surveillance with <b>ML autoencoder inference</b> from a 3-node sensor network in the Helsinki metropolitan area.</p>
+        <p style="margin-bottom:8px;">Real-time ADS-B aircraft tracking from 3 sensors in the Helsinki area. An AI model monitors each aircraft for signs of GPS spoofing.</p>
         <p style="margin-bottom:8px;"><span style="color:#3fb950;">◀</span> <b>West</b> (Jorvas) &middot; <span style="color:#58a6ff;">▲</span> <b>North</b> (Helsinki-Vantaa) &middot; <span style="color:#f85149;">▶</span> <b>East</b> (Sibbo)</p>
         <p style="margin-bottom:8px;"><b>Colors:</b> Aircraft color = sensor coverage. White + glow = trilateration lock (all 3).</p>
-        <p style="margin-bottom:8px;"><b>ML Score:</b> GRU Autoencoder (79K params) scores each aircraft in real-time. Per-feature reconstruction error decomposes detections into velocity, RSSI, and kinematic dimensions.</p>
-        <p style="margin-bottom:8px;"><b>Persistence (k=5):</b> Threat Confidence gauge fills over 5 consecutive anomalous windows before confirming a threat.</p>
-        <p style="margin-bottom:8px;"><b>GPS Health:</b> Ground sensor EPH monitoring. Green = normal. Yellow = degraded. Red = possible jamming.</p>
+        <p style="margin-bottom:8px;"><b>ML Score:</b> An AI model learns what normal flights look like. When an aircraft deviates from normal (unusual speed, position, or signal strength), it gets flagged. The "ML: N scored" badge shows how many aircraft are being monitored.</p>
+        <p style="margin-bottom:8px;"><b>Anomaly Tracking:</b> If an aircraft behaves abnormally for 5+ seconds in a row, the system escalates it from "tracking" to "confirmed." This prevents false alarms from brief glitches. The gauge resets automatically when the anomaly stops.</p>
+        <p style="margin-bottom:8px;"><b>GPS Health:</b> Monitors our ground sensors' GPS accuracy. Green = all sensors healthy. Yellow/Red = possible interference or jamming in the area.</p>
         <p style="margin-bottom:8px;"><b>Sync ΔT:</b> Sub-millisecond clock alignment (PPS-disciplined, Stratum 1).</p>
-        <p style="margin-bottom:4px;color:#8b949e;"><b>+ EXPERT</b> reveals GNSS hardware, RSSI calibrations, CPU/load, and the ⚡ INJECT demo button.</p>
-        <div style="margin-top:10px;padding-top:8px;border-top:1px solid #30363d;color:#8b949e;font-size:11px;">Team 9 · AI Neural Networks 2026 · AI Academy</div>
+        <p style="margin-bottom:4px;color:#8b949e;"><b>+ EXPERT</b> reveals GNSS hardware, RSSI calibrations, CPU/load, and three demo attack buttons:</p>
+        <p style="margin-bottom:2px;color:#8b949e;padding-left:10px;"><span style="color:#f85149;">⚡ JUMP</span> — teleports a fake aircraft 50km (tests position spoofing detection)</p>
+        <p style="margin-bottom:2px;color:#8b949e;padding-left:10px;"><span style="color:#d29922;">⚡ RF</span> — simulates a 20dB signal drop (tests RF shadow detection)</p>
+        <p style="margin-bottom:4px;color:#8b949e;padding-left:10px;"><span style="color:#d2a8ff;">⚡ DRIFT</span> — gradually manipulates speed (tests velocity drift detection)</p>
+        <div style="margin-top:10px;padding-top:8px;border-top:1px solid #30363d;color:#8b949e;font-size:11px;">SecuringSkies · AI Neural Networks 2026</div>
         <p style="margin-top:8px;font-size:0.85em;font-style:italic;color:#555;">If you feel the font on this page is too small, you have options: search for products similar to “Intatuntamium” or “Spacsaver” — or consider <a href="https://github.com/rwiren/adsb-research-grid?tab=contributing-ov-file#readme" target="_blank" style="color:#58a6ff;text-decoration:none;">contributing</a> to the project.</p>
         <button onclick="toggleInfo()" style="position:absolute;top:8px;right:12px;background:none;border:none;color:#8b949e;cursor:pointer;font-size:16px;">✕</button>
     </div>
@@ -438,10 +442,11 @@ HTML_TEMPLATE = """
         <div class="panel panel-sensors">
             <div class="label">NODE HEALTH <button id="expert-btn" onclick="toggleExpert()" style="background:none;border:1px solid #30363d;color:#8b949e;font-size:1em;padding:4px 10px;cursor:pointer;border-radius:3px;margin-left:8px;font-family:monospace;">+ EXPERT</button>
                 <span class="expert-row" style="display:none;margin-left:6px;">
-                <button style="background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.4);color:#f85149;font-size:0.7em;padding:2px 6px;border-radius:3px;cursor:pointer;font-family:monospace;" onclick="injectSpoof('kinematic_jump')" title="50km position teleport">⚡ JUMP</button>
-                <button style="background:rgba(210,153,34,0.1);border:1px solid rgba(210,153,34,0.4);color:#d29922;font-size:0.7em;padding:2px 6px;border-radius:3px;cursor:pointer;font-family:monospace;" onclick="injectSpoof('rf_shadow')" title="20dB RSSI drop">⚡ RF</button>
-                <button style="background:rgba(210,168,255,0.1);border:1px solid rgba(210,168,255,0.4);color:#d2a8ff;font-size:0.7em;padding:2px 6px;border-radius:3px;cursor:pointer;font-family:monospace;" onclick="injectSpoof('velocity_drift')" title="Gradual speed manipulation">⚡ DRIFT</button>
+                <button style="background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.4);color:#f85149;font-size:0.85em;padding:4px 10px;border-radius:4px;cursor:pointer;font-family:monospace;" onclick="injectSpoof('kinematic_jump')" title="50km position teleport">⚡ JUMP</button>
+                <button style="background:rgba(210,153,34,0.1);border:1px solid rgba(210,153,34,0.4);color:#d29922;font-size:0.85em;padding:4px 10px;border-radius:4px;cursor:pointer;font-family:monospace;" onclick="injectSpoof('rf_shadow')" title="20dB RSSI drop">⚡ RF</button>
+                <button style="background:rgba(210,168,255,0.1);border:1px solid rgba(210,168,255,0.4);color:#d2a8ff;font-size:0.85em;padding:4px 10px;border-radius:4px;cursor:pointer;font-family:monospace;" onclick="injectSpoof('velocity_drift')" title="Gradual speed manipulation">⚡ DRIFT</button>
                 </span> <span id="accuracy-score" style="font-size:0.85em;margin-left:6px;color:#8b949e;"></span></div>
+            <div class="expert-row" style="display:none;margin-bottom:6px;padding:4px 8px;background:rgba(88,166,255,0.05);border:1px solid rgba(88,166,255,0.15);border-radius:3px;font-size:0.78em;color:#58a6ff;">⚙ Model: GRU h128/l4 · 305K params · τ=0.005 · Dataset: 283K rows (91 ac, GNSS-verified)</div>
             <div class="sensor-grid">
                 <div class="sensor-card" id="card-north" style="order:2;">
                     <div class="name" style="color:#58a6ff;">▲ NORTH</div>
@@ -472,7 +477,7 @@ HTML_TEMPLATE = """
                     <div class="row expert-row" style="display:none;"><span class="k">GNSS std</span><span class="v" id="w-gnss-std">&mdash;</span></div>
                     <div class="row expert-row" style="display:none;"><span class="k">GNSS eph</span><span class="v" id="w-gnss-eph">&mdash;</span></div>
                     <div class="row expert-row" style="display:none;"><span class="k">GNSS HW</span><span class="v" style="color:#3fb950;font-size:0.85em;">G-STAR IV</span></div>
-                    <div class="row expert-row" style="display:none;"><span class="k">RSSI cal</span><span class="v" style="color:#8b949e;font-size:0.85em;">1.12×</span></div>
+                    <div class="row expert-row" style="display:none;"><span class="k">RSSI cal</span><span class="v" style="color:#8b949e;font-size:0.85em;">0.58×</span></div>
                     <div class="snr-bar"><div class="snr-bar-fill" id="w-bar" style="width:0%;background:#3fb950;"></div></div>
                 </div>
                 <div class="sensor-card" id="card-east" style="order:3;">
@@ -488,7 +493,7 @@ HTML_TEMPLATE = """
                     <div class="row expert-row" style="display:none;"><span class="k">GNSS std</span><span class="v" id="e-gnss-std">&mdash;</span></div>
                     <div class="row expert-row" style="display:none;"><span class="k">GNSS eph</span><span class="v" id="e-gnss-eph">&mdash;</span></div>
                     <div class="row expert-row" style="display:none;"><span class="k">GNSS HW</span><span class="v" style="color:#f85149;font-size:0.85em;">G-STAR IV</span></div>
-                    <div class="row expert-row" style="display:none;"><span class="k">RSSI cal</span><span class="v" style="color:#8b949e;font-size:0.85em;">0.94×</span></div>
+                    <div class="row expert-row" style="display:none;"><span class="k">RSSI cal</span><span class="v" style="color:#8b949e;font-size:0.85em;">0.83×</span></div>
                     <div class="snr-bar"><div class="snr-bar-fill" id="e-bar" style="width:0%;background:#f85149;"></div></div>
                 </div>
             </div>
@@ -972,12 +977,12 @@ socket.on('map_update', function(data) {
                     if (eph > maxEph) maxEph = eph;
                     if (eph > 50) allOk = false;
                 }
-                if (maxEph < 200) {
+                if (maxEph < 1000) {
                     gpsEl.textContent = "GPS: OK";
                     gpsEl.style.color = "#3fb950";
                     gpsEl.style.borderColor = "rgba(63,185,80,0.3)";
                     gpsEl.style.background = "rgba(63,185,80,0.1)";
-                } else if (maxEph < 500) {
+                } else if (maxEph < 2000) {
                     gpsEl.textContent = "GPS: DEGRADED";
                     gpsEl.style.color = "#d29922";
                     gpsEl.style.borderColor = "rgba(210,153,34,0.3)";
@@ -1383,18 +1388,21 @@ socket.on('map_update', function(data) {
                 var colors = {velocity_calculated:'#f85149', velocity_error:'#d29922', velocity_drift:'#d2a8ff', distance_to_sensor:'#58a6ff', rssi_expected:'#39c5cf', rssi_error:'#3fb950', rssi_error_normalized:'#8b949e'};
 
                 if (hasML) {
-                    // ML source: aggregate per-feature MSE across all ML-flagged aircraft
+                    // ML source: aggregate per-feature MSE, show top 3 with interpretation
                     var featureAgg = {};
                     mlAircraft.forEach(function(a) {
                         var mf = a.ml_features || {};
                         for (var k in mf) { featureAgg[k] = (featureAgg[k] || 0) + mf[k].pct; }
                     });
                     var totalPct = Object.values(featureAgg).reduce(function(a,b){return a+b;}, 0) || 1;
-                    document.querySelector('#attribution-panel .attr-title').textContent = '⚙ ML FEATURE ATTRIBUTION';
-                    Object.keys(featureAgg).sort(function(a,b){return featureAgg[b]-featureAgg[a];}).forEach(function(k) {
+                    var featureLabels = {velocity_calculated:'Speed vs position',velocity_error:'Reported vs actual speed',velocity_drift:'Gradual speed change',distance_to_sensor:'Position anomaly',rssi_expected:'Expected signal',rssi_error:'Signal strength',rssi_error_normalized:'Calibrated signal'};
+                    document.querySelector('#attribution-panel .attr-title').textContent = '⚙ ML DETECTION';
+                    var sorted = Object.keys(featureAgg).sort(function(a,b){return featureAgg[b]-featureAgg[a];});
+                    sorted.slice(0,3).forEach(function(k) {
                         var pct = Math.round(featureAgg[k] / totalPct * 100);
                         var col = colors[k] || '#8b949e';
-                        barsHtml += '<div class="attr-bar"><span class="attr-label">'+k.replace('_',' ')+'</span><div style="flex:1;background:rgba(255,255,255,0.05);border-radius:2px;"><div class="bar-fill" style="width:'+pct+'%;background:'+col+';"></div></div><span class="attr-pct">'+pct+'%</span></div>';
+                        var lbl = featureLabels[k] || k.replace('_',' ');
+                        barsHtml += '<div class="attr-bar"><span class="attr-label">'+lbl+'</span><div style="flex:1;background:rgba(255,255,255,0.05);border-radius:2px;"><div class="bar-fill" style="width:'+pct+'%;background:'+col+';"></div></div><span class="attr-pct">'+pct+'%</span></div>';
                     });
                 } else {
                     // Heuristic fallback

@@ -2,7 +2,7 @@
 
 Real-time ADS-B surveillance dashboard for the 3-node sensor array (North/West/East).
 
-**Live instance:** [http://www.securingskies.eu:8080/](http://www.securingskies.eu:8080/)
+**Live instance:** [https://www.securingskies.eu:9443/](https://www.securingskies.eu:9443/)
 
 ## Features
 
@@ -45,7 +45,9 @@ Sensor Nodes (RPi4)          Helsinki Server
 ### ML Inference Service (`ml_inference_service.py`)
 
 Runs in parallel with the heuristic anomaly bridge. Performs real-time autoencoder
-inference using the GRU model trained on the 144h multi-sensor dataset.
+inference using the GRU h128/l4 model trained on the 283K cleaned dataset (91 aircraft,
+GNSS-verified sensor positions). Tighter bottleneck (latent=4) forces stronger
+compression of physical laws, eliminating false positives on normal traffic.
 
 **Pipeline:**
 1. Subscribes to `sensor-{north,west,east}/aircraft` (1 Hz)
@@ -57,7 +59,7 @@ inference using the GRU model trained on the 144h multi-sensor dataset.
 6. Decomposes error per feature dimension (Paper Eq. 2)
 7. Publishes anomalies (score > τ) to `sensor-core/ml-anomaly`
 
-**Model:** GRU Autoencoder, 79K params, hidden=64, latent=8, τ=0.005050
+**Model:** GRU Autoencoder h128/l4, 305K params, hidden=128, latent=4, τ=0.005 (deployed 2026-05-03)
 **Checkpoint:** `models/adsb_gru_w30_144h_7feat.pth`
 
 ### Dashboard Integration (Phase 3)

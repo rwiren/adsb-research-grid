@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/github/v/tag/rwiren/adsb-research-grid?label=Version&color=green)](https://github.com/rwiren/adsb-research-grid/tags)
-[![Status](https://img.shields.io/badge/Status-Phase%203%3A%20Validation-success.svg)](#)
+[![Status](https://img.shields.io/badge/Status-Phase%203%3A%20Production-success.svg)](#)
 [![Wiki](https://img.shields.io/badge/Docs-Project%20Wiki-purple?style=flat-square)](https://github.com/rwiren/adsb-research-grid/wiki)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](#)
 ![Last Updated](https://img.shields.io/github/last-commit/rwiren/adsb-research-grid?label=Last%20Updated&color=orange)
@@ -233,7 +233,7 @@ The dashboard includes a built-in **3D Sky View** tab alongside the standard Lea
 
 **Live dashboard:** [https://www.securingskies.eu:9443/](https://www.securingskies.eu:9443/) (HTTPS)
 
-> **NEW (2026-04-30):** The dashboard now runs a live GRU Autoencoder (79K params, trained on 144h dataset) scoring aircraft in real-time. Click **+ EXPERT** to see GNSS hardware calibrations and the **⚡ INJECT** demo buttons: **JUMP** (50km position teleport), **RF** (20dB signal drop), and **DRIFT** (gradual speed manipulation). The **Feature Attribution** panel decomposes detections into per-feature reconstruction errors (Paper Eq. 2).
+> **UPDATED (2026-05-03):** Deployed **GRU h128/l4** (305K params, latent=4) — tighter information bottleneck eliminates false positives entirely. Normal traffic scores 0.0001–0.0004 (12× below τ=0.005). Distance filter raised to 120km. Click **+ EXPERT** to see model info, GNSS hardware calibrations, and the **⚡ INJECT** demo buttons: **JUMP** (50km position teleport), **RF** (20dB signal drop), and **DRIFT** (gradual speed manipulation). The **Feature Attribution** panel decomposes detections into per-feature reconstruction errors (Paper Eq. 2).
 
 ### Why Three.js and not CesiumJS?
 
