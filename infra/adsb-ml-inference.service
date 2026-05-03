@@ -1,17 +1,18 @@
 # ==============================================================================
 # Systemd Unit: adsb-ml-inference.service
-# Version: 1.0.0
-# Date: 2026-04-29
+# Version: 1.2.0
+# Date: 2026-05-03
 # Path: /etc/systemd/system/adsb-ml-inference.service
 # ==============================================================================
 # Description:
 #   Real-time ML inference service for ADS-B spoofing detection.
-#   Runs the GRU Autoencoder (79K params, trained on 144h multi-sensor dataset)
-#   in parallel with the heuristic anomaly_bridge_v2.
+#   Runs the GRU Autoencoder (305K params h128/l4, trained on 283K cleaned dataset)
+#   in parallel with the heuristic anomaly_bridge_v2. Tighter bottleneck (l=4)
+#   forces stronger compression of physical laws.
 #
 #   Subscribes to sensor MQTT feeds, maintains per-aircraft T=30 sliding
 #   windows, and publishes per-feature reconstruction errors to
-#   sensor-core/ml-anomaly when anomaly_score > τ (0.005050).
+#   sensor-core/ml-anomaly when anomaly_score > τ (0.005).
 #
 #   Designed to run continuously alongside:
 #     - adsb-dashboard.service (Flask UI, port 8080)

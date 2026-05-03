@@ -5,6 +5,31 @@ All notable changes to the **ADS-B Research Grid** project will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-05-03: The "Bottleneck" Update
+
+### Changed
+- **ML Model Upgrade**: Deployed GRU h128/l4 (305K params, latent=4) replacing GRU h64/l8 (79K params, latent=8). Tighter information bottleneck forces stronger compression of physical laws.
+- **Distance Filter**: Raised from 80km to 120km after validating zero FP increase with new model.
+- **RSSI Calibrations**: Corrected Expert Panel values (West: 1.12→0.58×, East: 0.94→0.83×) to match ML model's training calibrations.
+- **Inference Service v1.2.0**: Updated `ml_inference_service.py` header, MODEL_PATH, and distance filter comments.
+
+### Added
+- **Model Info Line**: Expert Panel now displays active architecture, parameter count, and scoring threshold ("⚙ Model: GRU h128/l4 · 305K params · τ=0.005").
+- **Server-format checkpoint**: `adsb_gru_h128_l4_w30_283k_7feat.pth` (scaler, hyperparameters, training_metadata).
+
+### Results (Production Validation)
+- Normal traffic scores 0.0001–0.0004 (12× below τ=0.005)
+- Old model: 456 false alerts in 30 minutes across 8 aircraft
+- New model: **zero** false alerts — FP flood completely eliminated
+- 19 aircraft scored simultaneously (was 16 with 80km filter)
+- Velocity drift detection +34% F1, RF shadowing +25% F1 (offline evaluation)
+
+### Technical Notes
+- Learning rate 0.0005 required for stable convergence at 305K params (vs 0.001 for 79K)
+- Checkpoint format: `{model_state_dict, scaler, anomaly_threshold, hyperparameters, training_metadata}`
+- Dual GNSS hardware: u-blox F9P RTK (cm) at North, G-STAR IV (~1m/65m) at West/East
+- Training dataset: 283K cleaned rows, 91 aircraft, GNSS-verified sensor positions
+
 ## [1.0.0] - 2026-04-29: The "ML Inference" Update
 
 ### Added

@@ -1,8 +1,8 @@
 # ==============================================================================
 # File: /root/adsb-dashboard/ml_inference_service.py
-# Version: 1.1.0
-# Date: 2026-04-29
-# Maintainer: Team-9 Secure Skies
+# Version: 1.2.0
+# Date: 2026-05-03
+# Maintainer: Richard Wirén
 # ==============================================================================
 # Description:
 #   Real-time ML inference service for ADS-B spoofing detection.
@@ -27,8 +27,8 @@
 #   position pair.
 #
 # Architecture:
-#   GRU Autoencoder (79K params) trained on 144h multi-sensor dataset.
-#   Information bottleneck (latent_size=8) forces learning of physical
+#   GRU Autoencoder (305K params, h128/l4) trained on 283K cleaned dataset.
+#   Information bottleneck (latent_size=4) forces learning of physical
 #   invariants rather than noise memorization.
 #
 # Feature Space (Paper Table 2):
@@ -75,7 +75,7 @@ MQTT_USER = "team9"
 MQTT_TRANSPORT = "websockets"
 MQTT_TLS = True
 
-MODEL_PATH = "/root/adsb-dashboard/models/adsb_gru_w30_144h_7feat.pth"
+MODEL_PATH = "/root/adsb-dashboard/models/adsb_gru_h128_l4_w30_283k_7feat.pth"
 PUBLISH_TOPIC = "sensor-core/ml-anomaly"
 
 # Sliding window parameters (Paper Section 4.1)
@@ -84,9 +84,9 @@ FEATURE_DIM = 7           # D = 7 features (Table 2)
 INFERENCE_INTERVAL = 5
 
 # Distance filter: only infer on aircraft within this range of their sensor.
-# Training data: mean=22.7km, std=47.3km. Aircraft beyond 80km are outside
-# the training manifold and will always score as anomalous (distribution shift).
-MAX_INFERENCE_DIST_KM = 80.0    # Seconds between inference runs per aircraft
+# Training data: mean=22.7km, std=47.3km. Raised to 120km (mean+2σ) after
+# h128/l4 model showed stable scores (max 0.0008) for all in-range aircraft.
+MAX_INFERENCE_DIST_KM = 120.0    # Seconds between inference runs per aircraft
 
 # Warmup: discard first N feature vectors per aircraft to stabilize
 # velocity_calculated. The first observation has no predecessor, and the
