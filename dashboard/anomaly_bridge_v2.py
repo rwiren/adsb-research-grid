@@ -746,6 +746,7 @@ def main() -> None:
     client.on_message = on_message
 
     log.info("Connecting to MQTT broker at %s:%d (WSS)...", MQTT_HOST, MQTT_PORT)
+    client.reconnect_delay_set(1, 120)
     client.connect(MQTT_HOST, MQTT_PORT, keepalive=60)
     client.subscribe(TOPIC_SUBSCRIBE)
     client.subscribe(TOPIC_STATS)

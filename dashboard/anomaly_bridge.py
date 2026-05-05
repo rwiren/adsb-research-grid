@@ -19,7 +19,7 @@ Environment variables (all optional, sensible defaults for local server):
     MQTT_HOST            Broker hostname          (default: localhost)
     MQTT_PORT            Broker port              (default: 1883)
     MQTT_USER            MQTT username            (default: team9)
-    MQTT_PASS            MQTT password            (default: ResearchView2026!)
+    MQTT_PASS            MQTT password            (from /etc/securing-skies/mqtt_secret)
     INFERENCE_INTERVAL   Seconds between runs     (default: 30)
     WINDOW_SECONDS       Observation window size  (default: 300)
     MIN_SAMPLES          Min observations to run  (default: 20)
@@ -58,11 +58,8 @@ if not MQTT_PASS and MQTT_PASS_FILE and os.path.isfile(MQTT_PASS_FILE):
         logging.getLogger(__name__).warning(
             "Could not read MQTT password from %s: %s", MQTT_PASS_FILE, exc
         )
-if not MQTT_PASS and not MQTT_PASS_FILE:
-    raise SystemExit(
-        "ERROR: MQTT password required. Set MQTT_PASS_FILE (e.g. /etc/securing-skies/mqtt_secret) "
-        "or MQTT_PASS environment variable."
-    )
+if not MQTT_PASS:
+    MQTT_PASS = None; raise RuntimeError("Cannot read MQTT secret file")
 
 
 INFERENCE_INTERVAL = int(os.getenv("INFERENCE_INTERVAL", "30"))   # seconds

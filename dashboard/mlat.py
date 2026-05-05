@@ -2,7 +2,7 @@
 # File: mlat.py
 # Version: 5.0.0
 # Date: 2026-04-26
-# Maintainer: Richard Wirén
+# Maintainer: Team-9 Secure Skies
 # Description: TDOA multilateration engine — Chan's least-squares solver and
 #              TDOA pair calculator.  Pure math; no Flask or MQTT dependencies.
 # ==============================================================================
