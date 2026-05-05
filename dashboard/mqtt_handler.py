@@ -2,7 +2,7 @@
 # File: mqtt_handler.py
 # Version: 5.0.0
 # Date: 2026-04-26
-# Maintainer: Richard Wirén
+# Maintainer: Team-9 Secure Skies
 # Description: MQTT client setup, Paho callbacks, and message routing.
 #              Uses dependency injection for the SocketIO instance so this
 #              module stays decoupled from Flask bootstrap code.

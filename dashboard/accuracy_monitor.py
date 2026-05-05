@@ -236,8 +236,10 @@ def compute_accuracy():
 
 # --- MQTT ---
 client = mqtt.Client()
+client.reconnect_delay_set(1, 120)
 client.username_pw_set(MQTT_USER, MQTT_PASS)
 client.on_message = on_message
+client.on_disconnect = lambda c,u,rc: log.warning("MQTT disconnected (rc=%s), will auto-reconnect", rc)
 client.connect(MQTT_HOST, MQTT_PORT, 60)
 client.subscribe("+/aircraft")
 client.subscribe("+/system")

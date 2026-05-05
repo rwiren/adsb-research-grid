@@ -2,7 +2,7 @@
 # File: html.py
 # Version: 5.0.0
 # Date: 2026-04-26
-# Maintainer: Richard Wirén
+# Maintainer: Team-9 Secure Skies
 # Description: The single-page HTML/JS/CSS template string served by Flask.
 #              Kept in a dedicated file so editors can fold/syntax-highlight the
 #              front-end code independently from the Python back-end.
@@ -365,7 +365,7 @@ HTML_TEMPLATE = """
     <div id="map" style="position:relative;">
     <!-- Info popup for first-time visitors -->
     <button id="info-btn" onclick="toggleInfo()" style="position:absolute;top:50px;left:12px;z-index:1000;background:rgba(4,8,13,0.85);border:1px solid rgba(0,200,120,0.3);color:#11caa0;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px;font-weight:bold;line-height:26px;text-align:center;">?</button>
-    <div id="info-popup" style="display:none;position:absolute;top:88px;left:12px;z-index:1000;background:rgba(4,8,13,0.95);border:1px solid rgba(0,200,120,0.25);border-radius:8px;padding:14px 18px;max-width:440px;color:#c9d1d9;font-size:11px;line-height:1.6;box-shadow:0 4px 20px rgba(0,0,0,0.5);">
+    <div id="info-popup" style="display:none;position:absolute;top:88px;left:12px;z-index:1000;background:rgba(4,8,13,0.95);border:1px solid rgba(0,200,120,0.25);border-radius:8px;padding:14px 18px;max-width:560px;max-height:calc(75vh - 100px);overflow-y:auto;color:#c9d1d9;font-size:11px;line-height:1.6;box-shadow:0 4px 20px rgba(0,0,0,0.5);">
         <div style="font-size:14px;font-weight:bold;color:#11caa0;margin-bottom:10px;">SecuringSkies — Live ADS-B Spoofing Detection</div>
         <p style="margin-bottom:8px;">Real-time ADS-B aircraft tracking from 3 sensors in the Helsinki area. An AI model monitors each aircraft for signs of GPS spoofing.</p>
         <p style="margin-bottom:8px;"><span style="color:#3fb950;">◀</span> <b>West</b> (Jorvas) &middot; <span style="color:#58a6ff;">▲</span> <b>North</b> (Helsinki-Vantaa) &middot; <span style="color:#f85149;">▶</span> <b>East</b> (Sibbo)</p>
@@ -374,11 +374,11 @@ HTML_TEMPLATE = """
         <p style="margin-bottom:8px;"><b>Anomaly Tracking:</b> If an aircraft behaves abnormally for 5+ seconds in a row, the system escalates it from "tracking" to "confirmed." This prevents false alarms from brief glitches. The gauge resets automatically when the anomaly stops.</p>
         <p style="margin-bottom:8px;"><b>GPS Health:</b> Monitors our ground sensors' GPS accuracy. Green = all sensors healthy. Yellow/Red = possible interference or jamming in the area.</p>
         <p style="margin-bottom:8px;"><b>Sync ΔT:</b> Sub-millisecond clock alignment (PPS-disciplined, Stratum 1).</p>
-        <p style="margin-bottom:4px;color:#8b949e;"><b>+ EXPERT</b> reveals GNSS hardware, RSSI calibrations, CPU/load, and three demo attack buttons:</p>
+        <p style="margin-bottom:4px;color:#8b949e;"><b>+ EXPERT</b> reveals GNSS hardware, RSSI calibrations, CPU/load, and three <b>demo-only</b> attack injection buttons (client-side simulation — no real aircraft are affected):</p>
         <p style="margin-bottom:2px;color:#8b949e;padding-left:10px;"><span style="color:#f85149;">⚡ JUMP</span> — teleports a fake aircraft 50km (tests position spoofing detection)</p>
         <p style="margin-bottom:2px;color:#8b949e;padding-left:10px;"><span style="color:#d29922;">⚡ RF</span> — simulates a 20dB signal drop (tests RF shadow detection)</p>
         <p style="margin-bottom:4px;color:#8b949e;padding-left:10px;"><span style="color:#d2a8ff;">⚡ DRIFT</span> — gradually manipulates speed (tests velocity drift detection)</p>
-        <div style="margin-top:10px;padding-top:8px;border-top:1px solid #30363d;color:#8b949e;font-size:11px;">SecuringSkies · AI Neural Networks 2026</div>
+        <div style="margin-top:10px;padding-top:8px;border-top:1px solid #30363d;color:#8b949e;font-size:11px;">Team 9 · AI Neural Networks 2026 · AI Academy</div>
         <p style="margin-top:8px;font-size:0.85em;font-style:italic;color:#555;">If you feel the font on this page is too small, you have options: search for products similar to “Intatuntamium” or “Spacsaver” — or consider <a href="https://github.com/rwiren/adsb-research-grid?tab=contributing-ov-file#readme" target="_blank" style="color:#58a6ff;text-decoration:none;">contributing</a> to the project.</p>
         <button onclick="toggleInfo()" style="position:absolute;top:8px;right:12px;background:none;border:none;color:#8b949e;cursor:pointer;font-size:16px;">✕</button>
     </div>
@@ -1805,7 +1805,7 @@ function injectSpoof(attackType) {
         squawk: '7777', category: 'A3',
         ml_score: 0.08 + Math.random() * 0.1,
         ml_is_anomaly: true,
-        ml_features: {velocity_calculated:{mse:0.04,pct:35}, velocity_error:{mse:0.03,pct:25}, rssi_error:{mse:0.02,pct:20}, distance_to_sensor:{mse:0.01,pct:10}, velocity_drift:{mse:0.005,pct:5}, rssi_expected:{mse:0.003,pct:3}, rssi_error_normalized:{mse:0.002,pct:2}}
+        ml_features: (attack==="kinematic_jump" ? {velocity_calculated:{mse:0.06,pct:45},distance_to_sensor:{mse:0.04,pct:30},velocity_error:{mse:0.02,pct:15},rssi_error:{mse:0.005,pct:5},velocity_drift:{mse:0.003,pct:3},rssi_expected:{mse:0.001,pct:1},rssi_error_normalized:{mse:0.001,pct:1}} : attack==="rf_shadow" ? {rssi_error:{mse:0.07,pct:50},rssi_error_normalized:{mse:0.04,pct:28},rssi_expected:{mse:0.015,pct:10},distance_to_sensor:{mse:0.008,pct:6},velocity_calculated:{mse:0.004,pct:3},velocity_error:{mse:0.002,pct:2},velocity_drift:{mse:0.001,pct:1}} : {velocity_drift:{mse:0.05,pct:40},velocity_error:{mse:0.04,pct:30},velocity_calculated:{mse:0.02,pct:15},distance_to_sensor:{mse:0.01,pct:8},rssi_error:{mse:0.004,pct:4},rssi_expected:{mse:0.002,pct:2},rssi_error_normalized:{mse:0.001,pct:1}})
     };
     socket.emit('inject_demo', fakeAc);
     var toast = document.getElementById('anomaly-toast');

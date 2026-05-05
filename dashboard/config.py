@@ -2,7 +2,7 @@
 # File: config.py
 # Version: 5.0.0
 # Date: 2026-04-26
-# Maintainer: Richard Wirén
+# Maintainer: Team-9 Secure Skies
 # Description: Centralised configuration — constants, environment variables,
 #              thresholds, and sensor positions.  Keeps all tunables in one
 #              place so the dashboard and sub-modules read from a single source.

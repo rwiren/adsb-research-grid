@@ -2,7 +2,7 @@
 # File: state.py
 # Version: 5.0.0
 # Date: 2026-04-26
-# Maintainer: Richard Wirén
+# Maintainer: Team-9 Secure Skies
 # Description: Shared runtime state.  Imported by both mqtt_handler and
 #              dashboard so the SocketIO emitter can see the same object that
 #              the MQTT callback mutates in place.

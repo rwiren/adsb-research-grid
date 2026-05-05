@@ -2,7 +2,7 @@
 # File: /root/adsb-dashboard/ml_inference_service.py
 # Version: 1.2.0
 # Date: 2026-05-03
-# Maintainer: Richard Wirén
+# Maintainer: Team-9 Secure Skies
 # ==============================================================================
 # Description:
 #   Real-time ML inference service for ADS-B spoofing detection.

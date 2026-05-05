@@ -2,7 +2,7 @@
 # File: dashboard.py
 # Version: 5.0.0 (Modular refactor)
 # Date: 2026-04-26
-# Maintainer: Richard Wirén
+# Maintainer: Team-9 Secure Skies
 # Description: Entry-point for the SECURESKIES MLAT Tactical Hub.
 #              All heavy logic has been moved to sibling modules so this
 #              file is limited to Flask/SocketIO bootstrap and glue.
@@ -49,7 +49,10 @@ mqtt.set_socketio(socketio)
 
 @app.route("/")
 def index():
-    return render_template_string(HTML_TEMPLATE)
+    from flask import make_response
+    resp = make_response(render_template_string(HTML_TEMPLATE))
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return resp
 
 
 # ------------------------------------------------------------------------------

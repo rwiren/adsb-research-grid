@@ -5,6 +5,29 @@ All notable changes to the **ADS-B Research Grid** project will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-05-05: Reliability & Security Hardening
+
+### Added
+- MQTT auto-reconnect (`reconnect_delay_set`) on all Python services (accuracy_monitor, anomaly_bridge_v2, gnss_mqtt_publisher)
+- `dashboard_health_check.py` added to repository
+- TLS cert auto-renewal deploy hook for Mosquitto
+- MLAT monitor service for tracking multilateration results
+
+### Fixed
+- Healthcheck URL corrected (was hitting MQTT port 443 instead of dashboard)
+- Accuracy monitor GNSS data now reports all 3 sensors (was empty after MQTT restart)
+- Sensor-west GNSS publisher reconnection after broker restart
+
+### Security
+- Removed hardcoded MQTT password fallback from `anomaly_bridge.py`
+- Removed `synthetic_injector.py` from production (can inject fake aircraft)
+- Password no longer appears in docstrings or comments
+
+### Changed
+- Dashboard v5.0.0 modular codebase synced to repository
+- Cleaned 7 backup files from production server
+- Updated CHANGELOG to cover v5.0.0 refactor
+
 ## [1.1.0] - 2026-05-03: The "Bottleneck" Update
 
 ### Changed
