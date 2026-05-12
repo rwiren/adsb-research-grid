@@ -173,6 +173,9 @@
       popup.setAttribute('position', `${position.x} ${position.y + 3} ${position.z}`);
       popup.querySelector('#popup-text').setAttribute('value', text);
       popup.setAttribute('visible', 'true');
+      // Auto-hide after 4 seconds
+      if (popup._timeout) clearTimeout(popup._timeout);
+      popup._timeout = setTimeout(hidePopup3D, 4000);
     }
 
     function hidePopup3D() {
