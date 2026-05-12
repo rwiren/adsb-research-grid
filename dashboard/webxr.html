@@ -169,7 +169,7 @@
       selContent.innerHTML = [
         `<b>${(item.flight || hex).toUpperCase()}</b>`,
         `Hex: ${hex.toUpperCase()}`,
-        `Sensor: ${item.sensor || '-'}`,
+        `Node: ${item.sensor || '-'}`,
         `Alt: ${item.alt || '-'} ft | GS: ${item.gs || '-'} kt`,
         `Score: ${s != null ? s.toFixed(5) : '-'} ${status}`
       ].join('<br>');
@@ -226,8 +226,7 @@
 
         // Label
         const label = document.createElement('a-text');
-        const labelText = (ac.flight || hex.toUpperCase()) + '\n' + sensor;
-        label.setAttribute('value', labelText);
+        label.setAttribute('value', ac.flight || hex.toUpperCase());
         label.setAttribute('color', '#e2e8f0');
         label.setAttribute('align', 'center');
         label.setAttribute('position', '0 0.7 0');
@@ -250,7 +249,7 @@
         item.flight = ac.flight || item.flight;
         item.alt = ac.alt_baro;
         item.gs = ac.gs;
-        if (ac.flight) item.label.setAttribute('value', ac.flight + '\n' + sensor);
+        if (ac.flight) item.label.setAttribute('value', ac.flight);
       }
     }
 
