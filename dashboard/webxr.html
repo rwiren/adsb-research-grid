@@ -34,11 +34,13 @@
     }
     #selection .close { cursor: pointer; float: right; color: #666; }
     .a-enter-vr, .a-enter-ar {
-      left: calc(10px + env(safe-area-inset-left)) !important;
+      left: 50% !important;
       right: auto !important;
+      transform: translateX(-50%) !important;
       bottom: calc(10px + env(safe-area-inset-bottom)) !important;
     }
-    .a-enter-ar { left: calc(60px + env(safe-area-inset-left)) !important; }
+    .a-enter-vr { margin-left: -30px !important; }
+    .a-enter-ar { margin-left: 30px !important; }
     #ios-fs-btn {
       display: none; position: fixed;
       bottom: calc(10px + env(safe-area-inset-bottom));
@@ -187,16 +189,17 @@
         }
 
         const el = document.createElement('a-entity');
-        el.classList.add('pickable');
         el.dataset.hex = hex;
         el.setAttribute('position', `${target.x} ${target.y} ${target.z}`);
 
-        // Sphere body
+        // Sphere body — this is the clickable target
         const body = document.createElement('a-sphere');
-        body.setAttribute('radius', isMobile ? '0.22' : '0.28');
+        body.classList.add('pickable');
+        body.setAttribute('radius', isMobile ? '0.4' : '0.5');
         body.setAttribute('color', '#00ffaa');
         body.setAttribute('emissive', '#00ffaa');
         body.setAttribute('emissive-intensity', '0.25');
+        body.addEventListener('click', () => showSelection(hex));
 
         // Nose cone (direction indicator)
         const nose = document.createElement('a-cone');
@@ -234,8 +237,6 @@
                  target: new THREE.Vector3(target.x, target.y, target.z),
                  score: null, lastSeen: now, sensor, flight: ac.flight||'', alt: ac.alt_baro, gs: ac.gs };
         aircraft.set(hex, item);
-
-        el.addEventListener('click', () => showSelection(hex));
       } else {
         item.target.set(target.x, target.y, target.z);
         item.lastSeen = now;
