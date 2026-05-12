@@ -81,14 +81,14 @@
     <a-text value="50km" position="50 0.1 0" rotation="-90 0 0" color="#475569" scale="3 3 3"></a-text>
     <a-text value="100km" position="100 0.1 0" rotation="-90 0 0" color="#334155" scale="3 3 3"></a-text>
 
-    <!-- Sensor markers -->
-    <a-cylinder position="0 1 0" radius="0.9" height="2" color="#0072B2" emissive="#0072B2" emissive-intensity="0.2"></a-cylinder>
+    <!-- Sensor markers (clickable) -->
+    <a-cylinder class="pickable" data-sensor="sensor-north" position="0 1 0" radius="0.9" height="2" color="#0072B2" emissive="#0072B2" emissive-intensity="0.2"></a-cylinder>
     <a-text value="NORTH" position="0 2.8 0" align="center" color="#0072B2" scale="2 2 2"></a-text>
 
-    <a-cylinder position="-18 1 -21" radius="0.9" height="2" color="#009E73" emissive="#009E73" emissive-intensity="0.2"></a-cylinder>
+    <a-cylinder class="pickable" data-sensor="sensor-west" position="-18 1 -21" radius="0.9" height="2" color="#009E73" emissive="#009E73" emissive-intensity="0.2"></a-cylinder>
     <a-text value="WEST" position="-18 2.8 -21" align="center" color="#009E73" scale="2 2 2"></a-text>
 
-    <a-cylinder position="24 1 6" radius="0.9" height="2" color="#D55E00" emissive="#D55E00" emissive-intensity="0.2"></a-cylinder>
+    <a-cylinder class="pickable" data-sensor="sensor-east" position="24 1 6" radius="0.9" height="2" color="#D55E00" emissive="#D55E00" emissive-intensity="0.2"></a-cylinder>
     <a-text value="EAST" position="24 2.8 6" align="center" color="#D55E00" scale="2 2 2"></a-text>
 
     <!-- Aircraft populated dynamically -->
@@ -159,6 +159,15 @@
       selectedHex = null;
       selPanel.style.display = 'none';
     };
+
+    // Sensor click — show node name popup
+    document.querySelectorAll('[data-sensor]').forEach(el => {
+      el.addEventListener('click', () => {
+        const name = el.getAttribute('data-sensor');
+        selContent.innerHTML = `<b>${name}</b>`;
+        selPanel.style.display = 'block';
+      });
+    });
 
     function showSelection(hex) {
       const item = aircraft.get(hex);
