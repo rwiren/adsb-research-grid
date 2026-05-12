@@ -19,6 +19,15 @@
 </head>
 <body>
   <div id="hud">Connecting...</div>
+  <div id="help" style="position:fixed; bottom:10px; right:10px; color:#aaa; font:11px monospace; z-index:999; background:rgba(0,0,0,0.7); padding:8px; border-radius:4px; max-width:200px;">
+    <b>Controls:</b><br>
+    🖱️ Click+drag: look<br>
+    ⌨️ WASD: move<br>
+    ⌨️ Q/E: up/down<br>
+    📱 Phone: tilt to look<br>
+    🥽 VR: click "Enter VR"<br>
+    <span style="color:#666; font-size:9px;">Click scene to activate</span>
+  </div>
 
   <a-scene background="color: #050510" renderer="antialias: true"
            xr-mode-ui="enabled: true; enterAREnabled: true">
@@ -26,7 +35,7 @@
     <!-- Camera with mobile gyro + touch + Quest controllers -->
     <a-entity id="rig" position="0 20 40">
       <a-camera look-controls="magicWindowTrackingEnabled: true; touchEnabled: true"
-                wasd-controls="acceleration: 50"
+                wasd-controls="acceleration: 80; fly: true"
                 position="0 0 0"></a-camera>
       <a-entity laser-controls="hand: left"></a-entity>
       <a-entity laser-controls="hand: right"></a-entity>
