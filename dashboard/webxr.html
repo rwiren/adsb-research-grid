@@ -181,6 +181,7 @@
 
     function hidePopup3D() {
       popup.setAttribute('visible', 'false');
+      popup._lastHidden = Date.now();
     }
 
     window.clearSelection = function() {
@@ -192,6 +193,7 @@
     // Sensor click — show node name as 3D popup
     document.querySelectorAll('[data-sensor]').forEach(el => {
       el.addEventListener('click', () => {
+        if (popup._lastHidden && Date.now() - popup._lastHidden < 2000) return;
         const name = el.getAttribute('data-sensor');
         const pos = el.getAttribute('position');
         selContent.innerHTML = `<b>${name}</b>`;
@@ -201,6 +203,7 @@
     });
 
     function showSelection(hex) {
+      if (popup._lastHidden && Date.now() - popup._lastHidden < 2000) return;
       const item = aircraft.get(hex);
       if (!item) return;
       selectedHex = hex;
