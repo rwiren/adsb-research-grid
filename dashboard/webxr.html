@@ -70,8 +70,8 @@
                 position="0 0 0">
         <a-cursor raycaster="objects: .pickable" color="#38bdf8" opacity="0.5" fuse="false"></a-cursor>
       </a-camera>
-      <a-entity id="leftHand" laser-controls="hand: left" raycaster="objects: .pickable; far: 200"></a-entity>
-      <a-entity id="rightHand" laser-controls="hand: right" raycaster="objects: .pickable; far: 200"></a-entity>
+      <a-entity id="leftHand" laser-controls="hand: left" raycaster="objects: .pickable; far: 200" line="color: #66e1ff; opacity: 0.7"></a-entity>
+      <a-entity id="rightHand" laser-controls="hand: right" raycaster="objects: .pickable; far: 200" line="color: #66e1ff; opacity: 0.7"></a-entity>
     </a-entity>
 
     <!-- Ground + range rings -->
@@ -205,6 +205,8 @@
         body.setAttribute('class', 'pickable');
         body.addEventListener('click', () => showSelection(hex));
         body.addEventListener('mousedown', () => showSelection(hex));
+        body.addEventListener('raycaster-intersected', function() { this._hovered = true; });
+        body.addEventListener('raycaster-intersected-cleared', function() { this._hovered = false; });
 
         // Nose cone (direction indicator)
         const nose = document.createElement('a-cone');
@@ -253,6 +255,23 @@
       }
     }
 
+    // Click handling — works for mouse, touch, AND Quest controllers
+    // A-Frame laser-controls emit 'click' on intersected elements when trigger is pulled
+    container.addEventListener('click', (evt) => {
+      let target = evt.target;
+      // Walk up to find the pickable sphere or its parent with hex data
+      while (target && target !== container) {
+        if (target.classList && target.classList.contains('pickable')) {
+          const hex = target.parentElement && target.parentElement.dataset.hex;
+          if (hex) { showSelection(hex); return; }
+        }
+        if (target.dataset && target.dataset.hex) {
+          showSelection(target.dataset.hex); return;
+        }
+        target = target.parentElement;
+      }
+    });
+
     // Thumbstick movement for Quest controllers
     function attachThumbstick(controller) {
       controller.addEventListener('thumbstickmoved', (e) => {
@@ -261,16 +280,13 @@
         rig.object3D.position.x += x * 0.5;
         rig.object3D.position.z += y * 0.5;
       });
-      // Quest controller click — triggerdown fires when trigger is pulled
+      // Fallback: on trigger, find any hovered pickable
       controller.addEventListener('triggerdown', () => {
-        const raycaster = controller.components.raycaster;
-        if (!raycaster) return;
-        const intersections = raycaster.intersections;
-        if (intersections && intersections.length > 0) {
-          const hit = intersections[0].object.el;
-          if (hit && hit.classList.contains('pickable')) {
-            const hex = hit.parentElement.dataset.hex;
-            if (hex) showSelection(hex);
+        const els = container.querySelectorAll('.pickable');
+        for (const el of els) {
+          if (el._hovered) {
+            const hex = el.parentElement && el.parentElement.dataset.hex;
+            if (hex) { showSelection(hex); return; }
           }
         }
       });
