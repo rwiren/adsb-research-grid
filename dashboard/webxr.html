@@ -60,7 +60,7 @@
 
   <a-scene background="color: #020617" renderer="antialias: true"
            xr-mode-ui="enabled: true; enterAREnabled: true"
-           webxr="optionalFeatures: local-floor, bounded-floor, hand-tracking, dom-overlay; overlayElement: #hud"
+           webxr="optionalFeatures: local-floor, bounded-floor, hand-tracking"
            cursor="rayOrigin: mouse" raycaster="objects: .pickable">
 
     <a-entity id="rig" position="0 15 35">
@@ -70,36 +70,33 @@
                 position="0 0 0">
         <a-cursor raycaster="objects: .pickable" color="#38bdf8" opacity="0.5" fuse="false"></a-cursor>
       </a-camera>
-      <a-entity id="leftHand" laser-controls="hand: left" raycaster="objects: .pickable; far: 200" line="color: #66e1ff; opacity: 0.7"></a-entity>
-      <a-entity id="rightHand" laser-controls="hand: right" raycaster="objects: .pickable; far: 200" line="color: #66e1ff; opacity: 0.7"></a-entity>
+      <a-entity id="leftHand" laser-controls="hand: left" raycaster="objects: .pickable"></a-entity>
+      <a-entity id="rightHand" laser-controls="hand: right" raycaster="objects: .pickable"></a-entity>
     </a-entity>
 
-    <!-- World container — scaled down in VR so scene is around you -->
-    <a-entity id="world" position="0 0 -5" scale="1 1 1">
-      <!-- Ground + range rings -->
-      <a-plane position="0 0 0" rotation="-90 0 0" width="200" height="200" color="#061126" opacity="0.95"></a-plane>
-      <a-ring position="0 0.01 0" rotation="-90 0 0" radius-inner="49.5" radius-outer="50" color="#1f2937" segments-theta="64"></a-ring>
-      <a-ring position="0 0.01 0" rotation="-90 0 0" radius-inner="99.5" radius-outer="100" color="#111827" segments-theta="64"></a-ring>
-      <a-text value="50km" position="50 0.1 0" rotation="-90 0 0" color="#475569" scale="3 3 3"></a-text>
-      <a-text value="100km" position="100 0.1 0" rotation="-90 0 0" color="#334155" scale="3 3 3"></a-text>
+    <!-- Ground + range rings -->
+    <a-plane position="0 0 0" rotation="-90 0 0" width="200" height="200" color="#061126" opacity="0.95"></a-plane>
+    <a-ring position="0 0.01 0" rotation="-90 0 0" radius-inner="49.5" radius-outer="50" color="#1f2937" segments-theta="64"></a-ring>
+    <a-ring position="0 0.01 0" rotation="-90 0 0" radius-inner="99.5" radius-outer="100" color="#111827" segments-theta="64"></a-ring>
+    <a-text value="50km" position="50 0.1 0" rotation="-90 0 0" color="#475569" scale="3 3 3"></a-text>
+    <a-text value="100km" position="100 0.1 0" rotation="-90 0 0" color="#334155" scale="3 3 3"></a-text>
 
-      <!-- Sensor markers -->
-      <a-cylinder position="0 1 0" radius="0.9" height="2" color="#0072B2" emissive="#0072B2" emissive-intensity="0.2"></a-cylinder>
-      <a-text value="NORTH" position="0 2.8 0" align="center" color="#0072B2" scale="2 2 2"></a-text>
+    <!-- Sensor markers -->
+    <a-cylinder position="0 1 0" radius="0.9" height="2" color="#0072B2" emissive="#0072B2" emissive-intensity="0.2"></a-cylinder>
+    <a-text value="NORTH" position="0 2.8 0" align="center" color="#0072B2" scale="2 2 2"></a-text>
 
-      <a-cylinder position="-18 1 -21" radius="0.9" height="2" color="#009E73" emissive="#009E73" emissive-intensity="0.2"></a-cylinder>
-      <a-text value="WEST" position="-18 2.8 -21" align="center" color="#009E73" scale="2 2 2"></a-text>
+    <a-cylinder position="-18 1 -21" radius="0.9" height="2" color="#009E73" emissive="#009E73" emissive-intensity="0.2"></a-cylinder>
+    <a-text value="WEST" position="-18 2.8 -21" align="center" color="#009E73" scale="2 2 2"></a-text>
 
-      <a-cylinder position="24 1 6" radius="0.9" height="2" color="#D55E00" emissive="#D55E00" emissive-intensity="0.2"></a-cylinder>
-      <a-text value="EAST" position="24 2.8 6" align="center" color="#D55E00" scale="2 2 2"></a-text>
+    <a-cylinder position="24 1 6" radius="0.9" height="2" color="#D55E00" emissive="#D55E00" emissive-intensity="0.2"></a-cylinder>
+    <a-text value="EAST" position="24 2.8 6" align="center" color="#D55E00" scale="2 2 2"></a-text>
 
-      <!-- Aircraft populated dynamically -->
-      <a-entity id="aircraft-container"></a-entity>
-    </a-entity>
+    <!-- Aircraft populated dynamically -->
+    <a-entity id="aircraft-container"></a-entity>
 
     <!-- Lighting -->
-    <a-light type="ambient" color="#ffffff" intensity="1.0"></a-light>
-    <a-light type="directional" position="-0.3 1 0.2" intensity="0.8" color="#fff"></a-light>
+    <a-light type="ambient" color="#5b7fa8" intensity="0.5"></a-light>
+    <a-light type="directional" position="-0.3 1 0.2" intensity="0.6" color="#fff"></a-light>
   </a-scene>
 
   <script>
@@ -200,16 +197,14 @@
 
         // Sphere body — this is the clickable target
         const body = document.createElement('a-sphere');
-        body.setAttribute('radius', isMobile ? '0.4' : '0.6');
+        body.classList.add('pickable');
+        body.setAttribute('radius', isMobile ? '0.4' : '0.5');
         body.setAttribute('color', '#00ffaa');
         body.setAttribute('emissive', '#00ffaa');
-        body.setAttribute('emissive-intensity', '0.6');
-        body.setAttribute('opacity', '1');
+        body.setAttribute('emissive-intensity', '0.25');
         body.setAttribute('class', 'pickable');
         body.addEventListener('click', () => showSelection(hex));
         body.addEventListener('mousedown', () => showSelection(hex));
-        body.addEventListener('raycaster-intersected', function() { this._hovered = true; });
-        body.addEventListener('raycaster-intersected-cleared', function() { this._hovered = false; });
 
         // Nose cone (direction indicator)
         const nose = document.createElement('a-cone');
@@ -258,36 +253,6 @@
       }
     }
 
-    // VR/AR mode: scale world so aircraft are visible around you
-    const world = document.getElementById('world');
-    const sceneEl = document.querySelector('a-scene');
-    sceneEl.addEventListener('enter-vr', () => {
-      // Scale: 1 unit (1km) = 0.3m in real life. 50km ring = 15m around you.
-      world.setAttribute('scale', '0.3 0.3 0.3');
-      world.setAttribute('position', '0 0 0'); // centered at your feet
-    });
-    sceneEl.addEventListener('exit-vr', () => {
-      world.setAttribute('scale', '1 1 1');
-      world.setAttribute('position', '0 0 -5');
-    });
-
-    // Click handling — works for mouse, touch, AND Quest controllers
-    // A-Frame laser-controls emit 'click' on intersected elements when trigger is pulled
-    container.addEventListener('click', (evt) => {
-      let target = evt.target;
-      // Walk up to find the pickable sphere or its parent with hex data
-      while (target && target !== container) {
-        if (target.classList && target.classList.contains('pickable')) {
-          const hex = target.parentElement && target.parentElement.dataset.hex;
-          if (hex) { showSelection(hex); return; }
-        }
-        if (target.dataset && target.dataset.hex) {
-          showSelection(target.dataset.hex); return;
-        }
-        target = target.parentElement;
-      }
-    });
-
     // Thumbstick movement for Quest controllers
     function attachThumbstick(controller) {
       controller.addEventListener('thumbstickmoved', (e) => {
@@ -295,16 +260,6 @@
         if (Math.abs(x) < 0.1 && Math.abs(y) < 0.1) return;
         rig.object3D.position.x += x * 0.5;
         rig.object3D.position.z += y * 0.5;
-      });
-      // Fallback: on trigger, find any hovered pickable
-      controller.addEventListener('triggerdown', () => {
-        const els = container.querySelectorAll('.pickable');
-        for (const el of els) {
-          if (el._hovered) {
-            const hex = el.parentElement && el.parentElement.dataset.hex;
-            if (hex) { showSelection(hex); return; }
-          }
-        }
       });
     }
     attachThumbstick(document.getElementById('leftHand'));
