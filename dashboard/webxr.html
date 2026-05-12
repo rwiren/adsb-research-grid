@@ -15,13 +15,25 @@
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <style>
     #hud { position: fixed; top: 10px; left: 10px; color: #0f0; font: 12px monospace; z-index: 999; background: rgba(0,0,0,0.7); padding: 8px; border-radius: 4px; }
-    /* Move A-Frame VR/AR buttons to bottom-left */
-    .a-enter-vr { left: 10px !important; right: auto !important; }
-    .a-enter-ar { left: 60px !important; right: auto !important; }
+    /* Move A-Frame VR/AR buttons to bottom-left, safe area for notch phones */
+    .a-enter-vr, .a-enter-ar {
+      left: calc(10px + env(safe-area-inset-left)) !important;
+      right: auto !important;
+      bottom: calc(10px + env(safe-area-inset-bottom)) !important;
+    }
+    .a-enter-ar { left: calc(60px + env(safe-area-inset-left)) !important; }
+    /* Fallback fullscreen button for iOS (no native WebXR) */
+    #ios-fs-btn {
+      display: none;
+      position: fixed; bottom: calc(10px + env(safe-area-inset-bottom)); left: calc(10px + env(safe-area-inset-left));
+      z-index: 99999; padding: 8px 14px; border: 1px solid #38bdf8; border-radius: 8px;
+      background: rgba(0,0,0,0.8); color: #38bdf8; font: bold 13px monospace; cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <div id="hud">Connecting...</div>
+  <button id="ios-fs-btn" onclick="document.documentElement.requestFullscreen?.()||document.documentElement.webkitRequestFullscreen?.();this.style.display='none'">⛶ Fullscreen</button>
   <div id="help" style="position:fixed; bottom:10px; right:10px; color:#aaa; font:11px monospace; z-index:999; background:rgba(0,0,0,0.7); padding:8px; border-radius:4px; max-width:200px;">
     <b>Controls:</b><br>
     🖱️ Click+drag: look<br>
@@ -39,7 +51,10 @@
     <a-entity id="rig" position="0 20 40">
       <a-camera look-controls="magicWindowTrackingEnabled: true; touchEnabled: true"
                 wasd-controls="acceleration: 80; fly: true"
-                position="0 0 0"></a-camera>
+                camera="fov: 78"
+                position="0 0 0">
+        <a-cursor color="#38bdf8" opacity="0.5" fuse="false"></a-cursor>
+      </a-camera>
       <a-entity laser-controls="hand: left"></a-entity>
       <a-entity laser-controls="hand: right"></a-entity>
     </a-entity>
@@ -172,6 +187,11 @@
         }
       });
     }, 30000);
+
+    // iOS: show fullscreen button since WebXR isn't supported
+    if (/iPhone|iPad/.test(navigator.userAgent) && !navigator.xr) {
+      document.getElementById('ios-fs-btn').style.display = 'block';
+    }
   </script>
 </body>
 </html>
