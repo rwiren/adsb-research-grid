@@ -155,17 +155,40 @@
       return `rgb(${Math.round(40 + 215*t)}, ${Math.round(220 - 170*t)}, ${Math.round(95 - 55*t)})`;
     }
 
+    // 3D popup label (visible in both flat and VR/AR)
+    const popup = document.createElement('a-entity');
+    popup.setAttribute('id', 'popup3d');
+    popup.setAttribute('visible', 'false');
+    popup.innerHTML = `
+      <a-plane width="6" height="2" color="#000" opacity="0.85" position="0 0 0"></a-plane>
+      <a-text id="popup-text" value="" color="#fff" align="center" position="0 0 0.01" scale="2.5 2.5 2.5" wrap-count="30"></a-text>
+    `;
+    document.querySelector('a-scene').appendChild(popup);
+
+    function showPopup3D(text, position) {
+      popup.setAttribute('position', `${position.x} ${position.y + 3} ${position.z}`);
+      popup.querySelector('#popup-text').setAttribute('value', text);
+      popup.setAttribute('visible', 'true');
+    }
+
+    function hidePopup3D() {
+      popup.setAttribute('visible', 'false');
+    }
+
     window.clearSelection = function() {
       selectedHex = null;
       selPanel.style.display = 'none';
+      hidePopup3D();
     };
 
-    // Sensor click — show node name popup
+    // Sensor click — show node name as 3D popup
     document.querySelectorAll('[data-sensor]').forEach(el => {
       el.addEventListener('click', () => {
         const name = el.getAttribute('data-sensor');
+        const pos = el.getAttribute('position');
         selContent.innerHTML = `<b>${name}</b>`;
         selPanel.style.display = 'block';
+        showPopup3D(name, pos);
       });
     });
 
@@ -174,15 +197,13 @@
       if (!item) return;
       selectedHex = hex;
       const s = item.score;
-      const status = s == null ? 'Normal' : s > THRESHOLD ? '⚠️ ANOMALY' : s > 0.02 ? '⚡ Elevated' : '✓ Normal';
-      selContent.innerHTML = [
-        `<b>${(item.flight || hex).toUpperCase()}</b>`,
-        `Hex: ${hex.toUpperCase()}`,
-        `Node: ${item.sensor || '-'}`,
-        `Alt: ${item.alt || '-'} ft | GS: ${item.gs || '-'} kt`,
-        `Score: ${s != null ? s.toFixed(5) : '-'} ${status}`
-      ].join('<br>');
+      const status = s == null ? 'Normal' : s > THRESHOLD ? '!! ANOMALY' : s > 0.02 ? '! Elevated' : 'Normal';
+      const text = `${(item.flight || hex).toUpperCase()}\nNode: ${item.sensor || '-'}\nAlt: ${item.alt || '-'} ft\nScore: ${s != null ? s.toFixed(5) : '-'} ${status}`;
+      // DOM panel (flat view)
+      selContent.innerHTML = text.replace(/\n/g, '<br>');
       selPanel.style.display = 'block';
+      // 3D popup (VR/AR)
+      showPopup3D(text, item.current);
     }
 
     function upsertAircraft(sensor, ac) {
