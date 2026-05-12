@@ -60,7 +60,8 @@
 
   <a-scene background="color: #020617" renderer="antialias: true; colorManagement: true"
            xr-mode-ui="enabled: true; enterAREnabled: true"
-           webxr="optionalFeatures: local-floor, bounded-floor, hand-tracking">
+           webxr="optionalFeatures: local-floor, bounded-floor, hand-tracking"
+           cursor="rayOrigin: mouse" raycaster="objects: .pickable">
 
     <a-entity id="rig" position="0 15 35">
       <a-camera id="cam" camera="fov: 78"
@@ -201,7 +202,9 @@
         body.setAttribute('color', '#00ffaa');
         body.setAttribute('emissive', '#00ffaa');
         body.setAttribute('emissive-intensity', '0.25');
+        body.setAttribute('class', 'pickable');
         body.addEventListener('click', () => showSelection(hex));
+        body.addEventListener('mousedown', () => showSelection(hex));
 
         // Nose cone (direction indicator)
         const nose = document.createElement('a-cone');
