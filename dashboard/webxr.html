@@ -106,8 +106,9 @@
   <script>
   (function() {
     const MQTT_URL = 'wss://mqtt.securingskies.eu:8443';
-    const MQTT_USER = 'team9';
-    const MQTT_PASS = 'ResearchView2026!';
+    const params = new URLSearchParams(window.location.search);
+    const MQTT_USER = params.get('u') || '';
+    const MQTT_PASS = params.get('p') || '';
 
     const REF_LAT = 60.319555;
     const REF_LON = 24.830816;
@@ -349,7 +350,11 @@
     tick();
 
     // MQTT
-    const client = mqtt.connect(MQTT_URL, { username: MQTT_USER, password: MQTT_PASS, rejectUnauthorized: false });
+    if (!MQTT_USER || !MQTT_PASS) {
+      hud.textContent = 'No credentials — add ?u=USER&p=PASS to URL';
+      hud.style.color = '#f59e0b';
+    } else {
+      const client = mqtt.connect(MQTT_URL, { username: MQTT_USER, password: MQTT_PASS, rejectUnauthorized: false });
 
     client.on('connect', () => {
       hud.textContent = 'LIVE — Connected';
@@ -391,6 +396,7 @@
 
     client.on('reconnect', () => { hud.textContent = 'Reconnecting...'; });
     client.on('error', () => { hud.textContent = 'MQTT Error'; });
+    } // end credentials check
   })();
   </script>
 </body>
