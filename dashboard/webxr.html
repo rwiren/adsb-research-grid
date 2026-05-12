@@ -68,7 +68,11 @@
                 look-controls="magicWindowTrackingEnabled: true; touchEnabled: true"
                 wasd-controls="acceleration: 80; fly: true"
                 position="0 0 0">
-        <a-cursor raycaster="objects: .pickable" color="#38bdf8" opacity="0.5" fuse="false"></a-cursor>
+        <a-entity cursor="fuse: true; fuseTimeout: 1500" raycaster="objects: .pickable; far: 200"
+                  position="0 0 -1"
+                  geometry="primitive: ring; radiusInner: 0.01; radiusOuter: 0.015"
+                  material="color: #38bdf8; shader: flat">
+        </a-entity>
       </a-camera>
       <a-entity id="leftHand" laser-controls="hand: left" raycaster="objects: .pickable"></a-entity>
       <a-entity id="rightHand" laser-controls="hand: right" raycaster="objects: .pickable"></a-entity>
