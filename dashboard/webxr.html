@@ -70,8 +70,8 @@
                 position="0 0 0">
         <a-cursor raycaster="objects: .pickable" color="#38bdf8" opacity="0.5" fuse="false"></a-cursor>
       </a-camera>
-      <a-entity id="leftHand" laser-controls="hand: left" raycaster="objects: .pickable"></a-entity>
-      <a-entity id="rightHand" laser-controls="hand: right" raycaster="objects: .pickable"></a-entity>
+      <a-entity id="leftHand" laser-controls="hand: left" raycaster="objects: .pickable; far: 200"></a-entity>
+      <a-entity id="rightHand" laser-controls="hand: right" raycaster="objects: .pickable; far: 200"></a-entity>
     </a-entity>
 
     <!-- Ground + range rings -->
@@ -260,6 +260,19 @@
         if (Math.abs(x) < 0.1 && Math.abs(y) < 0.1) return;
         rig.object3D.position.x += x * 0.5;
         rig.object3D.position.z += y * 0.5;
+      });
+      // Quest controller click — triggerdown fires when trigger is pulled
+      controller.addEventListener('triggerdown', () => {
+        const raycaster = controller.components.raycaster;
+        if (!raycaster) return;
+        const intersections = raycaster.intersections;
+        if (intersections && intersections.length > 0) {
+          const hit = intersections[0].object.el;
+          if (hit && hit.classList.contains('pickable')) {
+            const hex = hit.parentElement.dataset.hex;
+            if (hex) showSelection(hex);
+          }
+        }
       });
     }
     attachThumbstick(document.getElementById('leftHand'));
