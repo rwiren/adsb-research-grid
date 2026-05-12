@@ -33,14 +33,16 @@
       border: 1px solid rgba(0,200,255,0.35); min-width: 220px; display: none;
     }
     #selection .close { cursor: pointer; float: right; color: #666; }
-    .a-enter-vr, .a-enter-ar {
-      left: 50% !important;
+    .a-enter-vr, .a-enter-ar,
+    .a-enter-vr-button, .a-enter-ar-button {
       right: auto !important;
+      left: 50% !important;
+      bottom: calc(12px + env(safe-area-inset-bottom)) !important;
       transform: translateX(-50%) !important;
-      bottom: calc(10px + env(safe-area-inset-bottom)) !important;
+      position: fixed !important;
     }
-    .a-enter-vr { margin-left: -30px !important; }
-    .a-enter-ar { margin-left: 30px !important; }
+    .a-enter-vr, .a-enter-vr-button { margin-left: -35px !important; }
+    .a-enter-ar, .a-enter-ar-button { margin-left: 35px !important; }
     #ios-fs-btn {
       display: none; position: fixed;
       bottom: calc(10px + env(safe-area-inset-bottom));
