@@ -107,8 +107,8 @@
   (function() {
     const MQTT_URL = 'wss://mqtt.securingskies.eu:8443';
     const params = new URLSearchParams(window.location.search);
-    const MQTT_USER = params.get('u') || '';
-    const MQTT_PASS = params.get('p') || '';
+    const MQTT_USER = params.get('u') || 'team9';
+    const MQTT_PASS = params.get('p') || '{{MQTT_PASS}}';
 
     const REF_LAT = 60.319555;
     const REF_LON = 24.830816;
