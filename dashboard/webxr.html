@@ -33,7 +33,7 @@
 </head>
 <body>
   <div id="hud">Connecting...</div>
-  <button id="ios-fs-btn" onclick="document.documentElement.requestFullscreen?.()||document.documentElement.webkitRequestFullscreen?.();this.style.display='none'">⛶ Fullscreen</button>
+  <button id="ios-fs-btn" onclick="document.documentElement.requestFullscreen?.()||document.documentElement.webkitRequestFullscreen?.();this.style.display='none'">🥽 Enter 3D View</button>
   <div id="help" style="position:fixed; bottom:10px; right:10px; color:#aaa; font:11px monospace; z-index:999; background:rgba(0,0,0,0.7); padding:8px; border-radius:4px; max-width:200px;">
     <b>Controls:</b><br>
     🖱️ Click+drag: look<br>
@@ -189,7 +189,9 @@
     }, 30000);
 
     // iOS: show fullscreen button since WebXR isn't supported
-    if (/iPhone|iPad/.test(navigator.userAgent) && !navigator.xr) {
+    // All iOS browsers use WebKit — none support WebXR immersive sessions
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIOS) {
       document.getElementById('ios-fs-btn').style.display = 'block';
     }
   </script>
