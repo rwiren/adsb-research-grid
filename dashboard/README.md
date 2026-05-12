@@ -29,6 +29,7 @@ Real-time ADS-B surveillance dashboard for the 3-node sensor array (North/West/E
   1. Their squawk code is in `UAV_SQUAWKS` (default: `7400` — UAS lost C2 link per ICAO Doc 10019), **or**
   2. Their ADS-B emitter category is `B4` (UAV/Drone), `B6` (UAV), or `B7` (UAV).
   Detected UAVs show a pulsing cyan ring on the map, a `⬡ UNMANNED AIRCRAFT` badge in the popup, an entry in the status banner above the map, and a UAV count in the legend.  The `UAV_SQUAWKS` set is centralised in `dashboard.py` and is easy to extend.
+- **WebXR 3D Viewer (v4.2)** — immersive ADS-B visualization at `/webxr.html`. Single self-contained HTML file using A-Frame 1.4.2 + MQTT.js. See [WebXR section](#webxr-3d-viewer) below.
 
 ## Architecture
 
@@ -105,6 +106,62 @@ Defaults to `mqtt.securingskies.eu:8883`, configurable via `MQTT_HOST` and
 | `sensor-east/aircraft` | readsb `aircraft.json` payload |
 | `sensor-east/stats` | readsb `stats.json` payload |
 | `sensor-core/anomalies` | ML pipeline anomaly scores `{icao_hex: score}` |
+
+## WebXR 3D Viewer
+
+**Live:** [https://www.securingskies.eu:9443/webxr.html](https://www.securingskies.eu:9443/webxr.html)
+
+**File:** `dashboard/webxr.html` (single self-contained HTML, no build step)
+
+Immersive 3D visualization of live ADS-B traffic with ML anomaly scoring.
+
+### Supported Platforms
+
+| Platform | Mode | Interaction |
+|---|---|---|
+| Meta Quest 3 | Full VR + AR | Gaze cursor (look at target 1.5s to select) + thumbstick movement |
+| Android phone | AR (magic window) | Gaze cursor + gyro look-around |
+| Desktop browser | Flat 3D | Mouse drag to look, WASD/QE to move, click to select |
+| iPhone/iPad | Flat only (no WebXR) | Fullscreen button, gyro magic window |
+
+### Features (v4.2 — 2026-05-12)
+
+- ✅ Live aircraft positions from MQTT (all 3 sensors)
+- ✅ Aircraft colored by ML anomaly score (green → red)
+- ✅ Pulsing animation on detected anomalies
+- ✅ Smooth position interpolation (lerp)
+- ✅ Altitude stems (vertical lines to ground)
+- ✅ Nose cones (direction indicator)
+- ✅ Clickable sensor nodes — shows sensor name
+- ✅ Click aircraft — shows hex, node, altitude, anomaly score
+- ✅ 3D popup labels (visible in VR/AR, auto-hide after 4s)
+- ✅ Gaze cursor with fuse (works in AR/VR where touch doesn't)
+- ✅ Billboard labels (always face camera)
+- ✅ 50km + 100km range rings
+- ✅ FPS counter in HUD
+- ✅ Auto-cleanup of stale aircraft (70s timeout)
+- ✅ Platform-aware aircraft budget (300 Quest, 80 mobile, 200 desktop)
+
+### Known Limitations
+
+- VR/AR camera positioning needs tuning (aircraft may appear far away in VR)
+- iOS has no WebXR support (Apple limitation)
+- MQTT credentials hardcoded (acceptable for private research demo)
+- No flight path trails yet
+- Controller trigger click not yet working in Quest VR (gaze cursor works)
+
+### Architecture
+
+```
+Quest 3 / Phone / Desktop
+        │
+        │ wss://mqtt.securingskies.eu:8443
+        ▼
+   MQTT Broker (Mosquitto)
+        │
+        ├── +/aircraft        → live positions (1 Hz per sensor)
+        └── sensor-core/ml-anomaly → anomaly scores from GRU autoencoder
+```
 
 ## TDOA Uncertainty Explanation
 
