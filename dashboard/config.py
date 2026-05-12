@@ -50,3 +50,10 @@ _UAV_CATEGORIES   = {"B4", "B6", "B7"}
 def is_uav_category(category: str) -> bool:
     """Return True if the ADS-B emitter category indicates an unmanned aircraft."""
     return category in _UAV_CATEGORIES if category else False
+
+# ------------------------------------------------------------------------------
+# ML Detection Threshold Override
+# Set to override the model's baked-in threshold. None = use model default.
+# Raise to reduce false positives, lower to increase sensitivity.
+# ------------------------------------------------------------------------------
+ML_THRESHOLD_OVERRIDE = float(os.getenv('ML_THRESHOLD', '0.04'))

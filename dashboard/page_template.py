@@ -446,7 +446,7 @@ HTML_TEMPLATE = """
                 <button style="background:rgba(210,153,34,0.1);border:1px solid rgba(210,153,34,0.4);color:#d29922;font-size:0.85em;padding:4px 10px;border-radius:4px;cursor:pointer;font-family:monospace;" onclick="injectSpoof('rf_shadow')" title="20dB RSSI drop">⚡ RF</button>
                 <button style="background:rgba(210,168,255,0.1);border:1px solid rgba(210,168,255,0.4);color:#d2a8ff;font-size:0.85em;padding:4px 10px;border-radius:4px;cursor:pointer;font-family:monospace;" onclick="injectSpoof('velocity_drift')" title="Gradual speed manipulation">⚡ DRIFT</button>
                 </span> <span id="accuracy-score" style="font-size:0.85em;margin-left:6px;color:#8b949e;"></span></div>
-            <div class="expert-row" style="display:none;margin-bottom:6px;padding:4px 8px;background:rgba(88,166,255,0.05);border:1px solid rgba(88,166,255,0.15);border-radius:3px;font-size:0.78em;color:#58a6ff;">⚙ Model: GRU h128/l4 · 305K params · τ=0.005 · Dataset: 283K rows (91 ac, GNSS-verified)</div>
+            <div class="expert-row" style="display:none;margin-bottom:6px;padding:4px 8px;background:rgba(88,166,255,0.05);border:1px solid rgba(88,166,255,0.15);border-radius:3px;font-size:0.78em;color:#58a6ff;">⚙ Model: GRU h128/l8 · 113K params · τ=0.016 · Dataset: 204K rows (123 ac, May 2026)</div>
             <div class="sensor-grid">
                 <div class="sensor-card" id="card-north" style="order:2;">
                     <div class="name" style="color:#58a6ff;">▲ NORTH</div>
