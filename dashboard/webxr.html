@@ -253,6 +253,15 @@
       }
     }
 
+    // VR/AR: reposition rig so you see the same view as flat mode
+    const sceneEl = document.querySelector('a-scene');
+    sceneEl.addEventListener('enter-vr', () => {
+      rig.setAttribute('position', '0 40 35');
+    });
+    sceneEl.addEventListener('exit-vr', () => {
+      rig.setAttribute('position', '0 15 35');
+    });
+
     // Thumbstick movement for Quest controllers
     function attachThumbstick(controller) {
       controller.addEventListener('thumbstickmoved', (e) => {
