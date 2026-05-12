@@ -1,0 +1,165 @@
+<!--
+  File: index.html
+  Version: 1.2.0
+  Date: 2026-05-12
+  Description: WebXR ADS-B visualization with live MQTT data feed.
+  Supports: Quest 3 (VR), Mobile (Magic Window + AR), Desktop
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Securing Skies — 3D ADS-B Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <style>
+    #hud { position: fixed; top: 10px; left: 10px; color: #0f0; font: 12px monospace; z-index: 999; background: rgba(0,0,0,0.7); padding: 8px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div id="hud">Connecting...</div>
+
+  <a-scene background="color: #050510" renderer="antialias: true"
+           xr-mode-ui="enabled: true; enterAREnabled: true">
+
+    <!-- Camera with mobile gyro + touch + Quest controllers -->
+    <a-entity id="rig" position="0 20 40">
+      <a-camera look-controls="magicWindowTrackingEnabled: true; touchEnabled: true"
+                wasd-controls="acceleration: 50"
+                position="0 0 0"></a-camera>
+      <a-entity laser-controls="hand: left"></a-entity>
+      <a-entity laser-controls="hand: right"></a-entity>
+    </a-entity>
+
+    <!-- Ground reference (Helsinki area ~60km) -->
+    <a-plane position="0 0 0" rotation="-90 0 0" width="120" height="120"
+             color="#0a0a1a" opacity="0.8"></a-plane>
+    <a-ring position="0 0.01 0" rotation="-90 0 0" radius-inner="49.5" radius-outer="50"
+            color="#333" segments-theta="64"></a-ring>
+    <a-text value="50km" position="50 0.1 0" rotation="-90 0 0" color="#444" scale="3 3 3"></a-text>
+
+    <!-- Sensor markers (fixed positions, scaled: 1 unit = 1 km) -->
+    <a-cone position="0 0 0" radius-bottom="0.8" height="2" color="#0072B2"
+            metalness="0.5"></a-cone>
+    <a-text value="NORTH" position="0 2.5 0" align="center" color="#0072B2" scale="2 2 2"></a-text>
+
+    <a-cone position="-18 0 -21" radius-bottom="0.8" height="2" color="#009E73"
+            metalness="0.5"></a-cone>
+    <a-text value="WEST" position="-18 2.5 -21" align="center" color="#009E73" scale="2 2 2"></a-text>
+
+    <a-cone position="24 0 6" radius-bottom="0.8" height="2" color="#D55E00"
+            metalness="0.5"></a-cone>
+    <a-text value="EAST" position="24 2.5 6" align="center" color="#D55E00" scale="2 2 2"></a-text>
+
+    <!-- Aircraft container (populated dynamically) -->
+    <a-entity id="aircraft-container"></a-entity>
+
+    <!-- Lighting -->
+    <a-light type="ambient" color="#334" intensity="0.6"></a-light>
+    <a-light type="directional" position="1 2 1" intensity="0.4" color="#fff"></a-light>
+  </a-scene>
+
+  <script>
+    // MQTT connection to live sensor feed
+    const MQTT_URL = 'wss://mqtt.securingskies.eu:8443';
+    const MQTT_USER = 'team9';
+    const MQTT_PASS = 'ResearchView2026!';
+
+    // Sensor reference position (North sensor = origin)
+    const REF_LAT = 60.319555;
+    const REF_LON = 24.830816;
+
+    // Convert lat/lon to local XZ (km from reference)
+    function geoToLocal(lat, lon, alt_ft) {
+      const x = (lon - REF_LON) * 111.32 * Math.cos(REF_LAT * Math.PI / 180);
+      const z = -(lat - REF_LAT) * 111.32;
+      const y = (alt_ft || 0) / 3281; // ft to km, exaggerated
+      return { x, y: y * 3, z }; // 3x altitude exaggeration
+    }
+
+    const aircraft = {};
+    const container = document.getElementById('aircraft-container');
+    const hud = document.getElementById('hud');
+    let msgCount = 0;
+
+    // Connect MQTT
+    const client = mqtt.connect(MQTT_URL, {
+      username: MQTT_USER,
+      password: MQTT_PASS,
+      rejectUnauthorized: false
+    });
+
+    client.on('connect', () => {
+      hud.textContent = 'LIVE — Connected';
+      client.subscribe('+/aircraft');
+      client.subscribe('sensor-core/ml-anomaly');
+    });
+
+    client.on('message', (topic, message) => {
+      const payload = JSON.parse(message.toString());
+
+      if (topic.includes('/aircraft')) {
+        const sensor = topic.split('/')[0];
+        const acList = payload.aircraft || [];
+        acList.forEach(ac => {
+          if (!ac.lat || !ac.lon) return;
+          const id = ac.hex;
+          const pos = geoToLocal(ac.lat, ac.lon, ac.alt_baro);
+
+          if (!aircraft[id]) {
+            // Create new aircraft entity
+            const el = document.createElement('a-entity');
+            el.setAttribute('id', 'ac-' + id);
+            el.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
+            el.innerHTML = `
+              <a-sphere radius="0.3" color="#00ff88" opacity="0.9"></a-sphere>
+              <a-text value="${ac.flight || id}" position="0 0.6 0" align="center"
+                      color="#fff" scale="1.2 1.2 1.2" look-at="[camera]"></a-text>
+            `;
+            container.appendChild(el);
+            aircraft[id] = { el, score: 0, lastSeen: Date.now() };
+          } else {
+            // Update position
+            aircraft[id].el.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
+            aircraft[id].lastSeen = Date.now();
+          }
+        });
+        msgCount++;
+      }
+
+      if (topic === 'sensor-core/ml-anomaly') {
+        const id = payload.hex;
+        if (aircraft[id]) {
+          const score = payload.anomaly_score;
+          aircraft[id].score = score;
+          // Color: green (normal) → yellow → red (anomaly)
+          const t = Math.min(score / 0.04, 1); // normalize to threshold
+          const r = Math.floor(t * 255);
+          const g = Math.floor((1 - t) * 255);
+          const color = `rgb(${r}, ${g}, 50)`;
+          aircraft[id].el.querySelector('a-sphere').setAttribute('color', color);
+          if (score > 0.04) {
+            aircraft[id].el.querySelector('a-sphere').setAttribute('animation',
+              'property: scale; to: 1.5 1.5 1.5; dur: 500; dir: alternate; loop: true');
+          }
+        }
+      }
+
+      // Update HUD
+      hud.textContent = `LIVE | ${Object.keys(aircraft).length} aircraft | ${msgCount} msgs`;
+    });
+
+    // Cleanup stale aircraft every 30s
+    setInterval(() => {
+      const now = Date.now();
+      Object.keys(aircraft).forEach(id => {
+        if (now - aircraft[id].lastSeen > 60000) {
+          aircraft[id].el.remove();
+          delete aircraft[id];
+        }
+      });
+    }, 30000);
+  </script>
+</body>
+</html>

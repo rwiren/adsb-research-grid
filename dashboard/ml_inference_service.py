@@ -75,12 +75,12 @@ MQTT_USER = "team9"
 MQTT_TRANSPORT = "websockets"
 MQTT_TLS = True
 
-MODEL_PATH = "/root/adsb-dashboard/models/adsb_gru_h128_l4_w30_283k_7feat.pth"
+MODEL_PATH = "/root/adsb-dashboard/models/gru_11feat_may2026.pth"
 PUBLISH_TOPIC = "sensor-core/ml-anomaly"
 
 # Sliding window parameters (Paper Section 4.1)
 WINDOW_SIZE = 30          # T = 30 timesteps
-FEATURE_DIM = 7           # D = 7 features (Table 2)
+FEATURE_DIM = 11           # D = 7 features (Table 2)
 INFERENCE_INTERVAL = 5
 
 # Distance filter: only infer on aircraft within this range of their sensor.
@@ -126,10 +126,14 @@ FEATURE_NAMES = [
     "velocity_calculated",
     "velocity_error",
     "velocity_drift",
+    "velocity_drift_weighted",
+    "displacement_error",
     "distance_to_sensor",
     "rssi_expected",
     "rssi_error",
     "rssi_error_normalized",
+    "distance_to_airport",
+    "msg_interval_variance",
 ]
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -175,7 +179,7 @@ def haversine_km(lat1, lon1, lat2, lon2):
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
-def compute_features(prev_obs, curr_obs, vel_error_history, sensor):
+def compute_features(prev_obs, curr_obs, vel_error_history, dt_history, sensor):
     """
     Compute 7-dimensional feature vector for one timestep.
 
@@ -200,6 +204,8 @@ def compute_features(prev_obs, curr_obs, vel_error_history, sensor):
     # Training data was 1Hz; we accept 0.5-3.0s to handle minor jitter.
     if dt < DT_MIN or dt > DT_MAX:
         return None
+
+    dt_history.append(dt)
 
     # Feature 0: velocity_calculated (m/s)
     dist_km = haversine_km(prev_obs["lat"], prev_obs["lon"],
@@ -241,9 +247,36 @@ def compute_features(prev_obs, curr_obs, vel_error_history, sensor):
     rssi_mult = SENSOR_RSSI_MULT.get(sensor, 1.0)
     rssi_error_normalized = rssi_error / rssi_mult
 
+    # Feature 3b: velocity_drift_weighted (magnitude-preserving)
+    if len(vel_error_history) >= 2:
+        diffs = [vel_error_history[i] - vel_error_history[i-1] for i in range(1, len(vel_error_history))]
+        recent = diffs[-VELOCITY_DRIFT_WINDOW:]
+        weights = list(range(1, len(recent) + 1))
+        velocity_drift_weighted = sum(d * w for d, w in zip(recent, weights)) / sum(weights)
+    else:
+        velocity_drift_weighted = 0.0
+
+    # Feature 4b: displacement_error (position jump detection)
+    expected_dist = velocity_calculated * dt / 1000.0  # m/s * s -> km
+    displacement_error = dist_km - expected_dist
+
+    # Feature 9: distance_to_airport (EFHK Helsinki-Vantaa)
+    EFHK_LAT, EFHK_LON = 60.317222, 24.963333
+    distance_to_airport = haversine_km(curr_obs["lat"], curr_obs["lon"], EFHK_LAT, EFHK_LON)
+
+    # Feature 10: msg_interval_variance (rolling variance of dt, window=10)
+    if len(dt_history) >= 2:
+        dt_arr = list(dt_history)
+        dt_mean = sum(dt_arr) / len(dt_arr)
+        msg_interval_variance = sum((d - dt_mean)**2 for d in dt_arr) / len(dt_arr)
+    else:
+        msg_interval_variance = 0.0
+
     return np.array([
         velocity_calculated, velocity_error, velocity_drift,
+        velocity_drift_weighted, displacement_error,
         distance_to_sensor, rssi_expected, rssi_error, rssi_error_normalized,
+        distance_to_airport, msg_interval_variance,
     ], dtype=np.float32)
 
 
@@ -275,6 +308,7 @@ class AircraftBuffer:
     def __init__(self):
         self.features = deque(maxlen=WINDOW_SIZE)
         self.vel_error_history = deque(maxlen=50)
+        self.dt_history = deque(maxlen=10)
         self.prev_obs = {}          # Per-sensor: {sensor: {lat,lon,gs,rssi,ts}}
         self.primary_sensor = None  # Locked sensor for this aircraft
         self.obs_count = 0          # Total valid observations
@@ -316,7 +350,7 @@ class AircraftBuffer:
         if prev is None:
             return
 
-        feat = compute_features(prev, obs, self.vel_error_history, sensor)
+        feat = compute_features(prev, obs, self.vel_error_history, self.dt_history, sensor)
         if feat is None:
             return  # dt out of bounds
 
@@ -356,8 +390,15 @@ class InferenceEngine:
         self.model.load_state_dict(ckpt["model_state_dict"])
         self.model.eval()
         self.scaler = ckpt["scaler"]
-        self.threshold = ckpt["anomaly_threshold"]
-        log.info(f"Model loaded: {hp['input_size']}D, τ={self.threshold:.6f}")
+        self.base_threshold = ckpt["anomaly_threshold"]
+        # Override from config if set
+        from config import ML_THRESHOLD_OVERRIDE
+        if ML_THRESHOLD_OVERRIDE:
+            self.base_threshold = ML_THRESHOLD_OVERRIDE
+        self.threshold = self.base_threshold
+        self.score_history = deque(maxlen=1000)
+        self.adaptive = True
+        log.info(f"Model loaded: {hp['input_size']}D, τ={self.threshold:.6f} (adaptive)")
 
     def infer(self, window):
         """
@@ -376,6 +417,13 @@ class InferenceEngine:
                 "mse": float(per_feature_mse[i]),
                 "pct": float(per_feature_mse[i] / total_error * 100) if total_error > 0 else 0.0,
             }
+        # Adaptive threshold: 99.9th percentile of recent scores
+        self.score_history.append(anomaly_score)
+        if self.adaptive and len(self.score_history) >= 100:
+            import numpy as _np
+            self.threshold = float(_np.percentile(list(self.score_history), 99.9))
+            self.threshold = max(self.threshold, self.base_threshold)
+
         return {
             "anomaly_score": anomaly_score,
             "threshold": self.threshold,
