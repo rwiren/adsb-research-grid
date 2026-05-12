@@ -60,7 +60,7 @@
 
   <a-scene background="color: #020617" renderer="antialias: true; colorManagement: true"
            xr-mode-ui="enabled: true; enterAREnabled: true"
-           webxr="optionalFeatures: local-floor, bounded-floor, hand-tracking"
+           webxr="optionalFeatures: local-floor, bounded-floor, hand-tracking, dom-overlay; overlayElement: #hud"
            cursor="rayOrigin: mouse" raycaster="objects: .pickable">
 
     <a-entity id="rig" position="0 15 35">
@@ -197,11 +197,11 @@
 
         // Sphere body — this is the clickable target
         const body = document.createElement('a-sphere');
-        body.classList.add('pickable');
-        body.setAttribute('radius', isMobile ? '0.4' : '0.5');
+        body.setAttribute('radius', isMobile ? '0.4' : '0.6');
         body.setAttribute('color', '#00ffaa');
         body.setAttribute('emissive', '#00ffaa');
-        body.setAttribute('emissive-intensity', '0.25');
+        body.setAttribute('emissive-intensity', '0.6');
+        body.setAttribute('opacity', '1');
         body.setAttribute('class', 'pickable');
         body.addEventListener('click', () => showSelection(hex));
         body.addEventListener('mousedown', () => showSelection(hex));
