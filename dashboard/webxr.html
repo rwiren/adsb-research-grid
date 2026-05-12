@@ -1,31 +1,48 @@
 <!--
-  File: index.html
-  Version: 1.2.0
+  File: webxr.html
+  Version: 2.0.0
   Date: 2026-05-12
   Description: WebXR ADS-B visualization with live MQTT data feed.
   Supports: Quest 3 (VR), Mobile (Magic Window + AR), Desktop
+  Merged: smooth lerp, altitude stems, click-to-inspect, nose cones,
+          platform detection, thumbstick nav, range rings, FPS counter.
 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <title>Securing Skies — 3D ADS-B Viewer</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <style>
-    #hud { position: fixed; top: 10px; left: 10px; color: #0f0; font: 12px monospace; z-index: 999; background: rgba(0,0,0,0.7); padding: 8px; border-radius: 4px; }
-    /* Move A-Frame VR/AR buttons to bottom-left, safe area for notch phones */
+    html, body { margin: 0; height: 100%; background: #01030c; overflow: hidden; }
+    #hud {
+      position: fixed; top: 10px; left: 10px; color: #0f0; font: 12px monospace;
+      z-index: 9999; background: rgba(0,0,0,0.8); padding: 8px 10px; border-radius: 6px;
+      border: 1px solid rgba(0,200,255,0.25); pointer-events: none;
+    }
+    #help {
+      position: fixed; bottom: 10px; right: 10px; color: #aaa; font: 11px monospace;
+      z-index: 9999; background: rgba(0,0,0,0.8); padding: 8px; border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.1); max-width: 200px; pointer-events: none;
+    }
+    #selection {
+      position: fixed; top: 10px; right: 10px; color: #d6f7ff; font: 12px monospace;
+      z-index: 9999; background: rgba(3,7,18,0.85); padding: 10px 12px; border-radius: 8px;
+      border: 1px solid rgba(0,200,255,0.35); min-width: 220px; display: none;
+    }
+    #selection .close { cursor: pointer; float: right; color: #666; }
     .a-enter-vr, .a-enter-ar {
       left: calc(10px + env(safe-area-inset-left)) !important;
       right: auto !important;
       bottom: calc(10px + env(safe-area-inset-bottom)) !important;
     }
     .a-enter-ar { left: calc(60px + env(safe-area-inset-left)) !important; }
-    /* Fallback fullscreen button for iOS (no native WebXR) */
     #ios-fs-btn {
-      display: none;
-      position: fixed; bottom: calc(10px + env(safe-area-inset-bottom)); left: calc(10px + env(safe-area-inset-left));
+      display: none; position: fixed;
+      bottom: calc(10px + env(safe-area-inset-bottom));
+      left: calc(10px + env(safe-area-inset-left));
       z-index: 99999; padding: 8px 14px; border: 1px solid #38bdf8; border-radius: 8px;
       background: rgba(0,0,0,0.8); color: #38bdf8; font: bold 13px monospace; cursor: pointer;
     }
@@ -34,88 +51,253 @@
 <body>
   <div id="hud">Connecting...</div>
   <button id="ios-fs-btn" onclick="document.documentElement.requestFullscreen?.()||document.documentElement.webkitRequestFullscreen?.();this.style.display='none'">🥽 Enter 3D View</button>
-  <div id="help" style="position:fixed; bottom:10px; right:10px; color:#aaa; font:11px monospace; z-index:999; background:rgba(0,0,0,0.7); padding:8px; border-radius:4px; max-width:200px;">
-    <b>Controls:</b><br>
-    🖱️ Click+drag: look<br>
-    ⌨️ WASD: move<br>
-    ⌨️ Q/E: up/down<br>
-    📱 Phone: tilt to look<br>
-    🥽 VR: click "Enter VR"<br>
-    <span style="color:#666; font-size:9px;">Click scene to activate</span>
-  </div>
+  <div id="help"></div>
+  <div id="selection"><span class="close" onclick="clearSelection()">✕</span><div id="sel-content"></div></div>
 
-  <a-scene background="color: #050510" renderer="antialias: true"
-           xr-mode-ui="enabled: true; enterAREnabled: true">
+  <a-scene background="color: #020617" renderer="antialias: true; colorManagement: true"
+           xr-mode-ui="enabled: true; enterAREnabled: true"
+           webxr="optionalFeatures: local-floor, bounded-floor, hand-tracking">
 
-    <!-- Camera with mobile gyro + touch + Quest controllers -->
-    <a-entity id="rig" position="0 20 40">
-      <a-camera look-controls="magicWindowTrackingEnabled: true; touchEnabled: true"
+    <a-entity id="rig" position="0 15 35">
+      <a-camera id="cam" camera="fov: 78"
+                look-controls="magicWindowTrackingEnabled: true; touchEnabled: true"
                 wasd-controls="acceleration: 80; fly: true"
-                camera="fov: 78"
                 position="0 0 0">
-        <a-cursor color="#38bdf8" opacity="0.5" fuse="false"></a-cursor>
+        <a-cursor raycaster="objects: .pickable" color="#38bdf8" opacity="0.5" fuse="false"></a-cursor>
       </a-camera>
-      <a-entity laser-controls="hand: left"></a-entity>
-      <a-entity laser-controls="hand: right"></a-entity>
+      <a-entity id="leftHand" laser-controls="hand: left" raycaster="objects: .pickable"></a-entity>
+      <a-entity id="rightHand" laser-controls="hand: right" raycaster="objects: .pickable"></a-entity>
     </a-entity>
 
-    <!-- Ground reference (Helsinki area ~60km) -->
-    <a-plane position="0 0 0" rotation="-90 0 0" width="120" height="120"
-             color="#0a0a1a" opacity="0.8"></a-plane>
-    <a-ring position="0 0.01 0" rotation="-90 0 0" radius-inner="49.5" radius-outer="50"
-            color="#333" segments-theta="64"></a-ring>
-    <a-text value="50km" position="50 0.1 0" rotation="-90 0 0" color="#444" scale="3 3 3"></a-text>
+    <!-- Ground + range rings -->
+    <a-plane position="0 0 0" rotation="-90 0 0" width="200" height="200" color="#061126" opacity="0.95"></a-plane>
+    <a-ring position="0 0.01 0" rotation="-90 0 0" radius-inner="49.5" radius-outer="50" color="#1f2937" segments-theta="64"></a-ring>
+    <a-ring position="0 0.01 0" rotation="-90 0 0" radius-inner="99.5" radius-outer="100" color="#111827" segments-theta="64"></a-ring>
+    <a-text value="50km" position="50 0.1 0" rotation="-90 0 0" color="#475569" scale="3 3 3"></a-text>
+    <a-text value="100km" position="100 0.1 0" rotation="-90 0 0" color="#334155" scale="3 3 3"></a-text>
 
-    <!-- Sensor markers (fixed positions, scaled: 1 unit = 1 km) -->
-    <a-cone position="0 0 0" radius-bottom="0.8" height="2" color="#0072B2"
-            metalness="0.5"></a-cone>
-    <a-text value="NORTH" position="0 2.5 0" align="center" color="#0072B2" scale="2 2 2"></a-text>
+    <!-- Sensor markers -->
+    <a-cylinder position="0 1 0" radius="0.9" height="2" color="#0072B2" emissive="#0072B2" emissive-intensity="0.2"></a-cylinder>
+    <a-text value="NORTH" position="0 2.8 0" align="center" color="#0072B2" scale="2 2 2"></a-text>
 
-    <a-cone position="-18 0 -21" radius-bottom="0.8" height="2" color="#009E73"
-            metalness="0.5"></a-cone>
-    <a-text value="WEST" position="-18 2.5 -21" align="center" color="#009E73" scale="2 2 2"></a-text>
+    <a-cylinder position="-18 1 -21" radius="0.9" height="2" color="#009E73" emissive="#009E73" emissive-intensity="0.2"></a-cylinder>
+    <a-text value="WEST" position="-18 2.8 -21" align="center" color="#009E73" scale="2 2 2"></a-text>
 
-    <a-cone position="24 0 6" radius-bottom="0.8" height="2" color="#D55E00"
-            metalness="0.5"></a-cone>
-    <a-text value="EAST" position="24 2.5 6" align="center" color="#D55E00" scale="2 2 2"></a-text>
+    <a-cylinder position="24 1 6" radius="0.9" height="2" color="#D55E00" emissive="#D55E00" emissive-intensity="0.2"></a-cylinder>
+    <a-text value="EAST" position="24 2.8 6" align="center" color="#D55E00" scale="2 2 2"></a-text>
 
-    <!-- Aircraft container (populated dynamically) -->
+    <!-- Aircraft populated dynamically -->
     <a-entity id="aircraft-container"></a-entity>
 
     <!-- Lighting -->
-    <a-light type="ambient" color="#334" intensity="0.6"></a-light>
-    <a-light type="directional" position="1 2 1" intensity="0.4" color="#fff"></a-light>
+    <a-light type="ambient" color="#5b7fa8" intensity="0.5"></a-light>
+    <a-light type="directional" position="-0.3 1 0.2" intensity="0.6" color="#fff"></a-light>
   </a-scene>
 
   <script>
-    // MQTT connection to live sensor feed
+  (function() {
     const MQTT_URL = 'wss://mqtt.securingskies.eu:8443';
     const MQTT_USER = 'team9';
     const MQTT_PASS = 'ResearchView2026!';
 
-    // Sensor reference position (North sensor = origin)
     const REF_LAT = 60.319555;
     const REF_LON = 24.830816;
+    const ALT_EXAG = 4;
+    const STALE_MS = 70000;
+    const THRESHOLD = 0.04;
 
-    // Convert lat/lon to local XZ (km from reference)
+    // Platform detection
+    const isQuest = /OculusBrowser|Quest/i.test(navigator.userAgent);
+    const isMobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+    const maxAircraft = isQuest ? 300 : (isMobile ? 80 : 200);
+    const lerpFactor = isMobile ? 0.16 : 0.12;
+
+    // Help text
+    const helpEl = document.getElementById('help');
+    helpEl.innerHTML = isQuest
+      ? '<b>Quest 3</b><br>Controllers: aim + click<br>Thumbstick: move'
+      : isMobile
+        ? '<b>Mobile</b><br>Tilt: look around<br>Tap: select aircraft'
+        : '<b>Desktop</b><br>🖱️ Drag: look<br>⌨️ WASD: move, Q/E: up/down<br>Click: select aircraft';
+
+    // iOS fallback
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIOS) document.getElementById('ios-fs-btn').style.display = 'block';
+
+    const container = document.getElementById('aircraft-container');
+    const hud = document.getElementById('hud');
+    const selPanel = document.getElementById('selection');
+    const selContent = document.getElementById('sel-content');
+    const cam = document.getElementById('cam');
+    const rig = document.getElementById('rig');
+
+    const aircraft = new Map();
+    let selectedHex = null;
+    let msgCount = 0;
+    let frameCount = 0, fps = 0, fpsTimer = performance.now();
+    const camPos = new THREE.Vector3();
+
     function geoToLocal(lat, lon, alt_ft) {
       const x = (lon - REF_LON) * 111.32 * Math.cos(REF_LAT * Math.PI / 180);
       const z = -(lat - REF_LAT) * 111.32;
-      const y = (alt_ft || 0) / 3281; // ft to km, exaggerated
-      return { x, y: y * 3, z }; // 3x altitude exaggeration
+      const y = ((alt_ft || 0) / 3281) * ALT_EXAG;
+      return { x, y, z };
     }
 
-    const aircraft = {};
-    const container = document.getElementById('aircraft-container');
-    const hud = document.getElementById('hud');
-    let msgCount = 0;
+    function scoreToColor(score) {
+      if (score == null) return '#00ffaa';
+      const t = Math.min(Math.max(score / THRESHOLD, 0), 1);
+      return `rgb(${Math.round(40 + 215*t)}, ${Math.round(220 - 170*t)}, ${Math.round(95 - 55*t)})`;
+    }
 
-    // Connect MQTT
-    const client = mqtt.connect(MQTT_URL, {
-      username: MQTT_USER,
-      password: MQTT_PASS,
-      rejectUnauthorized: false
-    });
+    window.clearSelection = function() {
+      selectedHex = null;
+      selPanel.style.display = 'none';
+    };
+
+    function showSelection(hex) {
+      const item = aircraft.get(hex);
+      if (!item) return;
+      selectedHex = hex;
+      const s = item.score;
+      const status = s == null ? 'Normal' : s > THRESHOLD ? '⚠️ ANOMALY' : s > 0.02 ? '⚡ Elevated' : '✓ Normal';
+      selContent.innerHTML = [
+        `<b>${(item.flight || hex).toUpperCase()}</b>`,
+        `Hex: ${hex.toUpperCase()}`,
+        `Sensor: ${item.sensor || '-'}`,
+        `Alt: ${item.alt || '-'} ft | GS: ${item.gs || '-'} kt`,
+        `Score: ${s != null ? s.toFixed(5) : '-'} ${status}`
+      ].join('<br>');
+      selPanel.style.display = 'block';
+    }
+
+    function upsertAircraft(sensor, ac) {
+      if (!ac || !ac.hex || !ac.lat || !ac.lon) return;
+      const hex = ac.hex.toLowerCase();
+      const target = geoToLocal(ac.lat, ac.lon, ac.alt_baro);
+      const now = performance.now();
+
+      let item = aircraft.get(hex);
+      if (!item) {
+        // Evict oldest if at capacity
+        if (aircraft.size >= maxAircraft) {
+          let oldestK = null, oldestT = Infinity;
+          for (const [k, v] of aircraft) { if (v.lastSeen < oldestT) { oldestK = k; oldestT = v.lastSeen; } }
+          if (oldestK) { aircraft.get(oldestK).el.remove(); aircraft.delete(oldestK); }
+        }
+
+        const el = document.createElement('a-entity');
+        el.classList.add('pickable');
+        el.dataset.hex = hex;
+        el.setAttribute('position', `${target.x} ${target.y} ${target.z}`);
+
+        // Sphere body
+        const body = document.createElement('a-sphere');
+        body.setAttribute('radius', isMobile ? '0.22' : '0.28');
+        body.setAttribute('color', '#00ffaa');
+        body.setAttribute('emissive', '#00ffaa');
+        body.setAttribute('emissive-intensity', '0.25');
+
+        // Nose cone (direction indicator)
+        const nose = document.createElement('a-cone');
+        nose.setAttribute('height', '0.35');
+        nose.setAttribute('radius-bottom', '0.12');
+        nose.setAttribute('radius-top', '0.01');
+        nose.setAttribute('color', '#b5fef0');
+        nose.setAttribute('position', '0.3 0 0');
+        nose.setAttribute('rotation', '0 0 -90');
+
+        // Altitude stem
+        const stem = document.createElement('a-cylinder');
+        const stemH = Math.max(target.y, 0.1);
+        stem.setAttribute('radius', '0.02');
+        stem.setAttribute('height', stemH);
+        stem.setAttribute('position', `0 ${-stemH/2} 0`);
+        stem.setAttribute('color', '#164e63');
+        stem.setAttribute('opacity', '0.5');
+
+        // Label
+        const label = document.createElement('a-text');
+        label.setAttribute('value', ac.flight || hex.toUpperCase());
+        label.setAttribute('color', '#e2e8f0');
+        label.setAttribute('align', 'center');
+        label.setAttribute('position', '0 0.55 0');
+        label.setAttribute('scale', isMobile ? '1.3 1.3 1.3' : '1.6 1.6 1.6');
+
+        el.appendChild(stem);
+        el.appendChild(body);
+        el.appendChild(nose);
+        el.appendChild(label);
+        container.appendChild(el);
+
+        item = { el, body, stem, label, current: new THREE.Vector3(target.x, target.y, target.z),
+                 target: new THREE.Vector3(target.x, target.y, target.z),
+                 score: null, lastSeen: now, sensor, flight: ac.flight||'', alt: ac.alt_baro, gs: ac.gs };
+        aircraft.set(hex, item);
+
+        el.addEventListener('click', () => showSelection(hex));
+      } else {
+        item.target.set(target.x, target.y, target.z);
+        item.lastSeen = now;
+        item.sensor = sensor;
+        item.flight = ac.flight || item.flight;
+        item.alt = ac.alt_baro;
+        item.gs = ac.gs;
+        if (ac.flight) item.label.setAttribute('value', ac.flight);
+      }
+    }
+
+    // Thumbstick movement for Quest controllers
+    function attachThumbstick(controller) {
+      controller.addEventListener('thumbstickmoved', (e) => {
+        const {x, y} = e.detail || {};
+        if (Math.abs(x) < 0.1 && Math.abs(y) < 0.1) return;
+        rig.object3D.position.x += x * 0.5;
+        rig.object3D.position.z += y * 0.5;
+      });
+    }
+    attachThumbstick(document.getElementById('leftHand'));
+    attachThumbstick(document.getElementById('rightHand'));
+
+    // Animation loop — lerp positions, update stems, billboard labels
+    function tick() {
+      const now = performance.now();
+      cam.object3D.getWorldPosition(camPos);
+
+      for (const [hex, item] of aircraft) {
+        // Smooth movement
+        item.current.lerp(item.target, lerpFactor);
+        item.el.object3D.position.copy(item.current);
+
+        // Update stem
+        const h = Math.max(item.current.y, 0.1);
+        item.stem.setAttribute('height', h);
+        item.stem.object3D.position.y = -h/2;
+
+        // Billboard label
+        item.label.object3D.lookAt(camPos);
+
+        // Remove stale
+        if (now - item.lastSeen > STALE_MS) {
+          if (selectedHex === hex) window.clearSelection();
+          item.el.remove();
+          aircraft.delete(hex);
+        }
+      }
+
+      // FPS
+      frameCount++;
+      if (now - fpsTimer >= 1000) {
+        fps = Math.round(frameCount * 1000 / (now - fpsTimer));
+        frameCount = 0; fpsTimer = now;
+        hud.textContent = `LIVE | ${aircraft.size} aircraft | ${msgCount} msgs | ${fps} fps`;
+      }
+      requestAnimationFrame(tick);
+    }
+    tick();
+
+    // MQTT
+    const client = mqtt.connect(MQTT_URL, { username: MQTT_USER, password: MQTT_PASS, rejectUnauthorized: false });
 
     client.on('connect', () => {
       hud.textContent = 'LIVE — Connected';
@@ -124,76 +306,40 @@
     });
 
     client.on('message', (topic, message) => {
-      const payload = JSON.parse(message.toString());
+      let payload;
+      try { payload = JSON.parse(message.toString()); } catch { return; }
 
       if (topic.includes('/aircraft')) {
         const sensor = topic.split('/')[0];
-        const acList = payload.aircraft || [];
-        acList.forEach(ac => {
-          if (!ac.lat || !ac.lon) return;
-          const id = ac.hex;
-          const pos = geoToLocal(ac.lat, ac.lon, ac.alt_baro);
-
-          if (!aircraft[id]) {
-            // Create new aircraft entity
-            const el = document.createElement('a-entity');
-            el.setAttribute('id', 'ac-' + id);
-            el.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
-            el.innerHTML = `
-              <a-sphere radius="0.3" color="#00ff88" opacity="0.9"></a-sphere>
-              <a-text value="${ac.flight || id}" position="0 0.6 0" align="center"
-                      color="#fff" scale="1.2 1.2 1.2" look-at="[camera]"></a-text>
-            `;
-            container.appendChild(el);
-            aircraft[id] = { el, score: 0, lastSeen: Date.now() };
-          } else {
-            // Update position
-            aircraft[id].el.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
-            aircraft[id].lastSeen = Date.now();
-          }
-        });
+        (payload.aircraft || []).forEach(ac => upsertAircraft(sensor, ac));
         msgCount++;
       }
 
-      if (topic === 'sensor-core/ml-anomaly') {
-        const id = payload.hex;
-        if (aircraft[id]) {
-          const score = payload.anomaly_score;
-          aircraft[id].score = score;
-          // Color: green (normal) → yellow → red (anomaly)
-          const t = Math.min(score / 0.04, 1); // normalize to threshold
-          const r = Math.floor(t * 255);
-          const g = Math.floor((1 - t) * 255);
-          const color = `rgb(${r}, ${g}, 50)`;
-          aircraft[id].el.querySelector('a-sphere').setAttribute('color', color);
-          if (score > 0.04) {
-            aircraft[id].el.querySelector('a-sphere').setAttribute('animation',
-              'property: scale; to: 1.5 1.5 1.5; dur: 500; dir: alternate; loop: true');
+      if (topic === 'sensor-core/ml-anomaly' && payload.hex) {
+        const hex = payload.hex.toLowerCase();
+        const item = aircraft.get(hex);
+        if (item) {
+          const score = Number(payload.anomaly_score);
+          if (!isNaN(score)) {
+            item.score = score;
+            const color = scoreToColor(score);
+            item.body.setAttribute('color', color);
+            item.body.setAttribute('emissive', color);
+            if (score > THRESHOLD) {
+              item.el.setAttribute('animation__pulse', 'property: scale; to: 1.4 1.4 1.4; dur: 500; dir: alternate; loop: true; easing: easeInOutSine');
+            } else {
+              item.el.removeAttribute('animation__pulse');
+              item.el.setAttribute('scale', '1 1 1');
+            }
           }
         }
+        if (selectedHex === hex) showSelection(hex);
       }
-
-      // Update HUD
-      hud.textContent = `LIVE | ${Object.keys(aircraft).length} aircraft | ${msgCount} msgs`;
     });
 
-    // Cleanup stale aircraft every 30s
-    setInterval(() => {
-      const now = Date.now();
-      Object.keys(aircraft).forEach(id => {
-        if (now - aircraft[id].lastSeen > 60000) {
-          aircraft[id].el.remove();
-          delete aircraft[id];
-        }
-      });
-    }, 30000);
-
-    // iOS: show fullscreen button since WebXR isn't supported
-    // All iOS browsers use WebKit — none support WebXR immersive sessions
-    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    if (isIOS) {
-      document.getElementById('ios-fs-btn').style.display = 'block';
-    }
+    client.on('reconnect', () => { hud.textContent = 'Reconnecting...'; });
+    client.on('error', () => { hud.textContent = 'MQTT Error'; });
+  })();
   </script>
 </body>
 </html>
