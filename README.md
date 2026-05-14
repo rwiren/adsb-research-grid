@@ -284,6 +284,24 @@ CesiumJS excels when you need a planetary-scale globe with streaming terrain and
 
 The dashboard now includes an **AUDIO** toggle that enables browser-native speech synthesis (Web Speech API). Announcements are emitted only on **state transitions** (for example, newly detected emergency squawk or unmanned aircraft), preventing repeated audio spam for the same target.
 
+### 🥽 WebXR 3D Viewer (v2.1.0)
+
+A separate immersive VR/AR visualization of live ADS-B traffic with ML anomaly scoring.
+
+**Live:** [https://www.securingskies.eu:9443/webxr.html](https://www.securingskies.eu:9443/webxr.html) (requires MQTT credentials via `?u=USER&p=PASS`)
+
+| Platform | Mode |
+|----------|------|
+| Meta Quest 3 | Full VR + AR, gaze cursor, thumbstick movement |
+| Android phone | AR magic window, gyro + compass orientation |
+| Desktop browser | Mouse drag to look, WASD/QE to move, click to select |
+
+Key features: airplane-shaped aircraft with heading rotation, ML anomaly pulse rings, sensor locking, connection lines to tracking sensors, Align North compass button, real-time info panel (speed, heading, distance, ML score).
+
+Built with A-Frame 1.4.2 + MQTT.js. Single self-contained HTML file, no build step.
+
+See [`dashboard/README.md`](dashboard/README.md#webxr-3d-viewer) for full feature list and [`docs/webxr-optimization-roadmap.md`](docs/webxr-optimization-roadmap.md) for performance profiling data.
+
 ---
 
 ## 📜 Project Heritage
