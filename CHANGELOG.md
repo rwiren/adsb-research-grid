@@ -5,6 +5,20 @@ All notable changes to the **ADS-B Research Grid** project will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1] - 2026-05-14: Repository Security Hardening
+
+### Security
+- Branch protection enabled on `main` (no force push, no deletion, PR required)
+- `.gitignore` expanded: `*.secret`, `*.pem`, `*.key`, `*.p12`, `.env.*`
+- `requirements.txt`: pinned `torch`, `torch-geometric`, `xgboost` to exact versions (was open ranges)
+- `.pre-commit-config.yaml`: added `detect-secrets` and `detect-private-key` hooks
+- `SECURITY.md` updated with current policies (branch protection, dependency pinning, credential handling)
+
+### Maintenance
+- Deleted 23 stale feature branches (all previously merged)
+- Closed stale issue #16 (no implementation existed)
+- Repository reduced to 2 branches: `main` + `develop`
+
 ## [1.3.0] - 2026-05-14: WebXR v2.1.0 — Performance & Visualization Update
 
 ### Added
