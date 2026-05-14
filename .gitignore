@@ -25,6 +25,11 @@ Thumbs.db
 .vault_pass
 .ansible_vault_password
 .env
+.env.*
+*.secret
+*.pem
+*.key
+*.p12
 *.retry
 infra/ansible/inventory/host_vars/secret_*.yml
 
