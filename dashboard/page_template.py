@@ -378,6 +378,7 @@ HTML_TEMPLATE = """
         <p style="margin-bottom:2px;color:#8b949e;padding-left:10px;"><span style="color:#f85149;">⚡ JUMP</span> — teleports a fake aircraft 50km (tests position spoofing detection)</p>
         <p style="margin-bottom:2px;color:#8b949e;padding-left:10px;"><span style="color:#d29922;">⚡ RF</span> — simulates a 20dB signal drop (tests RF shadow detection)</p>
         <p style="margin-bottom:4px;color:#8b949e;padding-left:10px;"><span style="color:#d2a8ff;">⚡ DRIFT</span> — gradually manipulates speed (tests velocity drift detection)</p>
+        <p style="margin-top:10px;margin-bottom:8px;"><a href="/webxr.html" target="_blank" style="color:#38bdf8;text-decoration:none;font-weight:bold;">🥽 Open Immersive 3D View (VR/AR)</a> — Works on Meta Quest 3, Android phones, and desktop.</p>
         <div style="margin-top:10px;padding-top:8px;border-top:1px solid #30363d;color:#8b949e;font-size:11px;">Team 9 · AI Neural Networks 2026 · AI Academy</div>
         <p style="margin-top:8px;font-size:0.85em;font-style:italic;color:#555;">If you feel the font on this page is too small, you have options: search for products similar to “Intatuntamium” or “Spacsaver” — or consider <a href="https://github.com/rwiren/adsb-research-grid?tab=contributing-ov-file#readme" target="_blank" style="color:#58a6ff;text-decoration:none;">contributing</a> to the project.</p>
         <button onclick="toggleInfo()" style="position:absolute;top:8px;right:12px;background:none;border:none;color:#8b949e;cursor:pointer;font-size:16px;">✕</button>
@@ -569,6 +570,7 @@ function toggleDashboard() {
     if (window.map) setTimeout(function(){ map.invalidateSize(); }, 350);
 }
 // ── DMS toggle for popup ─────────────────────────
+window._perAcSmooth = window._perAcSmooth || {};
 var dmsMode = false;
 function dmsBtnHTML(latDD, lonDD, latDMS, lonDMS, hex) {
     return '<button id="dms-btn-'+hex+'" style="font-size:0.8em;padding:1px 6px;margin:2px 0 4px;'
@@ -1378,7 +1380,7 @@ socket.on('map_update', function(data) {
             // Phase 3: Prefer ML autoencoder per-feature decomposition when available.
             // Falls back to heuristic flag mapping when ML scores are absent.
             var attrPanel = document.getElementById('attribution-panel');
-            var mlAircraft = data.aircraft.filter(function(a) { return a.ml_score > 0.05; });
+            var mlAircraft = data.aircraft.filter(function(a) { return a.ml_is_anomaly || (window._perAcSmooth && window._perAcSmooth[a.hex] && window._perAcSmooth[a.hex].count >= 3); });
             var hasML = mlAircraft.length > 0;
             var showAttr = hasML || spoofCount > 0;
 
@@ -1432,17 +1434,34 @@ socket.on('map_update', function(data) {
                 attrPanel.style.display = 'none';
             }
             // ── Persistence Filter (Paper Section 4.3, k=5) ──────────────────
-            // Increment counter when suspects present, reset when clear.
-            // Escalate to CONFIRMED THREAT at k=5 consecutive detections.
+            // Per-aircraft EMA smoothing + global persistence counter.
+            // Uses backend is_anomaly flag (adaptive threshold) instead of hardcoded 0.05.
             var K_PERSIST = 5;
             window._persistCount = window._persistCount || 0;
-            // Use ML anomalies if available, otherwise fall back to heuristic spoof count
-            var mlCount = data.aircraft.filter(function(a) { return a.ml_score > 0.05; }).length;
+            window._perAcSmooth = window._perAcSmooth || {};
+            var EMA_ALPHA = 0.3;  // smoothing factor: 0=slow, 1=instant
+            // Update per-aircraft EMA scores
+            data.aircraft.forEach(function(a) {
+                if (a.ml_score !== undefined && a.ml_score !== null) {
+                    var prev = window._perAcSmooth[a.hex] || {ema: 0, count: 0};
+                    prev.ema = EMA_ALPHA * a.ml_score + (1 - EMA_ALPHA) * prev.ema;
+                    prev.count = a.ml_is_anomaly ? prev.count + 1 : Math.max(prev.count - 1, 0);
+                    prev.lastSeen = Date.now();
+                    window._perAcSmooth[a.hex] = prev;
+                }
+            });
+            // Prune stale entries (>60s)
+            var now = Date.now();
+            Object.keys(window._perAcSmooth).forEach(function(h) {
+                if (now - window._perAcSmooth[h].lastSeen > 60000) delete window._perAcSmooth[h];
+            });
+            // Threat = any aircraft with 3+ consecutive anomaly windows (smoothed)
+            var mlCount = Object.values(window._perAcSmooth).filter(function(s) { return s.count >= 3; }).length;
             var threatActive = mlCount > 0 || spoofCount > 0;
             if (threatActive) {
                 window._persistCount = Math.min(window._persistCount + 1, K_PERSIST);
             } else {
-                window._persistCount = Math.max(window._persistCount - 2, 0);
+                window._persistCount = Math.max(window._persistCount - 1, 0);
             }
             var pg = document.getElementById('persist-gauge');
             if (window._persistCount > 0) {
