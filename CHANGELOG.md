@@ -5,6 +5,26 @@ All notable changes to the **ADS-B Research Grid** project will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-05-14: WebXR v2.2.0 — VR Comfort & UX Polish
+
+### Added
+- Color-coded connection lines: blue (north), green (west), red (east) — matches sensor identity
+- AR passthrough transparency: ground plane and range rings hidden on mobile for clean AR overlay
+- Spatial UI popup panel with subtle blue glow border
+- Platform-specific popup scaling (0.8x desktop, 0.9x mobile)
+- Raycaster throttling on mobile (interval: 200ms) for stability
+
+### Changed
+- VR locomotion speed reduced (acceleration 80 → 40) per Meta comfort guidelines
+- Popup distance increased (+1 unit) to avoid vergence-accommodation conflict zone
+- Popup text size increased for VR readability (scale 2.2)
+- Mobile max aircraft reduced (80 → 40) to prevent memory crashes on tilt
+- Raycaster far distance reduced (200 → 100) on mobile gaze cursor
+
+### References
+- Meta Quest Immersive Designer guidelines (comfort zones, text sizing, interaction targets)
+- Meta WebXR code samples (Chairs Etc, RealMeasure, Sneaker Builder)
+
 ## [1.3.2] - 2026-05-14: Fix 3D Sky View crash
 
 ### Fixed
