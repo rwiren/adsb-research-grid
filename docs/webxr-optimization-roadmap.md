@@ -318,11 +318,17 @@ Terrain tiles (e.g., Mapbox Terrain) for geographic context. Helsinki-Espoo area
 
 ### Phase 3: Further Development
 
-- [ ] Haptic vibrate on aircraft select (navigator.vibrate on Android, gamepad.hapticActuators on Quest)
+**Requires Quest 3 for testing (confirmed supported by Quest Browser):**
+- [ ] Request 90Hz frame rate (`xrSession.updateTargetFrameRate(90)`) — Quest defaults to 72Hz
+- [ ] Hand tracking pinch-to-select (WebXR Hand Input API, supported since Quest Browser v15.1, pinch threshold 0.7-0.8)
+- [ ] Hit Test for MR table placement (WebXR Hit Test API, supported since Quest Browser v25.3) — tap real surface to anchor scene
+- [ ] Controller haptic feedback on select (`gamepad.hapticActuators[0].pulse(0.5, 100)`)
+- [ ] Spatial anchors for persistent MR placement (WebXR Anchors API, supported since Quest Browser v24.0)
+
+**General improvements:**
+- [ ] Haptic vibrate on aircraft select for Android (`navigator.vibrate(50)`)
 - [ ] Slow rotation animation on sensor antennas (ambient life)
-- [ ] Hand tracking pinch-to-select (A-Frame hand-tracking-controls)
-- [ ] Spatial anchoring / WebXR hit-test for MR table placement
-- [ ] InstancedMesh implementation (if needed based on Quest 3 data)
+- [ ] InstancedMesh implementation (if needed based on Quest 3 profiling data)
 - [ ] Web Worker for data handling (if message rate grows)
 - [ ] Trajectory ribbons
 - [ ] Confidence volumes
