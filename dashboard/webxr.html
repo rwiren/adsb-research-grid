@@ -43,6 +43,13 @@
     }
     .a-enter-vr, .a-enter-vr-button { margin-left: -35px !important; }
     .a-enter-ar, .a-enter-ar-button { margin-left: 35px !important; }
+    #align-north-btn {
+      position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 99999;
+      padding: 8px 14px; border: 1px solid #0072B2; border-radius: 8px;
+      background: rgba(0,0,0,0.8); color: #0072B2; font: bold 13px monospace;
+      cursor: pointer;
+    }
+    #align-north-btn:hover { background: #0072B2; color: #000; }
     #ios-fs-btn {
       display: none; position: fixed;
       bottom: calc(10px + env(safe-area-inset-bottom));
@@ -55,6 +62,7 @@
 <body>
   <div id="hud">Connecting...</div>
   <button id="ios-fs-btn" onclick="document.documentElement.requestFullscreen?.()||document.documentElement.webkitRequestFullscreen?.();this.style.display='none'">🥽 Enter 3D View</button>
+  <button id="align-north-btn" onclick="alignNorth()">&#x1F9ED; Align North</button>
   <div id="help"></div>
   <div id="selection"><span class="close" onclick="clearSelection()">✕</span><div id="sel-content"></div></div>
 
@@ -63,7 +71,7 @@
            webxr="optionalFeatures: local-floor, bounded-floor, hand-tracking"
            cursor="rayOrigin: mouse" raycaster="objects: .pickable">
 
-    <a-entity id="rig" position="0 15 35">
+    <a-entity id="rig" position="0 30 90" animation="property: position; to: 0 4 20; dur: 3000; easing: easeOutQuad; startEvents: loaded">
       <a-camera id="cam" camera="fov: 78"
                 look-controls="magicWindowTrackingEnabled: true; touchEnabled: true"
                 wasd-controls="acceleration: 80; fly: true"
@@ -86,14 +94,39 @@
     <a-text value="100km" position="100 0.1 0" rotation="-90 0 0" color="#334155" scale="3 3 3"></a-text>
 
     <!-- Sensor markers (clickable) -->
-    <a-cylinder class="pickable" data-sensor="sensor-north" position="0 1 0" radius="0.9" height="2" color="#0072B2" emissive="#0072B2" emissive-intensity="0.2"></a-cylinder>
-    <a-text value="NORTH" position="0 2.8 0" align="center" color="#0072B2" scale="2 2 2"></a-text>
+    <!-- Sensor North: vertical antenna with crossbars -->
+    <a-entity class="pickable" data-sensor="sensor-north" position="0 0 0">
+      <a-cylinder radius="0.06" height="4" position="0 2 0" color="#0072B2" emissive="#0072B2" emissive-intensity="0.3"></a-cylinder>
+      <a-cylinder radius="0.04" height="1.4" position="0 3.2 0" rotation="0 0 90" color="#38bdf8" emissive="#38bdf8" emissive-intensity="0.4"></a-cylinder>
+      <a-cylinder radius="0.04" height="1.0" position="0 2.6 0" rotation="0 0 90" color="#38bdf8" emissive="#38bdf8" emissive-intensity="0.4"></a-cylinder>
+      <a-cylinder radius="0.04" height="0.6" position="0 2.0 0" rotation="0 0 90" color="#38bdf8" emissive="#38bdf8" emissive-intensity="0.4"></a-cylinder>
+      <a-sphere radius="0.12" position="0 4.1 0" color="#38bdf8" emissive="#38bdf8" emissive-intensity="0.8"></a-sphere>
+    </a-entity>
+    <a-text value="NORTH" position="0 4.8 0" align="center" color="#0072B2" scale="2 2 2"></a-text>
 
-    <a-cylinder class="pickable" data-sensor="sensor-west" position="-18 1 -21" radius="0.9" height="2" color="#009E73" emissive="#009E73" emissive-intensity="0.2"></a-cylinder>
-    <a-text value="WEST" position="-18 2.8 -21" align="center" color="#009E73" scale="2 2 2"></a-text>
+    <!-- Sensor West: vertical antenna with crossbars -->
+    <a-entity class="pickable" data-sensor="sensor-west" position="-18 0 -21">
+      <a-cylinder radius="0.06" height="4" position="0 2 0" color="#009E73" emissive="#009E73" emissive-intensity="0.3"></a-cylinder>
+      <a-cylinder radius="0.04" height="1.4" position="0 3.2 0" rotation="0 0 90" color="#34d399" emissive="#34d399" emissive-intensity="0.4"></a-cylinder>
+      <a-cylinder radius="0.04" height="1.0" position="0 2.6 0" rotation="0 0 90" color="#34d399" emissive="#34d399" emissive-intensity="0.4"></a-cylinder>
+      <a-cylinder radius="0.04" height="0.6" position="0 2.0 0" rotation="0 0 90" color="#34d399" emissive="#34d399" emissive-intensity="0.4"></a-cylinder>
+      <a-sphere radius="0.12" position="0 4.1 0" color="#34d399" emissive="#34d399" emissive-intensity="0.8"></a-sphere>
+    </a-entity>
+    <a-text value="WEST" position="-18 4.8 -21" align="center" color="#009E73" scale="2 2 2"></a-text>
 
-    <a-cylinder class="pickable" data-sensor="sensor-east" position="24 1 6" radius="0.9" height="2" color="#D55E00" emissive="#D55E00" emissive-intensity="0.2"></a-cylinder>
-    <a-text value="EAST" position="24 2.8 6" align="center" color="#D55E00" scale="2 2 2"></a-text>
+    <!-- Sensor East: vertical antenna with crossbars -->
+    <a-entity class="pickable" data-sensor="sensor-east" position="24 0 6">
+      <a-cylinder radius="0.06" height="4" position="0 2 0" color="#CC0000" emissive="#CC0000" emissive-intensity="0.3"></a-cylinder>
+      <a-cylinder radius="0.04" height="1.4" position="0 3.2 0" rotation="0 0 90" color="#f87171" emissive="#f87171" emissive-intensity="0.4"></a-cylinder>
+      <a-cylinder radius="0.04" height="1.0" position="0 2.6 0" rotation="0 0 90" color="#f87171" emissive="#f87171" emissive-intensity="0.4"></a-cylinder>
+      <a-cylinder radius="0.04" height="0.6" position="0 2.0 0" rotation="0 0 90" color="#f87171" emissive="#f87171" emissive-intensity="0.4"></a-cylinder>
+      <a-sphere radius="0.12" position="0 4.1 0" color="#f87171" emissive="#f87171" emissive-intensity="0.8"></a-sphere>
+    </a-entity>
+    <a-text value="EAST" position="24 4.8 6" align="center" color="#CC0000" scale="2 2 2"></a-text>
+
+
+    <!-- Starfield -->
+    <a-entity id="starfield"></a-entity>
 
     <!-- Aircraft populated dynamically -->
     <a-entity id="aircraft-container"></a-entity>
@@ -107,8 +140,8 @@
   (function() {
     const MQTT_URL = 'wss://mqtt.securingskies.eu:8443';
     const params = new URLSearchParams(window.location.search);
-    const MQTT_USER = params.get('u') || 'team9';
-    const MQTT_PASS = params.get('p') || '{{MQTT_PASS}}';
+    const MQTT_USER = params.get('u') || '';
+    const MQTT_PASS = params.get('p') || '';
 
     const REF_LAT = 60.319555;
     const REF_LON = 24.830816;
@@ -121,6 +154,7 @@
     const isMobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
     const maxAircraft = isQuest ? 300 : (isMobile ? 80 : 200);
     const lerpFactor = isMobile ? 0.16 : 0.12;
+    const altExag = isMobile ? 1 : ALT_EXAG;
 
     // Help text
     const helpEl = document.getElementById('help');
@@ -150,7 +184,7 @@
     function geoToLocal(lat, lon, alt_ft) {
       const x = (lon - REF_LON) * 111.32 * Math.cos(REF_LAT * Math.PI / 180);
       const z = -(lat - REF_LAT) * 111.32;
-      const y = ((alt_ft || 0) / 3281) * ALT_EXAG;
+      const y = ((alt_ft || 0) / 3281) * altExag;
       return { x, y, z };
     }
 
@@ -165,8 +199,8 @@
     popup.setAttribute('id', 'popup3d');
     popup.setAttribute('visible', 'false');
     popup.innerHTML = `
-      <a-plane width="6" height="2" color="#000" opacity="0.85" position="0 0 0"></a-plane>
-      <a-text id="popup-text" value="" color="#fff" align="center" position="0 0 0.01" scale="2.5 2.5 2.5" wrap-count="30"></a-text>
+      <a-plane width="5" height="2.5" color="#000" opacity="0.9" position="0 0 0"></a-plane>
+      <a-text id="popup-text" value="" color="#fff" align="center" position="0 0 0.01" scale="1.8 1.8 1.8" wrap-count="40"></a-text>
     `;
     document.querySelector('a-scene').appendChild(popup);
 
@@ -181,10 +215,10 @@
 
     function hidePopup3D() {
       popup.setAttribute('visible', 'false');
-      popup._lastHidden = Date.now();
     }
 
     window.clearSelection = function() {
+      if (selectedHex && aircraft.get(selectedHex) && aircraft.get(selectedHex).connLine) aircraft.get(selectedHex).connLine.material.opacity = 0;
       selectedHex = null;
       selPanel.style.display = 'none';
       hidePopup3D();
@@ -193,34 +227,53 @@
     // Sensor click — show node name as 3D popup
     document.querySelectorAll('[data-sensor]').forEach(el => {
       el.addEventListener('click', () => {
-        if (popup._lastHidden && Date.now() - popup._lastHidden < 2000) return;
         const name = el.getAttribute('data-sensor');
         const pos = el.getAttribute('position');
         selContent.innerHTML = `<b>${name}</b>`;
         selPanel.style.display = 'block';
+        if (selPanel._timeout) clearTimeout(selPanel._timeout);
+        selPanel._timeout = setTimeout(function(){ selPanel.style.display = 'none'; }, 5000);
         showPopup3D(name, pos);
       });
     });
 
     function showSelection(hex) {
-      if (popup._lastHidden && Date.now() - popup._lastHidden < 2000) return;
       const item = aircraft.get(hex);
       if (!item) return;
       selectedHex = hex;
       const s = item.score;
       const status = s == null ? 'Normal' : s > THRESHOLD ? '!! ANOMALY' : s > 0.02 ? '! Elevated' : 'Normal';
-      const text = `${(item.flight || hex).toUpperCase()}\nNode: ${item.sensor || '-'}\nAlt: ${item.alt || '-'} ft\nScore: ${s != null ? s.toFixed(5) : '-'} ${status}`;
-      // DOM panel (flat view)
+      const sensors = item.seenBy ? Array.from(item.seenBy).map(s=>s.replace('sensor-','')).join(', ') : (item.sensor||'-').replace('sensor-','');
+      const dist = Math.round(Math.sqrt(item.current.x*item.current.x + item.current.z*item.current.z));
+      const hdg = item.track != null ? Math.round(item.track) + '\u00B0' : '-';
+      const spd = item.gs != null ? Math.round(item.gs) + ' kt' : '-';
+      const text = `${(item.flight || hex).toUpperCase()}\nNode: ${sensors}\nAlt: ${item.alt || '-'} ft | Hdg: ${hdg}\nSpd: ${spd} | Dist: ${dist} km\nScore: ${s != null ? s.toFixed(5) : '-'} ${status}`;
+      // DOM panel (flat view) — auto-hide after 5s
       selContent.innerHTML = text.replace(/\n/g, '<br>');
       selPanel.style.display = 'block';
+      if (selPanel._timeout) clearTimeout(selPanel._timeout);
+      selPanel._timeout = setTimeout(function(){ if (selectedHex && aircraft.get(selectedHex) && aircraft.get(selectedHex).connLine) aircraft.get(selectedHex).connLine.material.opacity = 0; selPanel.style.display = 'none'; selectedHex = null; }, 5000);
       // 3D popup (VR/AR)
       showPopup3D(text, item.current);
+      // Show connection lines to all sensors
+      if (item.connLine) {
+        const seenArr = item.seenBy ? Array.from(item.seenBy) : [item.primarySensor];
+        const pts = [];
+        seenArr.forEach(function(s) {
+          if (sensorPositions[s]) { pts.push(item.current.x, item.current.y, item.current.z, sensorPositions[s].x, sensorPositions[s].y, sensorPositions[s].z); }
+        });
+        const posArr = new Float32Array(pts);
+        item.connLine.geometry.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+        item.connLine.geometry.setDrawRange(0, posArr.length / 3);
+        item.connLine.material.opacity = 0.5;
+      }
     }
 
     function upsertAircraft(sensor, ac) {
       if (!ac || !ac.hex || !ac.lat || !ac.lon) return;
       const hex = ac.hex.toLowerCase();
-      const target = geoToLocal(ac.lat, ac.lon, ac.alt_baro);
+      const alt = (typeof ac.alt_baro === 'number') ? ac.alt_baro : (aircraft.has(hex) ? aircraft.get(hex).alt : 0);
+      const target = geoToLocal(ac.lat, ac.lon, alt);
       const now = performance.now();
 
       let item = aircraft.get(hex);
@@ -236,34 +289,66 @@
         el.dataset.hex = hex;
         el.setAttribute('position', `${target.x} ${target.y} ${target.z}`);
 
-        // Sphere body — this is the clickable target
-        const body = document.createElement('a-sphere');
+        // Aircraft model from primitives (fuselage + wings + tail)
+        const body = document.createElement('a-entity');
         body.classList.add('pickable');
-        body.setAttribute('radius', isMobile ? '0.4' : '0.5');
-        body.setAttribute('color', '#00ffaa');
-        body.setAttribute('emissive', '#00ffaa');
-        body.setAttribute('emissive-intensity', '0.25');
         body.setAttribute('class', 'pickable');
         body.addEventListener('click', () => showSelection(hex));
         body.addEventListener('mousedown', () => showSelection(hex));
 
-        // Nose cone (direction indicator)
-        const nose = document.createElement('a-cone');
-        nose.setAttribute('height', '0.35');
-        nose.setAttribute('radius-bottom', '0.12');
-        nose.setAttribute('radius-top', '0.01');
-        nose.setAttribute('color', '#b5fef0');
-        nose.setAttribute('position', '0.3 0 0');
-        nose.setAttribute('rotation', '0 0 -90');
+        // Fuselage
+        const fuse = document.createElement('a-cylinder');
+        fuse.setAttribute('radius', isMobile ? '0.3' : '0.12');
+        fuse.setAttribute('height', '1.2');
+        fuse.setAttribute('rotation', '0 0 90');
+        fuse.setAttribute('class', 'pickable');
+        fuse.setAttribute('color', '#00ffaa');
+        fuse.setAttribute('emissive', '#00ffaa');
+        fuse.setAttribute('emissive-intensity', '0.25');
+        body.appendChild(fuse);
+        fuse.addEventListener("click", () => showSelection(hex));
 
-        // Altitude stem
+        // Wings
+        const wings = document.createElement('a-box');
+        wings.setAttribute('width', '0.08');
+        wings.setAttribute('height', '0.04');
+        wings.setAttribute('depth', '1.6');
+        wings.setAttribute('position', '0.05 0 0');
+        wings.setAttribute('color', '#00ffaa');
+        wings.setAttribute('emissive', '#00ffaa');
+        wings.setAttribute('emissive-intensity', '0.2');
+        body.appendChild(wings);
+
+        // Tail fin
+        const tail = document.createElement('a-box');
+        tail.setAttribute('width', '0.08');
+        tail.setAttribute('height', '0.5');
+        tail.setAttribute('depth', '0.04');
+        tail.setAttribute('position', '-0.5 0.2 0');
+        tail.setAttribute('color', '#00ffaa');
+        tail.setAttribute('emissive', '#00ffaa');
+        tail.setAttribute('emissive-intensity', '0.2');
+        body.appendChild(tail);
+
+        // Nose
+        const nose = document.createElement('a-cone');
+        nose.setAttribute('height', '0.25');
+        nose.setAttribute('radius-bottom', '0.12');
+        nose.setAttribute('radius-top', '0');
+        nose.setAttribute('position', '0.7 0 0');
+        nose.setAttribute('rotation', '0 0 -90');
+        nose.setAttribute('color', '#b5fef0');
+        body.appendChild(nose);
+
+        // Altitude stem (hidden on mobile AR)
         const stem = document.createElement('a-cylinder');
         const stemH = Math.max(target.y, 0.1);
         stem.setAttribute('radius', '0.02');
         stem.setAttribute('height', stemH);
         stem.setAttribute('position', `0 ${-stemH/2} 0`);
         stem.setAttribute('color', '#164e63');
-        stem.setAttribute('opacity', '0.5');
+        stem.setAttribute('opacity', isMobile ? '0' : '0.5');
+        stem._initH = stemH;
 
         // Label
         const label = document.createElement('a-text');
@@ -279,17 +364,41 @@
         el.appendChild(label);
         container.appendChild(el);
 
-        item = { el, body, stem, label, current: new THREE.Vector3(target.x, target.y, target.z),
+        // Trail line
+        const trailGeo = new THREE.BufferGeometry();
+        const trailPositions = new Float32Array(20 * 3); // 20 points
+        trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
+        const trailMat = new THREE.LineBasicMaterial({color: 0x38bdf8, transparent: true, opacity: 0.7, linewidth: 2});
+        const trailLine = new THREE.Line(trailGeo, trailMat);
+        document.querySelector('a-scene').object3D.add(trailLine);
+
+        // Connection line to sensor
+        const connGeo = new THREE.BufferGeometry();
+        connGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+        const connMat = new THREE.LineBasicMaterial({color: 0x0072B2, transparent: true, opacity: 0});
+        const connLine = new THREE.Line(connGeo, connMat);
+        document.querySelector('a-scene').object3D.add(connLine);
+
+        item = { el, body, stem, label, trailLine, trailPoints: [], connLine, _stemInitH: stemH, current: new THREE.Vector3(target.x, target.y, target.z),
                  target: new THREE.Vector3(target.x, target.y, target.z),
-                 score: null, lastSeen: now, sensor, flight: ac.flight||'', alt: ac.alt_baro, gs: ac.gs };
+                 score: null, lastSeen: now, sensor, primarySensor: sensor, seenBy: new Set([sensor]), flight: ac.flight||'', alt: ac.alt_baro, gs: ac.gs };
         aircraft.set(hex, item);
       } else {
+        // Sensor locking: only accept position from primary sensor to prevent jumping.
+        // Switch primary if current one goes stale (>5s no update).
+        if (!item.primarySensor) item.primarySensor = sensor;
+        item.seenBy.add(sensor);
+        if (sensor !== item.primarySensor) {
+          if (now - item.lastSeen > 5000) item.primarySensor = sensor;
+          else return; // ignore non-primary sensor
+        }
         item.target.set(target.x, target.y, target.z);
         item.lastSeen = now;
         item.sensor = sensor;
         item.flight = ac.flight || item.flight;
-        item.alt = ac.alt_baro;
+        if (typeof ac.alt_baro === 'number') item.alt = ac.alt_baro;
         item.gs = ac.gs;
+        item.track = ac.track;
         if (ac.flight) item.label.setAttribute('value', ac.flight);
       }
     }
@@ -297,10 +406,10 @@
     // VR/AR: reposition rig so you see the same view as flat mode
     const sceneEl = document.querySelector('a-scene');
     sceneEl.addEventListener('enter-vr', () => {
-      rig.setAttribute('position', '0 12 0');
+      rig.setAttribute('position', '0 3 15');
     });
     sceneEl.addEventListener('exit-vr', () => {
-      rig.setAttribute('position', '0 15 35');
+      rig.setAttribute('position', '0 4 20');
     });
 
     // Thumbstick movement for Quest controllers
@@ -315,6 +424,59 @@
     attachThumbstick(document.getElementById('leftHand'));
     attachThumbstick(document.getElementById('rightHand'));
 
+    // Mobile: Control Tower view at sensor-north (ground level)
+    // Apply Helsinki magnetic declination correction (~8 deg east)
+    if (isMobile) {
+      rig.setAttribute('rotation', {x:0, y: -8, z:0});
+      rig.setAttribute('position', '0 2 0');
+    }
+
+    // Sensor positions for connection lines
+    const sensorPositions = {
+      'sensor-north': new THREE.Vector3(0, 1, 0),
+      'sensor-west': new THREE.Vector3(-18, 1, -21),
+      'sensor-east': new THREE.Vector3(24, 1, 6)
+    };
+
+    // Generate starfield
+    (function() {
+      const starGeo = new THREE.BufferGeometry();
+      const starCount = 800;
+      const positions = new Float32Array(starCount * 3);
+      for (let i = 0; i < starCount; i++) {
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(Math.random() * 0.8 + 0.2); // upper hemisphere only
+        const r = 180;
+        positions[i*3] = r * Math.sin(phi) * Math.cos(theta);
+        positions[i*3+1] = r * Math.cos(phi);
+        positions[i*3+2] = r * Math.sin(phi) * Math.sin(theta);
+      }
+      starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const starMat = new THREE.PointsMaterial({color: 0xffffff, size: 0.4, transparent: true, opacity: 0.7});
+      const stars = new THREE.Points(starGeo, starMat);
+      document.getElementById('starfield').object3D.add(stars);
+    })();
+
+    // Align North: rotate rig so current gaze direction = north (Z-)
+    window.alignNorth = function() {
+      // Get camera world yaw and reset look-controls
+      const lc = cam.components['look-controls'];
+      const camYaw = lc ? lc.yawObject.rotation.y : cam.object3D.rotation.y;
+      // Rotate rig by current cam yaw so current view = north
+      rig.object3D.rotation.y -= camYaw;
+      // Reset look-controls yaw to 0 so it doesn't fight
+      if (lc) lc.yawObject.rotation.y = 0;
+      document.getElementById('hud').textContent = 'North aligned';
+    };
+
+
+
+
+
+
+
+
+
     // Animation loop — lerp positions, update stems, billboard labels
     function tick() {
       const now = performance.now();
@@ -325,18 +487,53 @@
         item.current.lerp(item.target, lerpFactor);
         item.el.object3D.position.copy(item.current);
 
-        // Update stem
+        // Update stem (direct object3D, no setAttribute)
         const h = Math.max(item.current.y, 0.1);
-        item.stem.setAttribute('height', h);
+        item.stem.object3D.scale.y = h / item._stemInitH;
         item.stem.object3D.position.y = -h/2;
 
-        // Billboard label
+        // Update connection line to primary sensor
+        if (item.connLine && item.primarySensor && sensorPositions[item.primarySensor]) {
+          const sp = sensorPositions[item.primarySensor];
+          const cp = item.connLine.geometry.attributes.position.array;
+          cp[0] = item.current.x; cp[1] = item.current.y; cp[2] = item.current.z;
+          cp[3] = sp.x; cp[4] = sp.y; cp[5] = sp.z;
+          item.connLine.geometry.attributes.position.needsUpdate = true;
+        }
+
+        // Update trail
+        if (!item._lastTrail || performance.now() - item._lastTrail > 500) {
+          item._lastTrail = performance.now();
+          item.trailPoints.push(item.current.clone());
+          if (item.trailPoints.length > 20) item.trailPoints.shift();
+          const positions = item.trailLine.geometry.attributes.position.array;
+          for (let i = 0; i < 20; i++) {
+            const p = item.trailPoints[i] || item.trailPoints[item.trailPoints.length-1] || item.current;
+            positions[i*3] = p.x; positions[i*3+1] = p.y; positions[i*3+2] = p.z;
+          }
+          item.trailLine.geometry.attributes.position.needsUpdate = true;
+          item.trailLine.geometry.setDrawRange(0, item.trailPoints.length);
+        }
+
+        // Rotate aircraft to heading
+        if (item.track != null) {
+          item.el.object3D.rotation.y = -(item.track - 90) * Math.PI / 180;
+        }
+
+        // Billboard labels + popup toward camera
         item.label.object3D.lookAt(camPos);
 
         // Remove stale
+        // Billboard popup
+        if (selectedHex === hex && popup.object3D.visible) {
+          popup.object3D.lookAt(camPos);
+        }
+
         if (now - item.lastSeen > STALE_MS) {
           if (selectedHex === hex) window.clearSelection();
           item.el.remove();
+          if (item.trailLine) item.trailLine.parent.remove(item.trailLine);
+          if (item.connLine) item.connLine.parent.remove(item.connLine);
           aircraft.delete(hex);
         }
       }
@@ -346,7 +543,7 @@
       if (now - fpsTimer >= 1000) {
         fps = Math.round(frameCount * 1000 / (now - fpsTimer));
         frameCount = 0; fpsTimer = now;
-        hud.textContent = `LIVE | ${aircraft.size} aircraft | ${msgCount} msgs | ${fps} fps`;
+        const dc = sceneEl.renderer ? sceneEl.renderer.info.render.calls : "?"; hud.textContent = `LIVE | ${aircraft.size} ac | ${dc} draws | ${fps} fps`;
       }
       requestAnimationFrame(tick);
     }
@@ -383,17 +580,33 @@
           if (!isNaN(score)) {
             item.score = score;
             const color = scoreToColor(score);
-            item.body.setAttribute('color', color);
-            item.body.setAttribute('emissive', color);
+            item.body.querySelectorAll("a-cylinder,a-box,a-cone").forEach(function(c){c.setAttribute("color",color);c.setAttribute("emissive",color);});
+
+
             if (score > THRESHOLD) {
               item.el.setAttribute('animation__pulse', 'property: scale; to: 1.4 1.4 1.4; dur: 500; dir: alternate; loop: true; easing: easeInOutSine');
+              // Emit expanding alert ring
+              if (!item._lastRing || performance.now() - item._lastRing > 3000) {
+                item._lastRing = performance.now();
+                const ring = document.createElement('a-ring');
+                ring.setAttribute('radius-inner', '0.5');
+                ring.setAttribute('radius-outer', '0.6');
+                ring.setAttribute('color', '#ff2222');
+                ring.setAttribute('opacity', '0.9');
+                ring.setAttribute('position', '0 0 0');
+                ring.setAttribute('rotation', '-90 0 0');
+                ring.setAttribute('animation__grow', 'property: scale; from: 1 1 1; to: 8 8 8; dur: 1500; easing: easeOutQuad');
+                ring.setAttribute('animation__fade', 'property: opacity; from: 0.9; to: 0; dur: 1500; easing: easeOutQuad');
+                item.el.appendChild(ring);
+                setTimeout(() => ring.remove(), 1600);
+              }
             } else {
               item.el.removeAttribute('animation__pulse');
               item.el.setAttribute('scale', '1 1 1');
             }
           }
         }
-        if (selectedHex === hex) showSelection(hex);
+        if (selectedHex === hex) { const s2=item.score; const st=s2==null?"Normal":s2>THRESHOLD?"!! ANOMALY":s2>0.02?"! Elevated":"Normal"; selContent.innerHTML=`${(item.flight||hex).toUpperCase()}<br>Node: ${item.sensor||"-"}<br>Alt: ${item.alt||"-"} ft<br>Score: ${s2!=null?s2.toFixed(5):"-"} ${st}`; }
       }
     });
 

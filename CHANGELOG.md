@@ -5,6 +5,42 @@ All notable changes to the **ADS-B Research Grid** project will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-05-14: WebXR v2.1.0 — Performance & Visualization Update
+
+### Added
+- Aircraft rendered as airplane shapes (fuselage + wings + tail + nose) with heading rotation
+- ML anomaly expanding red pulse ring (radar ping effect on detection)
+- Sensor locking — each aircraft locked to primary sensor, prevents multi-sensor jumping
+- Last-known altitude retention (aircraft don't drop when alt_baro missing)
+- Align North button (resets camera to compass north, works on all platforms)
+- Camera intro animation (swoop from above on page load)
+- Connection lines from aircraft to all tracking sensors (visible on click)
+- Yagi antenna-style sensor markers (pole + crossbars + glowing tip)
+- Starfield background (800 points, upper hemisphere)
+- Info panel: speed (kt), heading (°), distance (km), all sensors, ML score
+- Draw call counter in HUD (`renderer.info.render.calls`)
+- Mobile AR: ground-level view at sensor-north, 1:1 altitude scale, magnetic declination correction (-8° Helsinki)
+- Multi-sensor display in info panel (shows all sensors seeing aircraft, not just primary)
+- `docs/webxr-optimization-roadmap.md` — profiling results and optimization roadmap
+
+### Changed
+- Tick loop: replaced `setAttribute()` calls with direct `object3D` manipulation (CPU -27% on mobile)
+- Mobile hit targets enlarged (fuselage radius 0.3 vs 0.12 desktop)
+- Desktop camera position adjusted (Y=4, Z=20, closer to action)
+- VR camera position lowered (Y=3, Z=15)
+- Popup auto-hides after 5s (both DOM panel and 3D label)
+- Sensor names shortened in popup (north/west/east instead of sensor-north etc.)
+
+### Removed
+- Hardcoded MQTT credentials from repository version (use `?u=USER&p=PASS` URL params)
+- Coverage domes (blocked popup labels, removed)
+
+### Performance
+- Profiled on Samsung Galaxy Z Fold 7 (GPUWatch)
+- AR (OpenGL): CPU 75% → 48% after optimization, FPS ~31 (hardware cap)
+- Desktop (Vulkan): 59 FPS, 118 draw calls, 25% CPU
+- Vulkan flag tested in AR: breaks WebXR AR on Samsung (reverted)
+
 ## [1.2.0] - 2026-05-05: Reliability & Security Hardening
 
 ### Added
