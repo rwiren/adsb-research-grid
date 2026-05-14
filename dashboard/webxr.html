@@ -28,11 +28,20 @@
       border: 1px solid rgba(255,255,255,0.1); max-width: 200px; pointer-events: none;
     }
     #selection {
-      position: fixed; top: 10px; right: 10px; color: #d6f7ff; font: 12px monospace;
-      z-index: 9999; background: rgba(3,7,18,0.85); padding: 10px 12px; border-radius: 8px;
-      border: 1px solid rgba(0,200,255,0.35); min-width: 220px; display: none;
+      position: fixed; top: 10px; right: 10px; color: #e2e8f0; font: 12px/1.6 monospace;
+      z-index: 9999; background: rgba(6,12,30,0.92); padding: 14px 16px; border-radius: 10px;
+      border: 1px solid rgba(56,189,248,0.3); min-width: 230px; display: none;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(56,189,248,0.1);
+      backdrop-filter: blur(8px);
     }
-    #selection .close { cursor: pointer; float: right; color: #666; }
+    #selection .close { cursor: pointer; float: right; color: #64748b; font-size: 16px; }
+    #selection .close:hover { color: #f87171; }
+
+
+
+
+
+
     .a-enter-vr, .a-enter-ar,
     .a-enter-vr-button, .a-enter-ar-button {
       right: auto !important;
@@ -74,9 +83,9 @@
     <a-entity id="rig" position="0 30 90" animation="property: position; to: 0 4 20; dur: 3000; easing: easeOutQuad; startEvents: loaded">
       <a-camera id="cam" camera="fov: 78"
                 look-controls="magicWindowTrackingEnabled: true; touchEnabled: true"
-                wasd-controls="acceleration: 80; fly: true"
+                wasd-controls="acceleration: 40; fly: true"
                 position="0 0 0">
-        <a-entity cursor="fuse: true; fuseTimeout: 1500" raycaster="objects: .pickable; far: 200"
+        <a-entity cursor="fuse: true; fuseTimeout: 1500" raycaster="objects: .pickable; far: 100; interval: 200"
                   position="0 0 -1"
                   geometry="primitive: ring; radiusInner: 0.01; radiusOuter: 0.015"
                   material="color: #38bdf8; shader: flat">
@@ -87,7 +96,7 @@
     </a-entity>
 
     <!-- Ground + range rings -->
-    <a-plane position="0 0 0" rotation="-90 0 0" width="200" height="200" color="#061126" opacity="0.95"></a-plane>
+    <a-plane id="ground-plane" position="0 0 0" rotation="-90 0 0" width="200" height="200" color="#061126" opacity="0.95"></a-plane>
     <a-ring position="0 0.01 0" rotation="-90 0 0" radius-inner="49.5" radius-outer="50" color="#1f2937" segments-theta="64"></a-ring>
     <a-ring position="0 0.01 0" rotation="-90 0 0" radius-inner="99.5" radius-outer="100" color="#111827" segments-theta="64"></a-ring>
     <a-text value="50km" position="50 0.1 0" rotation="-90 0 0" color="#475569" scale="3 3 3"></a-text>
@@ -152,7 +161,7 @@
     // Platform detection
     const isQuest = /OculusBrowser|Quest/i.test(navigator.userAgent);
     const isMobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
-    const maxAircraft = isQuest ? 300 : (isMobile ? 80 : 200);
+    const maxAircraft = isQuest ? 300 : (isMobile ? 40 : 200);
     const lerpFactor = isMobile ? 0.16 : 0.12;
     const altExag = isMobile ? 1 : ALT_EXAG;
 
@@ -199,13 +208,15 @@
     popup.setAttribute('id', 'popup3d');
     popup.setAttribute('visible', 'false');
     popup.innerHTML = `
-      <a-plane width="5" height="2.5" color="#000" opacity="0.9" position="0 0 0"></a-plane>
-      <a-text id="popup-text" value="" color="#fff" align="center" position="0 0 0.01" scale="1.8 1.8 1.8" wrap-count="40"></a-text>
+      <a-plane width="4.8" height="2.4" color="#38bdf8" opacity="0.12" position="0 0 -0.02"></a-plane>
+      <a-plane width="4.6" height="2.27" color="#060e1f" opacity="0.94" position="0 -0.085 0"></a-plane>
+      <a-text id="popup-text" value="" color="#e2e8f0" align="center" position="0 -0.15 0.02" scale="1.5 1.5 1.5" wrap-count="30"></a-text>
     `;
     document.querySelector('a-scene').appendChild(popup);
+    popup.setAttribute("scale", isMobile ? "0.9 0.9 0.9" : "0.8 0.8 0.8");
 
     function showPopup3D(text, position) {
-      popup.setAttribute('position', `${position.x} ${position.y + 3} ${position.z}`);
+      popup.setAttribute('position', `${position.x} ${position.y + 4} ${position.z}`);
       popup.querySelector('#popup-text').setAttribute('value', text);
       popup.setAttribute('visible', 'true');
       // Auto-hide after 4 seconds
@@ -249,23 +260,32 @@
       const spd = item.gs != null ? Math.round(item.gs) + ' kt' : '-';
       const text = `${(item.flight || hex).toUpperCase()}\nNode: ${sensors}\nAlt: ${item.alt || '-'} ft | Hdg: ${hdg}\nSpd: ${spd} | Dist: ${dist} km\nScore: ${s != null ? s.toFixed(5) : '-'} ${status}`;
       // DOM panel (flat view) — auto-hide after 5s
-      selContent.innerHTML = text.replace(/\n/g, '<br>');
+      selContent.innerHTML = '<div style="color:#38bdf8;font-weight:bold;margin-bottom:6px;border-bottom:1px solid rgba(56,189,248,0.2);padding-bottom:4px">✈ AIRCRAFT INFO</div>' + text.replace(/\n/g, '<br>');
       selPanel.style.display = 'block';
       if (selPanel._timeout) clearTimeout(selPanel._timeout);
       selPanel._timeout = setTimeout(function(){ if (selectedHex && aircraft.get(selectedHex) && aircraft.get(selectedHex).connLine) aircraft.get(selectedHex).connLine.material.opacity = 0; selPanel.style.display = 'none'; selectedHex = null; }, 5000);
       // 3D popup (VR/AR)
       showPopup3D(text, item.current);
-      // Show connection lines to all sensors
+      // Show connection lines to all sensors (color-coded)
       if (item.connLine) {
         const seenArr = item.seenBy ? Array.from(item.seenBy) : [item.primarySensor];
         const pts = [];
+        const colors = [];
         seenArr.forEach(function(s) {
-          if (sensorPositions[s]) { pts.push(item.current.x, item.current.y, item.current.z, sensorPositions[s].x, sensorPositions[s].y, sensorPositions[s].z); }
+          if (sensorPositions[s]) {
+            const c = sensorColors[s] || new THREE.Color(0xffffff);
+            pts.push(item.current.x, item.current.y, item.current.z, sensorPositions[s].x, sensorPositions[s].y, sensorPositions[s].z);
+            colors.push(c.r, c.g, c.b, c.r, c.g, c.b);
+          }
         });
         const posArr = new Float32Array(pts);
+        const colArr = new Float32Array(colors);
         item.connLine.geometry.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+        item.connLine.geometry.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
         item.connLine.geometry.setDrawRange(0, posArr.length / 3);
-        item.connLine.material.opacity = 0.5;
+        item.connLine.material.vertexColors = true;
+        item.connLine.material.opacity = 0.6;
+        item.connLine.material.needsUpdate = true;
       }
     }
 
@@ -429,6 +449,9 @@
     if (isMobile) {
       rig.setAttribute('rotation', {x:0, y: -8, z:0});
       rig.setAttribute('position', '0 2 0');
+      // AR: hide ground plane and rings for passthrough transparency
+      document.getElementById('ground-plane').setAttribute('visible', false);
+      document.querySelectorAll('a-ring').forEach(function(r){ r.setAttribute('visible', false); });
     }
 
     // Sensor positions for connection lines
@@ -456,6 +479,12 @@
       const stars = new THREE.Points(starGeo, starMat);
       document.getElementById('starfield').object3D.add(stars);
     })();
+
+    const sensorColors = {
+      'sensor-north': new THREE.Color(0x0072B2),
+      'sensor-west': new THREE.Color(0x009E73),
+      'sensor-east': new THREE.Color(0xCC0000)
+    };
 
     // Align North: rotate rig so current gaze direction = north (Z-)
     window.alignNorth = function() {
