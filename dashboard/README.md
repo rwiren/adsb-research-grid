@@ -124,31 +124,48 @@ Immersive 3D visualization of live ADS-B traffic with ML anomaly scoring.
 | Desktop browser | Flat 3D | Mouse drag to look, WASD/QE to move, click to select |
 | iPhone/iPad | Flat only (no WebXR) | Fullscreen button, gyro magic window |
 
-### Features (v4.2 — 2026-05-12)
+### Features (v2.1.0 — 2026-05-14)
 
 - ✅ Live aircraft positions from MQTT (all 3 sensors)
+- ✅ Aircraft rendered as airplane shapes (primitives) with heading rotation
 - ✅ Aircraft colored by ML anomaly score (green → red)
-- ✅ Pulsing animation on detected anomalies
-- ✅ Smooth position interpolation (lerp)
-- ✅ Altitude stems (vertical lines to ground)
-- ✅ Nose cones (direction indicator)
-- ✅ Clickable sensor nodes — shows sensor name
-- ✅ Click aircraft — shows hex, node, altitude, anomaly score
-- ✅ 3D popup labels (visible in VR/AR, auto-hide after 4s)
+- ✅ Expanding red pulse ring on detected anomalies
+- ✅ Smooth position interpolation (lerp, 0.12 desktop / 0.16 mobile)
+- ✅ Sensor locking — prevents position jumping from multi-sensor updates
+- ✅ Last-known altitude retention (no sudden drops when data gaps occur)
+- ✅ Altitude stems (vertical lines to ground, hidden on mobile AR)
+- ✅ Connection lines from aircraft to all tracking sensors (click-to-show)
+- ✅ Clickable sensor nodes (Yagi antenna shape) — shows sensor name
+- ✅ Click aircraft — shows flight, sensors, altitude, heading, speed, distance, ML score
+- ✅ 3D popup labels (billboard toward camera, auto-hide after 5s)
 - ✅ Gaze cursor with fuse (works in AR/VR where touch doesn't)
 - ✅ Billboard labels (always face camera)
 - ✅ 50km + 100km range rings
-- ✅ FPS counter in HUD
+- ✅ FPS + draw call counter in HUD
 - ✅ Auto-cleanup of stale aircraft (70s timeout)
 - ✅ Platform-aware aircraft budget (300 Quest, 80 mobile, 200 desktop)
+- ✅ Align North button (resets view to compass north)
+- ✅ Camera intro animation (swoop from above on load)
+- ✅ Starfield background (800 points, upper hemisphere)
+- ✅ Mobile AR: ground-level view, 1:1 altitude, magnetic declination correction (-8°)
+- ✅ Performance: direct object3D manipulation (no setAttribute in tick loop)
+
+### Performance (Samsung Galaxy Z Fold 7, profiled 2026-05-14)
+
+| Mode | API | FPS | CPU | GPU | Draw Calls |
+|------|-----|-----|-----|-----|------------|
+| AR (passthrough) | OpenGL | 31 | 48% | 31% | ~118 |
+| Desktop | Vulkan | 59 | 25% | 33% | 118 |
+
+See `docs/webxr-optimization-roadmap.md` for full profiling analysis and optimization roadmap.
 
 ### Known Limitations
 
-- VR/AR camera positioning needs tuning (aircraft may appear far away in VR)
+- AR mode capped at ~30 FPS on Samsung (OpenGL limitation, not code)
 - iOS has no WebXR support (Apple limitation)
-- MQTT credentials hardcoded (acceptable for private research demo)
-- No flight path trails yet
-- Controller trigger click not yet working in Quest VR (gaze cursor works)
+- MQTT credentials must be passed via URL params (`?u=USER&p=PASS`)
+- Quest 3 not yet profiled (expected to run well at 72 FPS native Vulkan)
+- Contrail trails implemented but not rendering (THREE.js Line issue in A-Frame)
 
 ### Architecture
 
