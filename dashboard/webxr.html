@@ -97,6 +97,7 @@
 
     <!-- Ground + range rings -->
     <a-plane id="ground-plane" position="0 0 0" rotation="-90 0 0" width="200" height="200" color="#061126" opacity="0.95"></a-plane>
+    <a-entity id="terrain-grid"></a-entity>
     <a-ring position="0 0.01 0" rotation="-90 0 0" radius-inner="49.5" radius-outer="50" color="#1f2937" segments-theta="64"></a-ring>
     <a-ring position="0 0.01 0" rotation="-90 0 0" radius-inner="99.5" radius-outer="100" color="#111827" segments-theta="64"></a-ring>
     <a-text value="50km" position="50 0.1 0" rotation="-90 0 0" color="#475569" scale="3 3 3"></a-text>
@@ -104,34 +105,34 @@
 
     <!-- Sensor markers (clickable) -->
     <!-- Sensor North: vertical antenna with crossbars -->
-    <a-entity class="pickable" data-sensor="sensor-north" position="0 0 0">
+    <a-entity class="pickable" data-sensor="sensor-north" position="17.6 0 -21">
       <a-cylinder radius="0.06" height="4" position="0 2 0" color="#0072B2" emissive="#0072B2" emissive-intensity="0.3"></a-cylinder>
       <a-cylinder radius="0.04" height="1.4" position="0 3.2 0" rotation="0 0 90" color="#38bdf8" emissive="#38bdf8" emissive-intensity="0.4"></a-cylinder>
       <a-cylinder radius="0.04" height="1.0" position="0 2.6 0" rotation="0 0 90" color="#38bdf8" emissive="#38bdf8" emissive-intensity="0.4"></a-cylinder>
       <a-cylinder radius="0.04" height="0.6" position="0 2.0 0" rotation="0 0 90" color="#38bdf8" emissive="#38bdf8" emissive-intensity="0.4"></a-cylinder>
       <a-sphere radius="0.12" position="0 4.1 0" color="#38bdf8" emissive="#38bdf8" emissive-intensity="0.8"></a-sphere>
     </a-entity>
-    <a-text value="NORTH" position="0 4.8 0" align="center" color="#0072B2" scale="2 2 2"></a-text>
+    <a-text value="NORTH" position="17.6 4.8 -21" align="center" color="#0072B2" scale="2 2 2"></a-text>
 
     <!-- Sensor West: vertical antenna with crossbars -->
-    <a-entity class="pickable" data-sensor="sensor-west" position="-18 0 -21">
+    <a-entity class="pickable" data-sensor="sensor-west" position="0 0 0">
       <a-cylinder radius="0.06" height="4" position="0 2 0" color="#009E73" emissive="#009E73" emissive-intensity="0.3"></a-cylinder>
       <a-cylinder radius="0.04" height="1.4" position="0 3.2 0" rotation="0 0 90" color="#34d399" emissive="#34d399" emissive-intensity="0.4"></a-cylinder>
       <a-cylinder radius="0.04" height="1.0" position="0 2.6 0" rotation="0 0 90" color="#34d399" emissive="#34d399" emissive-intensity="0.4"></a-cylinder>
       <a-cylinder radius="0.04" height="0.6" position="0 2.0 0" rotation="0 0 90" color="#34d399" emissive="#34d399" emissive-intensity="0.4"></a-cylinder>
       <a-sphere radius="0.12" position="0 4.1 0" color="#34d399" emissive="#34d399" emissive-intensity="0.8"></a-sphere>
     </a-entity>
-    <a-text value="WEST" position="-18 4.8 -21" align="center" color="#009E73" scale="2 2 2"></a-text>
+    <a-text value="WEST" position="0 4.8 0" align="center" color="#009E73" scale="2 2 2"></a-text>
 
     <!-- Sensor East: vertical antenna with crossbars -->
-    <a-entity class="pickable" data-sensor="sensor-east" position="24 0 6">
+    <a-entity class="pickable" data-sensor="sensor-east" position="32.3 0 -18.3">
       <a-cylinder radius="0.06" height="4" position="0 2 0" color="#CC0000" emissive="#CC0000" emissive-intensity="0.3"></a-cylinder>
       <a-cylinder radius="0.04" height="1.4" position="0 3.2 0" rotation="0 0 90" color="#f87171" emissive="#f87171" emissive-intensity="0.4"></a-cylinder>
       <a-cylinder radius="0.04" height="1.0" position="0 2.6 0" rotation="0 0 90" color="#f87171" emissive="#f87171" emissive-intensity="0.4"></a-cylinder>
       <a-cylinder radius="0.04" height="0.6" position="0 2.0 0" rotation="0 0 90" color="#f87171" emissive="#f87171" emissive-intensity="0.4"></a-cylinder>
       <a-sphere radius="0.12" position="0 4.1 0" color="#f87171" emissive="#f87171" emissive-intensity="0.8"></a-sphere>
     </a-entity>
-    <a-text value="EAST" position="24 4.8 6" align="center" color="#CC0000" scale="2 2 2"></a-text>
+    <a-text value="EAST" position="32.3 4.8 -18.3" align="center" color="#CC0000" scale="2 2 2"></a-text>
 
 
     <!-- Starfield -->
@@ -152,8 +153,12 @@
     const MQTT_USER = params.get('u') || '';
     const MQTT_PASS = params.get('p') || '';
 
-    const REF_LAT = 60.319555;
-    const REF_LON = 24.830816;
+    const SENSORS = {north: {lat:60.319555, lon:24.830816}, west: {lat:60.130919, lon:24.512869}, east: {lat:60.373781, lon:25.250081}};
+    const activeSensor = params.get("sensor") || "west";
+    const REF_LAT = SENSORS[activeSensor] ? SENSORS[activeSensor].lat : SENSORS.west.lat;
+    const REF_LON = SENSORS[activeSensor] ? SENSORS[activeSensor].lon : SENSORS.west.lon;
+
+
     const ALT_EXAG = 4;
     const STALE_MS = 70000;
     const THRESHOLD = 0.04;
@@ -455,11 +460,26 @@
     }
 
     // Sensor positions for connection lines
+    // Dynamic sensor positions based on active reference point
+    function sensorToLocal(lat, lon) {
+      const x = (lon - REF_LON) * 111.32 * Math.cos(REF_LAT * Math.PI / 180);
+      const z = -(lat - REF_LAT) * 111.32;
+      return new THREE.Vector3(x, 1, z);
+    }
     const sensorPositions = {
-      'sensor-north': new THREE.Vector3(0, 1, 0),
-      'sensor-west': new THREE.Vector3(-18, 1, -21),
-      'sensor-east': new THREE.Vector3(24, 1, 6)
+      'sensor-north': sensorToLocal(60.319555, 24.830816),
+      'sensor-west': sensorToLocal(60.130919, 24.512869),
+      'sensor-east': sensorToLocal(60.373781, 25.250081)
     };
+
+    // Move static sensor markers to correct positions
+    document.querySelector('[data-sensor="sensor-north"]').setAttribute('position', sensorPositions['sensor-north'].x + ' 0 ' + sensorPositions['sensor-north'].z);
+    document.querySelector('[data-sensor="sensor-west"]').setAttribute('position', sensorPositions['sensor-west'].x + ' 0 ' + sensorPositions['sensor-west'].z);
+    document.querySelector('[data-sensor="sensor-east"]').setAttribute('position', sensorPositions['sensor-east'].x + ' 0 ' + sensorPositions['sensor-east'].z);
+    // Move labels
+    document.querySelectorAll('a-text[value="NORTH"]')[0].setAttribute('position', sensorPositions['sensor-north'].x + ' 4.8 ' + sensorPositions['sensor-north'].z);
+    document.querySelectorAll('a-text[value="WEST"]')[0].setAttribute('position', sensorPositions['sensor-west'].x + ' 4.8 ' + sensorPositions['sensor-west'].z);
+    document.querySelectorAll('a-text[value="EAST"]')[0].setAttribute('position', sensorPositions['sensor-east'].x + ' 4.8 ' + sensorPositions['sensor-east'].z);
 
     // Generate starfield
     (function() {
@@ -485,6 +505,88 @@
       'sensor-west': new THREE.Color(0x009E73),
       'sensor-east': new THREE.Color(0xCC0000)
     };
+
+
+    // Coastline polyline (Gulf of Finland south shore) — dynamic based on REF
+    (function() {
+      const coastLatLon = [[59.85,22.5],[59.87,23.0],[59.92,23.5],[59.97,23.8],[60.00,24.0],[60.05,24.2],[60.07,24.4],[60.08,24.5],[60.10,24.7],[60.12,24.8],[60.13,24.95],[60.15,25.0],[60.16,25.1],[60.17,25.2],[60.18,25.3],[60.19,25.4],[60.20,25.5],[60.20,25.7],[60.22,25.9],[60.25,26.0],[60.28,26.5],[60.30,27.0],[60.32,27.5],[60.33,28.0]];
+      const coastPoints = coastLatLon.map(function(p) {
+        var x = (p[1] - REF_LON) * 111.32 * Math.cos(REF_LAT * Math.PI / 180);
+        var z = -(p[0] - REF_LAT) * 111.32;
+        return new THREE.Vector3(x, 0.05, z);
+      });
+      const coastGeo = new THREE.BufferGeometry().setFromPoints(coastPoints);
+      const coastMat = new THREE.LineBasicMaterial({color: 0x1e90ff, transparent: true, opacity: 0.6});
+      const coastLine = new THREE.Line(coastGeo, coastMat);
+      document.querySelector('a-scene').object3D.add(coastLine);
+    })();
+
+    // Wireframe terrain grid with simple elevation
+    (function() {
+      const gridSize = 200; // km total
+      const divisions = 40; // more divisions for smoother terrain
+      const gridGeo = new THREE.PlaneGeometry(gridSize, gridSize, divisions, divisions);
+      gridGeo.rotateX(-Math.PI / 2);
+
+      // Apply simple elevation: land rises gently north of coastline
+      const positions = gridGeo.attributes.position.array;
+      for (let i = 0; i < positions.length; i += 3) {
+        const x = positions[i];     // east-west (km from ref)
+        const z = positions[i + 2]; // north-south (negative = north)
+
+        // Convert grid position back to approximate lat
+        const approxLat = REF_LAT + (-z / 111.32);
+        const approxLon = REF_LON + (x / (111.32 * Math.cos(REF_LAT * Math.PI / 180)));
+
+        // Simple coast model: coast is roughly at lat 60.0-60.2 depending on lon
+        const coastLat = 60.0 + Math.sin((approxLon - 24) * 0.5) * 0.15;
+
+        if (approxLat < coastLat) {
+          // Sea: slightly below zero
+          positions[i + 1] = -0.15;
+        } else {
+          // Land: gentle rise inland (max ~0.8 km scale = ~80m real)
+          const distFromCoast = (approxLat - coastLat) * 111.32; // km north of coast
+          const elevation = Math.min(distFromCoast * 0.06, 1.5);
+          // Add subtle noise for hills
+          const noise = Math.sin(x * 0.3) * Math.cos(z * 0.2) * 0.2;
+          positions[i + 1] = elevation + noise;
+        }
+      }
+      gridGeo.attributes.position.needsUpdate = true;
+      gridGeo.computeVertexNormals();
+
+      // Add vertex colors: sea = dark blue, land = teal
+      const colors = new Float32Array(positions.length);
+      for (let i = 0; i < positions.length; i += 3) {
+        if (positions[i + 1] < 0) {
+          // Sea — darker blue, more transparent feel
+          colors[i] = 0.02; colors[i+1] = 0.08; colors[i+2] = 0.25;
+        } else {
+          // Land — teal
+          colors[i] = 0.05; colors[i+1] = 0.29; colors[i+2] = 0.43;
+        }
+      }
+      gridGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+      const gridMat = new THREE.MeshBasicMaterial({
+        vertexColors: true,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.35
+      });
+      const grid = new THREE.Mesh(gridGeo, gridMat);
+      grid.position.y = 0.02;
+      document.getElementById('terrain-grid').object3D.add(grid);
+
+      // Add subtle glow ring at origin (active sensor position)
+      const ringGeo = new THREE.RingGeometry(1.5, 2, 32);
+      ringGeo.rotateX(-Math.PI / 2);
+      const ringMat = new THREE.MeshBasicMaterial({color: 0x38bdf8, transparent: true, opacity: 0.4, side: THREE.DoubleSide});
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.position.y = 0.03;
+      document.getElementById('terrain-grid').object3D.add(ring);
+    })();
 
     // Align North: rotate rig so current gaze direction = north (Z-)
     window.alignNorth = function() {
