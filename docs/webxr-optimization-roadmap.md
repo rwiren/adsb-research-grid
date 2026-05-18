@@ -313,7 +313,7 @@ Terrain tiles (e.g., Mapbox Terrain) for geographic context. Helsinki-Espoo area
 - [x] Spatial UI popup panel (glow border, platform-specific scaling)
 - [x] Color-coded connection lines (blue=north, green=west, red=east)
 - [x] Mobile stability (max aircraft 40, raycaster throttled)
-- [ ] Quest 3 profiling (collaborator tests, see section 3.2)
+- [x] Quest 3 profiling (Performance HUD deployed, metrics captured)
 - [ ] Chrome Remote Debugging analysis (exact function-level bottlenecks)
 
 ### Phase 3: Further Development
