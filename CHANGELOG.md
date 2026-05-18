@@ -5,6 +5,25 @@ All notable changes to the **ADS-B Research Grid** project will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-05-18: WebXR v2.3.0 — Terrain, Coastline, Sensor Selector
+
+### Added
+- Wireframe terrain grid with procedural elevation (40x40, land/sea distinction)
+- Sea/land vertex coloring (dark navy blue sea, teal land wireframe)
+- Finnish south coastline polyline (Gulf of Finland, 24 points)
+- URL-based sensor selector: `?sensor=north|west|east` (default: west)
+- Dynamic sensor position recalculation based on selected reference point
+- Glow ring at active sensor origin
+
+### Changed
+- All static positions (sensors, labels, coastline) now compute dynamically from REF_LAT/REF_LON
+- Terrain grid replaces flat ground plane as primary spatial reference
+
+### Technical
+- Zero external file dependencies (all procedural geometry)
+- Single draw call for terrain (THREE.Mesh wireframe)
+- Vertex colors for sea/land without additional materials
+
 ## [1.4.0] - 2026-05-14: WebXR v2.2.0 — VR Comfort & UX Polish
 
 ### Added
