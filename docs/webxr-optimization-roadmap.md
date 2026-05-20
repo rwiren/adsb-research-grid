@@ -27,7 +27,7 @@ All rendering happens in the browser. The server only relays MQTT messages. The 
 | Platform | View | Status |
 |----------|------|--------|
 | Desktop (Chrome/Firefox) | God View from above | Working, profiled |
-| Meta Quest 3 (VR) | Immersive close-up | Working, not yet profiled |
+| Meta Quest 3 (VR) | Immersive close-up | Working, profiled (GPUWatch) |
 | Android phone (AR/Magic Window) | Ground level, gyro+compass | Working, profiled |
 | iOS (Safari) | Limited (no WebXR) | Partial |
 
@@ -233,6 +233,27 @@ hud.textContent = `LIVE | ${aircraft.size} ac | ${dc} draws | ${fps} fps`;
 
 ---
 
+### 4.3 VR Comfort Improvements (DONE 2026-05-14, v2.2.0)
+
+Applied Meta Quest Immersive Designer guidelines:
+- Locomotion speed reduced (acceleration 80 → 40)
+- Popup distance increased to avoid vergence-accommodation conflict zone
+- Popup text size increased for VR readability
+- Mobile max aircraft reduced (80 → 40) to prevent memory crashes
+- Raycaster throttled (interval: 200ms, far: 100) on mobile
+- AR passthrough: ground plane hidden for clean overlay
+- Color-coded connection lines (blue=north, green=west, red=east)
+
+### 4.4 Terrain and Geographic Context (DONE 2026-05-18, v2.3.0)
+
+- Wireframe terrain grid (40x40) with procedural elevation
+- Sea/land vertex coloring (navy blue vs teal)
+- Finnish coastline polyline (24 points, dynamic)
+- URL-based sensor selector (`?sensor=north|west|east`)
+- All positions recalculate dynamically from selected reference point
+
+---
+
 ## 5. Planned Optimizations (NOT YET IMPLEMENTED)
 
 ### 5.1 Instanced Rendering (Priority: LOW now, HIGH if aircraft count grows)
@@ -267,7 +288,7 @@ hud.textContent = `LIVE | ${aircraft.size} ac | ${dc} draws | ${fps} fps`;
 
 ---
 
-## 6. Visualization Roadmap (NOT YET IMPLEMENTED)
+## 6. Visualization Roadmap (PARTIALLY IMPLEMENTED)
 
 ### 6.1 Confidence Volumes (Uncertainty Ellipsoids)
 
