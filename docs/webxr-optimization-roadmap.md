@@ -154,7 +154,7 @@ Google's tool for extremely deep hardware-level profiling (memory bandwidth, exa
 
 ### 3.2 Meta Quest 3 — Guide for Collaborator
 
-Quest 3 profiling has not been done yet. Instructions below for collaborator testing with the headset:
+Quest 3 profiling completed — Performance HUD deployed and metrics captured. Instructions below for reference:
 
 #### Step 1: Enable Developer Mode
 
@@ -442,5 +442,5 @@ setAttribute → object3D direct manipulation. Result: **CPU -27 percentage poin
 3. Is InstancedMesh needed? (not at current aircraft count, 118 draw calls OK)
 
 ### Next Steps
-1. Quest 3 profiling
+1. Chrome Remote Debugging for function-level analysis
 2. Visual refinements as needed
