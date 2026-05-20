@@ -314,6 +314,15 @@ Terrain tiles (e.g., Mapbox Terrain) for geographic context. Helsinki-Espoo area
 - [x] Color-coded connection lines (blue=north, green=west, red=east)
 - [x] Mobile stability (max aircraft 40, raycaster throttled)
 - [x] Quest 3 profiling (Performance HUD deployed, metrics captured)
+- [x] VR comfort improvements (locomotion speed, popup distance, text size — Meta guidelines)
+- [x] AR passthrough transparency (ground plane + rings hidden on mobile)
+- [x] Spatial UI popup panel (glow border, platform-specific scaling)
+- [x] Color-coded connection lines (blue=north, green=west, red=east)
+- [x] Mobile stability (max aircraft 40, raycaster throttled)
+- [x] Wireframe terrain grid with procedural elevation (land/sea, 40x40)
+- [x] Finnish coastline polyline (Gulf of Finland, 24 points, dynamic)
+- [x] URL-based sensor selector (?sensor=north|west|east)
+- [x] Dynamic sensor position recalculation based on selected reference point
 - [ ] Chrome Remote Debugging analysis (exact function-level bottlenecks)
 
 ### Phase 3: Further Development
@@ -335,7 +344,7 @@ Terrain tiles (e.g., Mapbox Terrain) for geographic context. Helsinki-Espoo area
 - [ ] Chase Cam
 - [ ] Multi-user shared view (WebSocket sync)
 - [ ] Voice commands ("show anomalies", "follow aircraft")
-- [ ] Terrain map / terrain tiles
+- [x] Terrain map (procedural wireframe with elevation + coastline)
 
 ### Phase 4: Production Readiness (later)
 
