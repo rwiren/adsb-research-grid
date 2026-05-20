@@ -1,8 +1,8 @@
 # WebXR ADS-B Viewer — Performance Optimization & Development Roadmap
 
 **Project:** Securing Skies  
-**Version:** 2.1.0  
-**Date:** 2026-05-14  
+**Version:** 2.3.0  
+**Date:** 2026-05-20 (updated)  
 **Authors:** Securing Skies Research Team  
 
 ---
@@ -191,7 +191,7 @@ Quest 3 profiling has not been done yet. Instructions below for collaborator tes
 
 #### Test scenario for collaborator:
 
-1. Open in Quest browser: `https://www.securingskies.eu:9443/webxr.html?u=USER&p=PASS`
+1. Open in Quest browser: `https://www.securingskies.eu:9443/webxr.html`
 2. Wait 30s for aircraft to load
 3. Record: FPS, CPU%, GPU%, Draw Calls
 4. Enter VR mode (press Enter VR button)
