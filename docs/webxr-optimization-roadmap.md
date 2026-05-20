@@ -281,9 +281,23 @@ Historical flight path as ribbon mesh. Normal flight = smooth ribbon, spoofing =
 
 Camera follows selected aircraft (3rd person or cockpit view). Useful for auditing individual flight paths.
 
-### 6.4 3D Terrain Map
+### 6.4 3D Terrain Map — IMPLEMENTED (v2.3.0)
 
-Terrain tiles (e.g., Mapbox Terrain) for geographic context. Helsinki-Espoo area topography, airports, sea vs. land.
+Procedural terrain implemented without external tile services or API dependencies:
+
+- **Wireframe terrain grid** (40×40 divisions, 200km coverage) with vertex displacement
+- **Procedural elevation**: land rises gently northward, sea depressed below zero
+- **Sea/land vertex coloring**: dark navy blue (sea) vs teal (land) wireframe
+- **Finnish coastline polyline**: 24-point approximation of Gulf of Finland south shore
+- **Dynamic recalculation**: all geometry recomputes based on selected sensor origin (`?sensor=north|west|east`)
+
+**Why procedural instead of Mapbox/Cesium:**
+- Zero external dependencies (no API keys, no tile servers, no network requests)
+- Single draw call (wireframe mesh) — negligible performance impact
+- Works offline and on Quest 3 without streaming
+- Sufficient for FL340 airspace visualization (real terrain detail invisible at that altitude)
+
+**Future enhancement:** Real DEM heightmap displacement if low-altitude drone visualization is needed.
 
 ---
 
