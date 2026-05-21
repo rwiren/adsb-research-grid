@@ -33,7 +33,7 @@ On May 15, 2026, our sensor grid detected a confirmed ADS-B spoofing event in th
 
 | What | Details |
 |------|---------|
-| **Who** | Team 9 (Richard Wirén, Carolyn, Stefano) — Ericsson AI Academy 2026 |
+| **Who** | Richard Wirén & Team 9 — AI Academy 2026 |
 | **What** | Unsupervised ADS-B spoofing detection using distributed sensor grid + deep autoencoders |
 | **How** | 3 Raspberry Pi sensors (SDR 1090 MHz) → MQTT → physics-informed feature engineering → GRU autoencoder with information bottleneck |
 | **Why** | ADS-B has no authentication — anyone can inject false aircraft. Civil aviation needs independent detection capability |
