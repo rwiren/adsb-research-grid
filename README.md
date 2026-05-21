@@ -51,10 +51,11 @@ On May 15, 2026, our sensor grid detected a confirmed ADS-B spoofing event in th
 
 ### Production System
 
-- **Live dashboard**: [securingskies.eu:9443](https://www.securingskies.eu:9443/)
+- **Live dashboard**: [securingskies.eu:9443](https://www.securingskies.eu:9443/) — 2D map + 3D sky view, real-time ML inference, spoofing replay
 - **WebXR 3D view**: [securingskies.eu:9443/webxr.html](https://www.securingskies.eu:9443/webxr.html) (Meta Quest 3, Android AR, Desktop)
 - **Deployed model**: GRU h256/l4 (1.2M params), τ=0.136, FP rate 0.12%
 - **Research model**: GRU h128/l4 (309K params), τ=0.004 — higher sensitivity for offline analysis
+- **Features**: Spoofing replay (May 15 event), multi-sensor correlation lines, anomaly pulse animation, wireframe terrain, AR table mode
 
 ---
 

@@ -5,6 +5,32 @@ All notable changes to the **ADS-B Research Grid** project will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-05-21: Dashboard Enhancements & Infrastructure Hardening
+
+### Added
+- **Spoofing replay mode**: "▶ REPLAY" button (expert mode) replays the May 15 spoofing event on 2D map with timeline scrubber, speed control, and spoofed aircraft highlighted in magenta
+- **3D wireframe terrain**: Sea/land coloring with procedural elevation, replaces flat grid
+- **Coastline polyline**: Gulf of Finland coast (21°E–30°E) in both 3D and 2D views
+- **Multi-sensor correlation lines**: Click any aircraft to see dashed lines to all sensors (bright = receiving, dim = not)
+- **Anomaly pulse animation**: Red dashed pulsing circles on ML-flagged aircraft
+- **AR table mode**: WebXR "⬇ TABLE MODE" button scales scene to miniature for Quest 3 passthrough
+- **Server data harvest**: Daily cron (03:00 UTC) archives sensor CSVs before 7-day deletion
+- **Altitude filter**: ML inference skips ground/low-altitude aircraft (eliminates taxiing FPs)
+
+### Fixed
+- **Sensor-east MQTT**: Was broken since May 3 (missing USER variable in publish script)
+- **Production model FPs**: Deployed h256/l4 (τ=0.136) — 0.12% FP rate, down from ~5%
+- **3D camera angle**: Default 45° oblique view instead of top-down
+- **Dashboard panel height**: Responsive scrollable layout, no content clipping
+- **SNR bars**: Moved below sensor name, always visible
+- **Info popup**: Added SNR bar explanation, replay description, corrected JUMP button color
+
+### Infrastructure
+- Traficom references added to paper (2,800 aviation GNSS disruptions in 2024, 45× increase)
+- Paper now 21 pages with complete real-world validation section
+- Colab pipeline v7 notebook with all validation cells
+- Model comparison document for team
+
 ## [1.6.0] - 2026-05-21: Real-World Spoofing Detection Validated
 
 ### Added
