@@ -5,6 +5,28 @@ All notable changes to the **ADS-B Research Grid** project will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-05-21: Real-World Spoofing Detection Validated
+
+### Added
+- **Real-world validation**: GRU autoencoder detected confirmed ADS-B spoofing event (May 15, 2026) at 4,462× anomaly threshold — first academic detection of real-world spoofing
+- **Production model deployed**: h256/l4/2L (1.2M params), 50-trial HP search, FP rate 0.12%
+- **WebXR default sensor**: Changed to north (Espoo) for broader audience
+- **Model comparison**: 10 architectures evaluated across 50+ configurations
+- **Persistence filtering**: Achieves 4/4 detection on confirmed spoofed tracks
+
+### Research Results
+- 4 spoofed aircraft identified in Gulf of Finland (ICAO 151fb6, 151e57, 151e10, 4691c5)
+- Primary track (151fb6/AUL505) detected at 656× threshold (h128/l8) and 4,462× (h128/l4)
+- 97.5% of detection signal from velocity features (physics-informed engineering)
+- Peak reconstruction error at 06:11 UTC — within confirmed spoofing window (05:42–06:18)
+- Pareto frontier identified: h256/l4 (0.12% FP) vs h128/l4 (0.57% FP, higher sensitivity)
+
+### Technical
+- Production inference: GRU h256/l4, τ=0.136, trained on 879K sequences (624 aircraft, 4 days)
+- Research model: GRU h128/l4, τ=0.004, 309K params — optimal for offline analysis
+- Colab pipeline v7 notebook with real-world validation cells
+- Paper: 21 pages with complete real-world validation section
+
 ## [1.5.0] - 2026-05-18: WebXR v2.3.0 — Terrain, Coastline, Sensor Selector
 
 ### Added

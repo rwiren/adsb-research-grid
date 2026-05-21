@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/github/v/tag/rwiren/adsb-research-grid?label=Version&color=green)](https://github.com/rwiren/adsb-research-grid/tags)
-[![Status](https://img.shields.io/badge/Status-Phase%203%3A%20Production-success.svg)](#)
+[![Status](https://img.shields.io/badge/Status-Phase%204%3A%20Validated-success.svg)](#)
 [![Dashboard](https://img.shields.io/badge/Live%20Dashboard-securingskies.eu-00c878?style=flat-square)](https://www.securingskies.eu:9443/)
 [![MQTT](https://img.shields.io/badge/MQTT-3%20Sensors%20Online-blue?style=flat-square)](#-grid-infrastructure)
 [![Wiki](https://img.shields.io/badge/Docs-Project%20Wiki-purple?style=flat-square)](https://github.com/rwiren/adsb-research-grid/wiki)
@@ -14,13 +14,47 @@
 
 ## 📋 Table of Contents
 1. [Research Goal](#-research-goal)
-2. [The Model Zoo (18 Architectures)](#-the-model-zoo-18-architecture-ensemble)
-3. [Architecture (Hardware Grid)](#-architecture-distributed-sensor-grid)
-4. [Research Workflow (Usage)](#-research-workflow-usage)
-5. [Repository Structure](#-repository-structure)
-6. [3D Sky View](#-3d-sky-view-native-three-js-visualization)
-7. [Project Heritage](#-project-heritage)
-8. [License & Citation](#-license--citation)
+2. [Real-World Validation (May 2026)](#-real-world-validation-may-2026)
+3. [The Model Zoo (18 Architectures)](#-the-model-zoo-18-architecture-ensemble)
+4. [Architecture (Hardware Grid)](#-architecture-distributed-sensor-grid)
+5. [Research Workflow (Usage)](#-research-workflow-usage)
+6. [Repository Structure](#-repository-structure)
+7. [3D Sky View](#-3d-sky-view-native-three-js-visualization)
+8. [Project Heritage](#-project-heritage)
+9. [License & Citation](#-license--citation)
+
+---
+
+## 🎯 Real-World Validation (May 2026)
+
+On May 15, 2026, our sensor grid detected a confirmed ADS-B spoofing event in the Gulf of Finland. Four fabricated aircraft tracks were injected into 1090 MHz, confirmed by multi-sensor correlation and OpenSky Network cross-validation.
+
+**Key Result:** A GRU autoencoder trained exclusively on 4 days of normal traffic (Mon–Thu, May 11–14) detected the primary spoofed track with reconstruction error **4,462× above the anomaly threshold** — without any labeled attack data in training.
+
+| What | Details |
+|------|---------|
+| **Who** | Team 9 (Richard Wirén, Carolyn, Stefano) — Ericsson AI Academy 2026 |
+| **What** | Unsupervised ADS-B spoofing detection using distributed sensor grid + deep autoencoders |
+| **How** | 3 Raspberry Pi sensors (SDR 1090 MHz) → MQTT → physics-informed feature engineering → GRU autoencoder with information bottleneck |
+| **Why** | ADS-B has no authentication — anyone can inject false aircraft. Civil aviation needs independent detection capability |
+| **When** | Sensors operational since April 2026. Real spoofing detected May 15, 2026 |
+| **Where** | Helsinki FIR (Finland), sensors in Espoo/Jorvas, spoofing source: eastern Gulf of Finland (~59.65°N, 29.35°E) |
+
+### Detection Results
+
+| ICAO | Callsign | Detection Confidence | Rank |
+|------|----------|---------------------|------|
+| 151fb6 | AUL505 | **4,462× threshold** | #2/310 aircraft |
+| 151e57 | PBD6837 | 2.8× threshold | #8/310 |
+| 151e10 | PBD529 | 13.1× (sequence-level) | Detected with persistence filtering |
+| 4691c5 | AEE6118 | Borderline | Detected with persistence filtering |
+
+### Production System
+
+- **Live dashboard**: [securingskies.eu:9443](https://www.securingskies.eu:9443/)
+- **WebXR 3D view**: [securingskies.eu:9443/webxr.html](https://www.securingskies.eu:9443/webxr.html) (Meta Quest 3, Android AR, Desktop)
+- **Deployed model**: GRU h256/l4 (1.2M params), τ=0.136, FP rate 0.12%
+- **Research model**: GRU h128/l4 (309K params), τ=0.004 — higher sensitivity for offline analysis
 
 ---
 
