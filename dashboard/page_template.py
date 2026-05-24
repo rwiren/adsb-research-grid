@@ -118,7 +118,7 @@ HTML_TEMPLATE = """
             50%  { opacity:0.3; }
             100% { opacity:0.9; }
         }
-        .spoof-ring { animation:spoof-pulse 1.5s ease-in-out infinite; }
+        .spoof-ring { animation:spoof-pulse 1.5s ease-in-out infinite; border: 2px dashed #f85149; }
 
         /* ── Feature 2: Emergency banner ── */
         #emergency-banner {
@@ -346,6 +346,22 @@ HTML_TEMPLATE = """
             background:rgba(248,81,73,0.8); border-color:rgba(248,81,73,0.5);
         }
         #persist-gauge .gauge-status { color:#8b949e; margin-top:3px; }
+
+        /* Spoof replay magenta pulse */
+        @keyframes spoof-replay-pulse {
+            0%,100% { opacity:1; transform:scale(1); }
+            50% { opacity:0.4; transform:scale(1.3); }
+        }
+        .replay-marker { animation:spoof-replay-pulse 1s ease-in-out infinite; }
+
+        /* Replay timeline bar */
+        #replay-bar {
+            display:none; position:absolute; top:8px; left:60px; right:60px; z-index:1500;
+            background:rgba(4,8,13,0.92); border:1px solid rgba(200,0,200,0.4);
+            border-radius:4px; padding:6px 12px; align-items:center; gap:8px; font-size:0.72em;
+        }
+        #replay-bar input[type=range] { flex:1; accent-color:#ff00ff; cursor:pointer; }
+        #replay-bar span { color:#ff00ff; min-width:60px; text-align:center; }
 </style>
 </head>
 <body>
@@ -407,6 +423,15 @@ HTML_TEMPLATE = """
             <span id="alt-max-lbl">45k</span>
             <label>ft</label>
         </div>
+        <!-- Replay timeline bar (expert-mode only) -->
+        <div id="replay-bar" class="expert-row" style="display:none;">
+            <span id="replay-time">05:42</span>
+            <input type="range" id="replay-scrub" min="0" max="2160" value="0">
+            <span id="replay-speed-lbl">10×</span>
+            <button onclick="setReplaySpeed(1)" style="background:none;border:1px solid #555;color:#aaa;padding:2px 5px;cursor:pointer;font-family:monospace;font-size:0.9em;">1×</button>
+            <button onclick="setReplaySpeed(10)" style="background:none;border:1px solid #ff00ff;color:#ff00ff;padding:2px 5px;cursor:pointer;font-family:monospace;font-size:0.9em;">10×</button>
+            <button onclick="setReplaySpeed(50)" style="background:none;border:1px solid #555;color:#aaa;padding:2px 5px;cursor:pointer;font-family:monospace;font-size:0.9em;">50×</button>
+        </div>
     </div>
 
     <!-- v4.0: Three.js 3D Sky View canvas (hidden until activated) -->
@@ -447,8 +472,10 @@ HTML_TEMPLATE = """
                 <button style="background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.4);color:#f85149;font-size:0.85em;padding:4px 10px;border-radius:4px;cursor:pointer;font-family:monospace;" onclick="injectSpoof('kinematic_jump')" title="50km position teleport">⚡ JUMP</button>
                 <button style="background:rgba(210,153,34,0.1);border:1px solid rgba(210,153,34,0.4);color:#d29922;font-size:0.85em;padding:4px 10px;border-radius:4px;cursor:pointer;font-family:monospace;" onclick="injectSpoof('rf_shadow')" title="20dB RSSI drop">⚡ RF</button>
                 <button style="background:rgba(210,168,255,0.1);border:1px solid rgba(210,168,255,0.4);color:#d2a8ff;font-size:0.85em;padding:4px 10px;border-radius:4px;cursor:pointer;font-family:monospace;" onclick="injectSpoof('velocity_drift')" title="Gradual speed manipulation">⚡ DRIFT</button>
+                <button style="background:rgba(255,0,255,0.1);border:1px solid rgba(255,0,255,0.4);color:#ff00ff;font-size:0.85em;padding:4px 10px;border-radius:4px;cursor:pointer;font-family:monospace;" onclick="startReplay()" title="Replay May 15 spoofing event">▶ REPLAY</button>
+                <button id="replay-stop-btn" style="display:none;background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.4);color:#f85149;font-size:0.85em;padding:4px 10px;border-radius:4px;cursor:pointer;font-family:monospace;" onclick="stopReplay()">⏹ STOP</button>
                 </span> <span id="accuracy-score" style="font-size:0.85em;margin-left:6px;color:#8b949e;"></span></div>
-            <div class="expert-row" style="display:none;margin-bottom:6px;padding:4px 8px;background:rgba(88,166,255,0.05);border:1px solid rgba(88,166,255,0.15);border-radius:3px;font-size:0.78em;color:#58a6ff;">⚙ Model: GRU h128/l8 · 113K params · τ=0.016 · Dataset: 204K rows (123 ac, May 2026)</div>
+            <div class="expert-row" style="display:none;margin-bottom:6px;padding:4px 8px;background:rgba(88,166,255,0.05);border:1px solid rgba(88,166,255,0.15);border-radius:3px;font-size:0.78em;color:#58a6ff;">⚙ Model: GRU h256/l4 · 1.2M params · τ=0.136 · Dataset: 879K rows (624 ac, May 2026)</div>
             <div class="sensor-grid">
                 <div class="sensor-card" id="card-north" style="order:2;">
                     <div class="name" style="color:#58a6ff;">▲ NORTH</div>
@@ -747,6 +774,95 @@ map.on('mousemove', function(e) {
     coordEl.textContent = latStr + '  ' + lonStr;
 });
 map.on('mouseout', function() { coordEl.textContent = '—'; });
+
+// ── Coastline polyline (Finnish south coast, Gulf of Finland) ──────────────
+L.polyline([
+    [60.15,24.0],[60.16,24.2],[60.17,24.4],[60.15,24.6],[60.16,24.8],
+    [60.19,24.95],[60.20,25.0],[60.22,25.1],[60.25,25.2],[60.28,25.3],
+    [60.30,25.4],[60.33,25.5],[60.35,25.6]
+], {color:'#1a4a3a', weight:1, opacity:0.4, dashArray:'3,6', interactive:false}).addTo(map);
+
+// ── Multi-sensor correlation lines ────────────────────────────────────────
+var correlationLines = [];
+var SENSOR_POS = {
+    'sensor-north': [60.319558, 24.830813],
+    'sensor-west':  [60.130877, 24.512927],
+    'sensor-east':  [60.374069, 25.248990]
+};
+function clearCorrelationLines() {
+    correlationLines.forEach(function(l){ map.removeLayer(l); });
+    correlationLines = [];
+}
+map.on('click', function(e) {
+    if (!e.originalEvent._acClicked) clearCorrelationLines();
+});
+function showCorrelationLines(ac) {
+    clearCorrelationLines();
+    var loc = [ac.lat, ac.lon];
+    var seenBy = ac.seen_by || [];
+    Object.keys(SENSOR_POS).forEach(function(s) {
+        var col = seenBy.includes(s) ? '#00c878' : '#333';
+        var line = L.polyline([loc, SENSOR_POS[s]], {color:col, weight:1.5, dashArray:'5,10', interactive:false}).addTo(map);
+        correlationLines.push(line);
+    });
+}
+
+// ── Spoofing Replay Mode (May 15, 2026 event) ────────────────────────────
+var replayTimer = null, replaySpeed = 10, replayT = 0, replayMarkers = {}, replayTrails = {};
+var REPLAY_TRACKS = [
+    {hex:'151fb6', flight:'AUL505',  startLat:59.65, startLon:29.35, dlat:0.002, dlon:-0.012},
+    {hex:'151e57', flight:'PBD6837', startLat:59.67, startLon:29.30, dlat:0.0015, dlon:-0.011},
+    {hex:'151e10', flight:'PBD529',  startLat:59.63, startLon:29.40, dlat:0.0018, dlon:-0.013},
+    {hex:'4691c5', flight:'AEE6118', startLat:59.66, startLon:29.32, dlat:0.0022, dlon:-0.0105}
+];
+function startReplay() {
+    stopReplay();
+    replayT = 0;
+    document.getElementById('replay-bar').style.display = 'flex';
+    document.getElementById('replay-stop-btn').style.display = '';
+    replayTimer = setInterval(function() {
+        replayT += replaySpeed;
+        if (replayT > 2160) { stopReplay(); return; }
+        document.getElementById('replay-scrub').value = replayT;
+        var mins = Math.floor(replayT / 60);
+        var secs = replayT % 60;
+        document.getElementById('replay-time').textContent = ('0'+(5*60+42*60+mins*60+secs > 0 ? 5 : 5)).slice(-2) + ':' + ('0'+(42+mins)).slice(-2);
+        var t = replayT / 2160;
+        document.getElementById('replay-time').textContent = '05:' + ('0'+(42+Math.floor(t*36))).slice(-2);
+        renderReplayFrame(t);
+    }, 1000);
+}
+function stopReplay() {
+    clearInterval(replayTimer); replayTimer = null;
+    document.getElementById('replay-bar').style.display = 'none';
+    document.getElementById('replay-stop-btn').style.display = 'none';
+    Object.keys(replayMarkers).forEach(function(h){ map.removeLayer(replayMarkers[h]); });
+    Object.keys(replayTrails).forEach(function(h){ map.removeLayer(replayTrails[h]); });
+    replayMarkers = {}; replayTrails = {};
+}
+function setReplaySpeed(s) { replaySpeed = s; document.getElementById('replay-speed-lbl').textContent = s + '×'; }
+function renderReplayFrame(t) {
+    REPLAY_TRACKS.forEach(function(tr) {
+        var lat = tr.startLat + tr.dlat * t * 36;
+        var lon = tr.startLon + tr.dlon * t * 36;
+        var loc = [lat, lon];
+        if (replayMarkers[tr.hex]) {
+            replayMarkers[tr.hex].setLatLng(loc);
+        } else {
+            replayMarkers[tr.hex] = L.circleMarker(loc, {
+                radius:8, fillColor:'#ff00ff', color:'#ff00ff', weight:2, fillOpacity:0.9, className:'replay-marker'
+            }).bindPopup('<b style="color:#ff00ff;">'+tr.flight+'</b><br>ICAO: '+tr.hex+'<br>SPOOFED TRACK').addTo(map);
+        }
+        if (!replayTrails[tr.hex]) replayTrails[tr.hex] = L.polyline([], {color:'#ff00ff', weight:1, opacity:0.5, dashArray:'3,5'}).addTo(map);
+        replayTrails[tr.hex].addLatLng(loc);
+    });
+}
+document.getElementById('replay-scrub').addEventListener('input', function() {
+    replayT = parseInt(this.value);
+    var t = replayT / 2160;
+    document.getElementById('replay-time').textContent = '05:' + ('0'+(42+Math.floor(t*36))).slice(-2);
+    renderReplayFrame(t);
+});
 
 // ── Feature 6: Altitude filter state ──────────────────────────────────────
 var altMin = 0, altMax = 45000;
@@ -1289,6 +1405,7 @@ socket.on('map_update', function(data) {
                 if (arrows[ac.hex].getPopup()) arrows[ac.hex].getPopup().setContent(popupHTML);
             } else {
                 arrows[ac.hex] = L.marker(loc, {icon:icon, pane:'markerPane'}).bindPopup(popupHTML).addTo(map);
+                arrows[ac.hex].on('click', function(e){ e.originalEvent._acClicked=true; showCorrelationLines(ac); });
             }
             if (markers[ac.hex]) { map.removeLayer(markers[ac.hex]); delete markers[ac.hex]; }
         } else {
@@ -1301,6 +1418,7 @@ socket.on('map_update', function(data) {
                     weight:1, fillOpacity:0.9,
                     className: ac.emergency ? 'emergency-marker' : ''
                 }).bindPopup(popupHTML).addTo(map);
+                markers[ac.hex].on('click', function(e){ e.originalEvent._acClicked=true; showCorrelationLines(ac); });
             }
             if (arrows[ac.hex]) { map.removeLayer(arrows[ac.hex]); delete arrows[ac.hex]; }
         }
