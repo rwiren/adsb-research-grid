@@ -512,8 +512,8 @@ HTML_TEMPLATE = """
                 <div class="legend-item"><span class="dot" style="background:#d29922"></span>W+E   <span id="cnt-we" style="color:#3d6050;margin-left:auto;">0</span></div>
                 <div class="legend-item" style="grid-column:span 2;margin-top:4px;padding-top:4px;border-top:1px solid rgba(0,200,120,0.15);">
                     <span class="dot" style="background:#fff;box-shadow:0 0 8px #fff;"></span>
-                    <b style="color:#e8b84b;">TRILATERATION LOCK</b>
-                    <span id="cnt-all" style="color:#e8b84b;margin-left:auto;">0</span>
+                    <b style="color:#ffffff;">TRILATERATION LOCK</b>
+                    <span id="cnt-all" style="color:#ffffff;margin-left:auto;">0</span>
                 </div>
                 <!-- Feature 7: Anomaly count row -->
                 <div class="legend-item" style="grid-column:span 2;margin-top:2px;">
