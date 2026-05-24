@@ -437,6 +437,7 @@ HTML_TEMPLATE = """
                 <div id="last-update" style="font-size:0.65em;color:#8b949e;margin-top:2px;">—</div>
                 <div id="gps-health" style="font-size:0.7em;margin-top:4px;padding:2px 6px;border-radius:3px;background:rgba(63,185,80,0.15);color:#3fb950;border:1px solid rgba(63,185,80,0.3);">GPS: OK</div>
                 <div id="ml-status" style="font-size:0.65em;margin-top:3px;padding:1px 6px;border-radius:3px;background:rgba(88,166,255,0.1);color:#58a6ff;border:1px solid rgba(88,166,255,0.25);">ML: —</div>
+                <div id="ml-health-badge" style="font-size:0.6em;margin-top:2px;padding:1px 6px;border-radius:3px;background:rgba(63,185,80,0.1);color:#3fb950;border:1px solid rgba(63,185,80,0.25);">EVAL: —</div>
             </div>
         </div>
 
@@ -1375,6 +1376,22 @@ socket.on('map_update', function(data) {
                     mlEl.textContent = 'ML: warming up';
                     mlEl.style.color = '#8b949e';
                 }
+            }
+            // ── ML Health Badge (Continual Eval Harness) ──────────────────────
+            var healthEl = document.getElementById('ml-health-badge');
+            if (healthEl && data.ml_health && data.ml_health.status) {
+                var h = data.ml_health;
+                var colors = {healthy:'#3fb950', degraded:'#d29922', critical:'#f85149', unknown:'#8b949e'};
+                var icons = {healthy:'✓', degraded:'⚠', critical:'✗', unknown:'?'};
+                var c = colors[h.status] || '#8b949e';
+                healthEl.style.color = c;
+                healthEl.style.borderColor = c.replace(')', ',0.35)').replace('rgb', 'rgba');
+                healthEl.style.background = c.replace(')', ',0.08)').replace('rgb', 'rgba');
+                var txt = icons[h.status] + ' EVAL: ' + h.status.toUpperCase();
+                if (h.fp_rate !== undefined) txt += ' | FP:' + (h.fp_rate*100).toFixed(1) + '%';
+                if (h.threshold_drift_ratio) txt += ' | τ:' + h.threshold_drift_ratio.toFixed(1) + '×';
+                healthEl.textContent = txt;
+                healthEl.title = 'Continual eval: ' + (h.reason || '') + ' | ' + h.aircraft_coverage + ' ac | p95=' + (h.score_p95||0).toFixed(5);
             }
             // ── Feature Attribution (Paper Eq. 2) ─────────────────────────────
             // Phase 3: Prefer ML autoencoder per-feature decomposition when available.

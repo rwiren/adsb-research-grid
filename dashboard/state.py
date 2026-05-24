@@ -36,4 +36,5 @@ state = {
     "anomalies_v2": {},
     "jamming": [],
     "accuracy": {},
+    "ml_health": {},
 }

@@ -47,6 +47,11 @@ def on_message(client, userdata, message):
             state["accuracy"] = payload
             return
 
+        # ── Continual eval harness health metrics ─────────────────────────
+        if sensor == "sensor-core" and dtype == "ml-health":
+            state["ml_health"] = payload
+            return
+
         # ── Phase 3: ML autoencoder inference scores ──────────────────────────
         # Published by ml_inference_service.py (GRU Autoencoder, 79K params).
         # Payload: {hex, flight, anomaly_score, threshold, is_anomaly, per_feature_error}
@@ -314,6 +319,7 @@ def on_message(client, userdata, message):
                 "aircraft": aircraft_list,
                 "jamming":  state["jamming"],
                 "accuracy": state.get("accuracy", {}),
+                "ml_health": state.get("ml_health", {}),
             })
 
     except Exception as e:
@@ -347,6 +353,7 @@ def start_mqtt():
         mqtt_client.subscribe("sensor-core/anomalies-v2")
         mqtt_client.subscribe("sensor-core/accuracy") # Feature 7v2: enriched
         mqtt_client.subscribe("sensor-core/ml-anomaly")  # Phase 3: live autoencoder scores
+        mqtt_client.subscribe("sensor-core/ml-health")   # Continual eval harness
         mqtt_client.loop_start()
         log.warning("MQTT connected to %s:%d (TLS=%s)", MQTT_HOST, MQTT_PORT, MQTT_TLS)
     except Exception as e:
