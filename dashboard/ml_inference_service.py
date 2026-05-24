@@ -256,6 +256,11 @@ def compute_features(prev_obs, curr_obs, vel_error_history, dt_history, sensor):
     else:
         velocity_drift_weighted = 0.0
 
+    # Range attenuation: GPS jitter amplifies velocity features at long range.
+    # Full weight within 60km (training mean ~23km), linear decay beyond.
+    range_factor = min(1.0, 60.0 / max(distance_to_sensor, 1.0))
+    velocity_drift_weighted *= range_factor
+
     # Feature 4b: displacement_error (position jump detection)
     expected_dist = velocity_calculated * dt / 1000.0  # m/s * s -> km
     displacement_error = dist_km - expected_dist
@@ -423,6 +428,7 @@ class InferenceEngine:
             import numpy as _np
             self.threshold = float(_np.percentile(list(self.score_history), 99.9))
             self.threshold = max(self.threshold, self.base_threshold)
+            self.threshold = min(self.threshold, self.base_threshold * 3.0)  # Cap: never exceed 3× base
 
         return {
             "anomaly_score": anomaly_score,

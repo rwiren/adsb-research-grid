@@ -5,6 +5,17 @@ All notable changes to the **ADS-B Research Grid** project will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.1] - 2026-05-24: ML False Positive Reduction
+
+### Fixed
+- **Adaptive threshold runaway**: Capped at 3× base threshold to prevent transient spikes from inflating the detection threshold indefinitely (was climbing to 0.6454, now max 0.408)
+- **Range-induced false positives**: Added distance-based attenuation to `velocity_drift_weighted` feature — GPS jitter at >60km was amplifying velocity drift errors, causing false flags on distant aircraft (e.g. FIN9WA at 104km)
+
+### Technical
+- Root cause: `velocity_drift_weighted` contributed 82% of reconstruction error for aircraft at edge of coverage (100+ km), where position uncertainty creates artificial velocity spikes
+- Fix preserves full detection sensitivity for close-range spoofing (range_factor=1.0 within 60km)
+- Adaptive threshold now bounded: `base_threshold ≤ τ ≤ 3× base_threshold`
+
 ## [1.7.0] - 2026-05-21: Dashboard Enhancements & Infrastructure Hardening
 
 ### Added

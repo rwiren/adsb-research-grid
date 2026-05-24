@@ -60,8 +60,11 @@ compression of physical laws, eliminating false positives on normal traffic.
 6. Decomposes error per feature dimension (Paper Eq. 2)
 7. Publishes anomalies (score > τ) to `sensor-core/ml-anomaly`
 
-**Model:** GRU Autoencoder h128/l4, 305K params, hidden=128, latent=4, τ=0.005 (deployed 2026-05-03)
-**Checkpoint:** `models/adsb_gru_w30_144h_7feat.pth`
+**Model:** GRU Autoencoder h256/l4, 1.2M params, hidden=256, latent=4, τ=0.136 (deployed 2026-05-21)
+**Features:** 11D (velocity_calculated, velocity_error, velocity_drift, velocity_drift_weighted, displacement_error, distance_to_sensor, rssi_expected, rssi_error, rssi_error_normalized, distance_to_airport, msg_interval_variance)
+**Checkpoint:** `models/gru_11feat_may2026.pth` (server) / `models/adsb_gru_w30_144h_7feat.pth` (legacy 7-feat)
+**Adaptive threshold:** 99.9th percentile of recent scores, capped at 3× base (prevents runaway inflation)
+**Range attenuation:** `velocity_drift_weighted` attenuated beyond 60km to suppress GPS-jitter false positives
 
 ### Dashboard Integration (Phase 3)
 
