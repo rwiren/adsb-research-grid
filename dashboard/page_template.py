@@ -25,8 +25,8 @@ HTML_TEMPLATE = """
         body { margin:0; background:#060a0f; color:#a8bcc8; font-family:'Courier New',monospace; overflow:hidden; }
 
         /* ── Core layout ── */
-        #map        { height:75vh; width:100%; border-bottom:1px solid rgba(0,200,120,0.2); position:relative; }
-        #dashboard  { height:25vh; display:flex; flex-wrap:wrap; gap:8px; background:#04080d; padding:10px; overflow-y:auto; border-top:1px solid rgba(0,200,120,0.15); transition:height 0.3s ease; }
+        #map        { height:72vh; width:100%; border-bottom:1px solid rgba(0,200,120,0.2); position:relative; }
+        #dashboard  { height:28vh; display:flex; flex-wrap:wrap; gap:8px; background:#04080d; padding:10px; overflow-y:auto; border-top:1px solid rgba(0,200,120,0.15); transition:height 0.3s ease; }
         #dashboard.collapsed { height:0; padding:0 10px; overflow:hidden; border-top:none; }
         #dashboard.collapsed ~ #collapse-btn { bottom:8px; }
         #collapse-btn { position:fixed; bottom:12px; right:12px; z-index:1100; background:rgba(4,8,13,0.9); border:1px solid rgba(0,200,120,0.3); color:#11caa0; padding:4px 10px; border-radius:4px; cursor:pointer; font-family:'Courier New',monospace; font-size:0.75em; transition:bottom 0.3s ease; }
@@ -181,7 +181,7 @@ HTML_TEMPLATE = """
 
         /* ── v4.0: Sky controls overlay (alt exaggeration) ── */
         #sky-controls {
-            display:none; position:fixed; bottom:calc(25vh + 8px); left:50%;
+            display:none; position:fixed; bottom:calc(28vh + 8px); left:50%;
             transform:translateX(-50%); z-index:1100;
             background:rgba(4,8,13,0.88); border:1px solid rgba(0,200,120,0.2);
             border-radius:2px; padding:4px 14px;
