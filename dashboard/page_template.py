@@ -33,7 +33,7 @@ HTML_TEMPLATE = """
 
         .panel         { background:#08111a; border:1px solid rgba(0,200,120,0.18); border-radius:2px; padding:10px; display:flex; flex-direction:column; position:relative; overflow:hidden; }
         .panel::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,rgba(0,200,120,0.55) 0%,transparent 80%); pointer-events:none; }
-        .panel-sync    { flex:0.8; align-items:center; justify-content:flex-start; padding-top:12px; text-align:center; }
+        .panel-sync    { flex:0.8; align-items:center; justify-content:flex-start; padding-top:12px; text-align:center; overflow:visible; }
         .panel-sensors { flex:2; }
         .panel-legend  { flex:1.2; }
 
@@ -1381,13 +1381,18 @@ socket.on('map_update', function(data) {
             var healthEl = document.getElementById('ml-health-badge');
             if (healthEl && data.ml_health && data.ml_health.status) {
                 var h = data.ml_health;
-                var colors = {healthy:'#3fb950', degraded:'#d29922', critical:'#f85149', unknown:'#8b949e'};
+                var styles = {
+                    healthy:  {color:'#3fb950', bg:'rgba(63,185,80,0.1)',  border:'rgba(63,185,80,0.3)'},
+                    degraded: {color:'#d29922', bg:'rgba(210,153,34,0.1)', border:'rgba(210,153,34,0.3)'},
+                    critical: {color:'#f85149', bg:'rgba(248,81,73,0.1)', border:'rgba(248,81,73,0.3)'},
+                    unknown:  {color:'#8b949e', bg:'rgba(139,148,158,0.1)', border:'rgba(139,148,158,0.3)'}
+                };
+                var s = styles[h.status] || styles.unknown;
+                healthEl.style.color = s.color;
+                healthEl.style.borderColor = s.border;
+                healthEl.style.background = s.bg;
                 var icons = {healthy:'✓', degraded:'⚠', critical:'✗', unknown:'?'};
-                var c = colors[h.status] || '#8b949e';
-                healthEl.style.color = c;
-                healthEl.style.borderColor = c.replace(')', ',0.35)').replace('rgb', 'rgba');
-                healthEl.style.background = c.replace(')', ',0.08)').replace('rgb', 'rgba');
-                var txt = icons[h.status] + ' EVAL: ' + h.status.toUpperCase();
+                var txt = (icons[h.status]||'?') + ' EVAL: ' + h.status.toUpperCase();
                 if (h.fp_rate !== undefined) txt += ' | FP:' + (h.fp_rate*100).toFixed(1) + '%';
                 if (h.threshold_drift_ratio) txt += ' | τ:' + h.threshold_drift_ratio.toFixed(1) + '×';
                 healthEl.textContent = txt;
