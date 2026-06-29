@@ -9,7 +9,7 @@ This directory contains a comprehensive exploratory data analysis (EDA) of the 8
 The analysis includes data from three sensor nodes:
 - **NORTH:** Primary reference node with Stratum-1 timing and advanced RTK/PPS GNSS module (SimpleRTK2B with PPS)
 - **EAST:** Remote node in Sibbo with G-STAR IV GPS module
-- **WEST:** Remote node in Jorvas with G-STAR IV GPS module
+- **WEST:** Remote node in Espoo with G-STAR IV GPS module
 
 Each sensor provided:
 - Aircraft tracking data (positions, speeds, altitudes, RSSI)

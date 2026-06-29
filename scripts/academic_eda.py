@@ -21,7 +21,7 @@ ML_DATASET = Path("research_data/ml_ready/training_dataset_v4_ensemble.csv")
 SENSORS = {
     "sensor-north": {"lat": 60.319555, "lon": 24.830816, "color": "#003f5c", "name": "North (Ref)", "marker": "^"}, 
     "sensor-east":  {"lat": 60.3621, "lon": 25.3375, "color": "#bc5090", "name": "East (Sipoo)", "marker": "s"}, 
-    "sensor-west":  {"lat": 60.1478, "lon": 24.5264, "color": "#ffa600", "name": "West (Jorvas)", "marker": "o"} 
+    "sensor-west":  {"lat": 60.1478, "lon": 24.5264, "color": "#ffa600", "name": "West (Espoo)", "marker": "o"} 
 }
 
 class ADSB_Science_EDA:
