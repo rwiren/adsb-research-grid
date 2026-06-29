@@ -2,12 +2,12 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/github/v/tag/rwiren/adsb-research-grid?label=Version&color=green)](https://github.com/rwiren/adsb-research-grid/tags)
-[![Status](https://img.shields.io/badge/Status-Phase%204%3A%20Validated-success.svg)](#)
+[![Status](https://img.shields.io/badge/Status-Phase%205%3A%20Production-success.svg)](#)
 [![Dashboard](https://img.shields.io/badge/Live%20Dashboard-securingskies.eu-00c878?style=flat-square)](https://www.securingskies.eu:9443/)
 [![MQTT](https://img.shields.io/badge/MQTT-3%20Sensors%20Online-blue?style=flat-square)](#-grid-infrastructure)
 [![Wiki](https://img.shields.io/badge/Docs-Project%20Wiki-purple?style=flat-square)](https://github.com/rwiren/adsb-research-grid/wiki)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](#)
-[![MLAT](https://img.shields.io/badge/MLAT-3--Sensor%20TDOA-orange?style=flat-square)](#)
+[![MLAT](https://img.shields.io/badge/MLAT-3--Sensor%20TDOA%20(PPS)-brightgreen?style=flat-square)](#)
 ![Last Updated](https://img.shields.io/github/last-commit/rwiren/adsb-research-grid?label=Last%20Updated&color=orange)
 
 [![Audit Report](https://img.shields.io/badge/View-Latest%20Report-blue?style=for-the-badge&logo=github)](docs/showcase/latest/REPORT.md)
@@ -33,12 +33,12 @@ On May 15, 2026, our sensor grid detected a confirmed ADS-B spoofing event in th
 
 | What | Details |
 |------|---------|
-| **Who** | Richard Wirén & Team 9 — AI Academy 2026 |
+| **Who** | Richard Wirén & Carolyn Cartwright — SecureSkies Team (Ericsson AI Academy 2026) |
 | **What** | Unsupervised ADS-B spoofing detection using distributed sensor grid + deep autoencoders |
 | **How** | 3 Raspberry Pi sensors (SDR 1090 MHz) → MQTT → physics-informed feature engineering → GRU autoencoder with information bottleneck |
 | **Why** | ADS-B has no authentication — anyone can inject false aircraft. Civil aviation needs independent detection capability |
 | **When** | Sensors operational since April 2026. Real spoofing detected May 15, 2026 |
-| **Where** | Helsinki FIR (Finland), sensors in Espoo/Jorvas, spoofing source: eastern Gulf of Finland (~59.65°N, 29.35°E) |
+| **Where** | Helsinki FIR (Finland), sensors across Greater Helsinki (~30 km baselines), spoofing source: eastern Gulf of Finland (~59.65°N, 29.35°E) |
 
 ### Detection Results
 
@@ -49,13 +49,15 @@ On May 15, 2026, our sensor grid detected a confirmed ADS-B spoofing event in th
 | 151e10 | PBD529 | 13.1× (sequence-level) | Detected with persistence filtering |
 | 4691c5 | AEE6118 | Borderline | Detected with persistence filtering |
 
-### Production System
+### Production System (operational since April 2026)
 
 - **Live dashboard**: [securingskies.eu:9443](https://www.securingskies.eu:9443/) — 2D map + 3D sky view, real-time ML inference, spoofing replay
 - **WebXR 3D view**: [securingskies.eu:9443/webxr.html](https://www.securingskies.eu:9443/webxr.html) (Meta Quest 3, Android AR, Desktop)
-- **Deployed model**: GRU h256/l4 (1.2M params), τ=0.136, FP rate 0.12%
-- **Research model**: GRU h128/l4 (309K params), τ=0.004 — higher sensitivity for offline analysis
-- **Features**: Spoofing replay (May 15 event), multi-sensor correlation lines, anomaly pulse animation, wireframe terrain, AR table mode
+- **Deployed model**: GRU autoencoder (1.8 Hz inference), τ=0.136, FP rate 0.12%
+- **MLAT**: 3-sensor TDOA multilateration operational (PPS-disciplined timing, 15μs precision on reference node)
+- **GNSS monitoring**: Real-time integrity checking across all sensors, spoofing/jamming detection
+- **ML pipeline**: Continual evaluation, adaptive thresholds, per-feature anomaly attribution
+- **Uptime**: Continuous operation since April 2026 (90+ days)
 
 ---
 
@@ -67,94 +69,100 @@ The core innovation is the **Elastic Manifold Architecture**: a system that vali
 
 ---
 
-# 🧠 The "Model Zoo": 18-Architecture Ensemble
+# 🧠 Validated Architectures & Detection Methods
 
-The detection engine utilizes a comparative ensemble of 18 distinct methods, layered by computational complexity and abstraction level.
+10 neural architectures rigorously evaluated with 20-trial hyperparameter search per architecture, 6 attack magnitudes, and proper aircraft-level data partitioning.
 
 **Status Legend:**
-✅ **Implemented** | ⚠️ **Planned / In Progress** | 🔄 **Integration Phase**
+✅ **Validated (with results)** | 🔄 **Implemented (code exists)** | ⚠️ **Roadmap**
 
-### Tier 0: The Physical Truth (Hardware & Signal Layer)
-*New layer establishing "Ground Truth" independent of decoded data.*
+### Production (Deployed Live)
 
-* **1. Elastic Grid TDOA (Physics):** "The Anchor." Uses nanosecond-level Time Difference of Arrival (TDOA) to calculate the *physical* location of a transmitter, independent of the GPS coordinates reported in the data packet. (✅ **Verified in Science Run**)
-* **2. RF Fingerprinting (CNN/ResNet):** "The Hardware ID." A Deep Learning model (running on Hailo-8) that analyzes Raw I/Q signal data to identify the unique electronic signature of the transmitter (e.g., distinguishing a HackRF One from a Garmin transponder). (⚠️ *Planned*)
+| # | Architecture | F1 | AUC | Status | Notes |
+|---|-------------|-----|-----|--------|-------|
+| 1 | **GRU Autoencoder** | 0.357 | 0.771 | ✅ Deployed | Best aggregate, lowest FP, recommended |
+| 2 | LSTM | 0.354 | 0.793 | ✅ Validated | Best on RF shadowing attacks |
+| 3 | BiLSTM | 0.342 | 0.763 | ✅ Validated | |
+| 4 | Vanilla RNN | 0.339 | 0.792 | ✅ Validated | |
+| 5 | CNN | 0.280 | 0.757 | ✅ Validated | Lowest FP rate but worst F1 |
 
-### Tier 1: Edge Baselines (Reflex Layer)
-*Fast, low-latency filters running on Raspberry Pi CPU.*
+### Research (Evaluated, Not Deployed)
 
-* **3. Sinkhorn-Knopp Algorithm:** Mathematical gatekeeper using Optimal Transport theory to project signal cost matrices onto the **Birkhoff Polytope**. Fails to converge on "impossible" signal clusters. (✅ **Implemented**)
-* **4. Random Forest (RF):** "Sanity Check" filtering based on basic feature extraction (RSSI vs. Distance consistency). (✅ **Implemented**)
-* **5. XGBoost / LightGBM:** High-speed, Treelite-compiled inference for detecting known spoofing software signatures. (✅ **Implemented**)
-* **6. Reinforcement Learning (RL):** "The Auto-Tuner." Single-agent active learning that dynamically optimizes **RF Gain** and **Squelch** to maximize SNR for specific targets. (✅ **Implemented**)
-* **7. Multi-Agent RL (MARL):** Decentralized coordination allowing sensor nodes (North/East/West) to cooperatively optimize grid-wide coverage. (✅ **Implemented**)
+| # | Architecture | F1 | AUC | Status | Notes |
+|---|-------------|-----|-----|--------|-------|
+| 6 | PINN | 0.315 | 0.790 | ✅ Validated | **Key finding: physics loss is counterproductive** |
+| 7 | TCN | 0.262 | 0.783 | ✅ Validated | Dilated convolutions insufficient for drift |
+| 8 | xLSTM | 0.295 | 0.772 | ✅ Validated | Matrix memory provides no benefit over LSTM |
+| 9 | FlightBERT++ | 0.297 | 0.746 | ✅ Validated | Transformer variant |
+| 10 | TOMHT | 0.145 | 0.563 | ✅ Validated | Track-based, poorest performer |
 
-### Tier 2: Temporal & Stream Intelligence
-*Understanding the flow of time and trajectory continuity (Hailo-8 NPU).*
+### Key Findings from Architecture Comparison
 
-* **8. Mamba (SSM):** State Space Models for efficient long-context trajectory tracking. Detects slow "drift" attacks that standard Transformers miss due to linear scaling efficiency. (✅ **Implemented**)
-* **9. xLSTM:** Extended Long Short-Term Memory networks for precise validation of rapid maneuvers and sharp turns. (✅ **Implemented**)
-* **10. Liquid Neural Networks (LNN):** Time-continuous neural networks designed to handle irregular ADS-B packet arrival times without losing context. (✅ **Implemented**)
-* **11. Transformers (FlightBERT++):** Self-attention based trajectory forecasting to detect subtle "meandering" anomalies. (⚠️ *Planned*)
+- **Physics belongs in features, not loss** — PINN's physics loss *degrades* detection by 30%
+- **Temporal memory is essential** — CNN and TCN fail despite dilated convolutions
+- **Architecture specialisation exists** — GRU→kinematic, LSTM→RF, motivates ensemble
+- **Engineered features outperform raw by 188×** — physics-informed feature engineering is essential
+- **Single-layer universally wins** — deeper models don't help for ADS-B temporal complexity
 
-### Tier 3: Topological & Spatial Reasoning
-*Understanding the shape of the swarm and sensor trust.*
+### Infrastructure & Cross-Sensor Validation
 
-* **12. DeepSeek MCHC (Manifold-Constrained Hyper-Connection):** Graph Neural Network with topology-based validation to detect "ghost aircraft" formations that violate manifold constraints. (✅ **Implemented**)
-* **13. Graph Neural Networks (GNN):** Modeling the sensor grid as a geometric graph to detect spatial anomalies (e.g., signals visible to Node A but impossibly occluded from Node B). (⚠️ *Planned*)
-* **14. Graph Attention Networks (GAT):** Dynamic weighting of sensor reliability based on **Clock Drift (PPM)** stability, allowing the grid to "ignore" jammed nodes. (⚠️ *Planned*)
+| Method | Status | Description |
+|--------|--------|-------------|
+| Cross-sensor position consistency | ✅ Live | Flags aircraft with >1km position spread across sensors |
+| TDOA multilateration | ✅ Operational | 3-sensor MLAT with PPS timing (15μs on North) |
+| GNSS integrity monitoring | ✅ Live | Spoofing/jamming detection per sensor |
+| Anomaly bridge (28 features) | ✅ Live | Cross-sensor conflict detection |
+| Adaptive threshold | ✅ Live | Self-calibrating to traffic regime |
+| Persistence filtering | ✅ Live | k=5 consecutive windows, FP→~0% |
 
-### Tier 4: Physics, Logic & Generative Validation
-*High-level reasoning and adversarial testing (M4 Max / Server).*
+### Roadmap (Future Work)
 
-* **15. Physics-Informed Neural Networks (PINN):** Embedding Equations of Motion (Navier-Stokes/Kinematics) directly into the loss function to penalize physically impossible maneuvers. (✅ **Implemented**)
-* **16. Kolmogorov-Arnold Networks (KAN):** Symbolic regression for real-time estimation of aerodynamic coefficients (Lift/Drag). Flags targets flying with impossible parameters. (✅ **Implemented**)
-* **17. RL-Enhanced GAN (RL-GAN):** "The Smart Red Team." Uses Reinforcement Learning to guide the Generator (GAN), rewarding it for successfully bypassing specific Tier 1-3 defenses. (✅ **Implemented as GAN**)
-* **18. Ollama Reasoning Swarm (DeepSeek-R1 / Llama 3 / Phi-3):** "The Investigator." Validated ensemble of LLMs analyzing MQTT-based incident logs. Benchmarks confirm efficacy in parsing complex, multi-variable anomaly scenarios (SecuringSkies Benchmarks). (✅ **Benchmarked & Implemented**)
+| Method | Description | Status |
+|--------|-------------|--------|
+| RF Fingerprinting | I/Q signal analysis for transmitter identification | ⚠️ Planned |
+| Mixture-of-Experts | Route to specialist architecture per attack type | ⚠️ Planned |
+| Graph Attention Networks | Dynamic sensor reliability weighting | ⚠️ Planned |
+| Hopsworks Feature Store | MLOps pipeline for reproducible training | 🔄 In progress |
 
 ---
 
-### 🛡️ Manifold Defense System (Integration)
-The project orchestrates these tiers into a single decision engine, formerly referred to as the **ManifoldGuard Ensemble**.
+### 🛡️ Detection Pipeline (What Actually Runs)
 
-**Key Features:**
-- **Weighted Ensemble Vote:** A voting mechanism where Tier 0 (Physics) has veto power over Tier 2/3 (AI).
-- **Lightweight Inference:** Optimized for **Raspberry Pi 5 + Hailo-8 NPU** (~30ms latency with full ensemble).
-- **Graceful Fallback:** System degrades safely from "Full Manifold Defense" to "Basic RF Filtering" if hardware resources are constrained.
-- **Distributed Trust:** Uses **GAT** and **Elastic TDOA** to dynamically identify and isolate compromised sensors in the grid.
-- **ONNX Export:** Tier 1-3 models are ready for NPU acceleration.
+```
+Sensors (3× RPi4)                    Server (Helsinki VPS)
+┌─────────────────┐                  ┌──────────────────────────────────┐
+│ ADS-B SDR 1090  │──── MQTT ──────→ │ Feature Engineering (11 features)│
+│ GNSS (GPS/RTK)  │                  │ GRU Autoencoder (1.8 Hz)         │
+│ System health   │                  │ Cross-sensor validation          │
+└─────────────────┘                  │ GNSS integrity monitor           │
+                                     │ MLAT server (TDOA)               │
+                                     │ Anomaly bridge (28 features)     │
+                                     │ Dashboard + WebXR                │
+                                     └──────────────────────────────────┘
+```
   
 ---
 
 ## 📡 Grid Infrastructure
-> For detailed hardware specifications, wiring diagrams, and GNSS benchmarks, please consult the **[Project Wiki](https://github.com/rwiren/adsb-research-grid/wiki)**.
 
-* **Controller: Research Workstation**
-    * **OS:** MacOS / Ansible Control Node
-    * **Role:** Orchestration, Playbook deployment, and Data Analysis.
+> For detailed hardware specifications and GNSS benchmarks, see the **[Project Wiki](https://github.com/rwiren/adsb-research-grid/wiki)**.
 
-* **Tower Core (Aggregation Node)**
-    * **Hostname:** `tower-core`
-    * **Hardware:** Raspberry Pi 5 (16GB) + 1TB NVMe
-    * **Role:** Central InfluxDB storage, Grafana visualization, and signal correlation.
+### Current Status (June 2026)
 
-* **Sensor North (Reference Node)**
-    * **Hostname:** `sensor-north`
-    * **Hardware:** Raspberry Pi 4 (4GB) + 32GB SD
-    * **Radio/GNSS:** USB SDRs (FlightAware Blue/Jetvision/RTL-SDR) + SimpleRTK2B (PPS)
-    * **Role:** Stratum-1 Precision Timing & Reference Geolocation.
+| Node | Hardware | GNSS | Position Accuracy | Timing | Role |
+|------|----------|------|-------------------|--------|------|
+| **North** | RPi4 4GB | u-blox ZED-F9P (RTK + PPS) | **0.4m** (sub-meter) | **15μs** (PPS/GPIO) | Stratum-1 reference |
+| **West** | RPi4 4GB | GlobalSat BU-353S4 (GPS L1) | 5.5m | ~0.3ms (NTP via North) | Remote sensor |
+| **East** | RPi4 4GB | GlobalSat BU-353S4 (GPS L1) | 10.8m | ~0.3ms (NTP via North) | Remote sensor |
+| **Server** | VPS (Helsinki) | — | — | NTP | MQTT broker, ML, dashboard |
 
-* **Sensor West (Remote Node)**
-    * **Hostname:** `sensor-west`
-    * **Hardware:** Raspberry Pi 4 (4GB) + 64GB SD
-    * **Radio/GNSS:** USB SDRs (RTL-SDR "silver") + G-STAR IV GNSS
-    * **Location:** Jorvas (Currently acting as hw verification).
+### Network
 
-* **Sensor East (Remote Node)**
-    * **Hostname:** `sensor-east`
-    * **Hardware:** Raspberry Pi 4 (4GB) + 16GB SD
-    * **Radio/GNSS:** USB SDRs (FlightAware Blue) + G-STAR IV GNSS
-    * **Location:** Sibbo.
+- **Transport:** ZeroTier VPN overlay (encrypted P2P mesh)
+- **Data:** MQTT (TLS on port 8883, WebSocket on 8443)
+- **MLAT:** Private mlat-server on VPS, all 3 nodes as clients
+- **Monitoring:** Real-time GNSS health, system temp/load, ML model health
+- **Archival:** Daily cron harvest (compressed CSVs, 46+ days retained)
       
 ---
 

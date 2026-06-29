@@ -5,6 +5,38 @@ All notable changes to the **ADS-B Research Grid** project will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-06-29: Infrastructure Overhaul & MLAT Operational
+
+### Added
+- **MLAT multilateration operational** — 3-sensor TDOA server running, all clients connected, clock sync established between North↔West pair
+- **PPS timing fixed on North** — 15μs precision (was 1.6ms NTP). North now operates as stratum-1 time source for entire grid
+- **Unified GNSS publishers (v3)** — all 3 nodes now publish identical raw data (no filtering). Enables fair cross-sensor comparison
+- **Research MQTT logger** — server now stores ML anomaly scores, GNSS health, accuracy metrics, and system health to daily JSONL files
+- **West gnss-sky publishing** — West now provides full satellite visibility data (was missing)
+- **5-minute cross-sensor evaluation** — automated quality assessment across all data streams
+
+### Fixed
+- **East GNSS: 1km drift resolved** — USB cold restart recovered 3D fix. Position now 10.8m (was drifting 1km in 2D-only mode)
+- **East precision_class** — updated from stale "65m" to actual "6m" in accuracy monitor
+- **MLAT server crash** — fixed AttributeError in jsonclient.py (missing default `handle_messages` initialization)
+- **MLAT client routing** — all 3 nodes now point to correct server address (were connecting to wrong hosts)
+- **PPS permissions** — chrony couldn't read /dev/pps0 (root-only). Fixed with udev rule, persistent across reboots
+- **gpsd PPS integration** — added /dev/pps0 to gpsd DEVICES on North (was only reading TCP stream)
+
+### Changed
+- **East GNSS publisher** — replaced filtered v2 (15-sample median + rejection) with raw v3 (matches North/West)
+- **README** — honest architecture status (validated vs roadmap), removed aspirational hardware not in deployment
+- **Phase status** — updated to Phase 5: Production (system has been running 90+ days)
+
+### Infrastructure Status
+| Metric | Before (2026-06-28) | After (2026-06-29) |
+|--------|---------------------|---------------------|
+| North timing | 1.6ms (NTP) | **15μs (PPS)** |
+| East GNSS | 1km drift, 0% 3D | **10.8m, 99% 3D** |
+| MLAT | Not operational | **3 clients, syncing** |
+| Data logging | Aircraft + GNSS only | **All topics stored** |
+| GNSS comparison | Apples-to-oranges | **Unified raw v3** |
+
 ## [1.7.1] - 2026-05-24: ML False Positive Reduction
 
 ### Fixed
