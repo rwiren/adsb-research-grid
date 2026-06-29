@@ -305,7 +305,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🚀 Physics & Synchronization (Scientific Proof)
 * **Elastic Grid Algorithm:** Implemented a linear heartbeat model ($True\_Time = t_{raw} - (Bias + Drift \times dt)$) to compensate for non-coherent SDR clock drift across the grid.
 * **Drift Quantification:** Successfully measured and corrected for individual hardware crystal errors:
-    * **Sensor-West (Jorvas):** **+273 PPM** (Fast clock).
+    * **Sensor-West:** **+273 PPM** (Fast clock).
     * **Sensor-East (Sibbo):** **-51 PPM** (Slow clock).
 * **Golden Packet Harvester:** Added `analyze_tdoa_v23_golden_harvester.py` to identify simultaneous 3-node detections for definitive triangulation proof.
 * **Robust Solver:** Integrated a 4-variable Robust Least Squares optimizer (`v15_elastic_solver.py`) to solve for Lat/Lon offsets and drift rates simultaneously using commercial aircraft as "Signals of Opportunity."
