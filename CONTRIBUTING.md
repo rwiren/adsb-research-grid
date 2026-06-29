@@ -1,23 +1,28 @@
-# How to Contribute to the ADS-B Research Grid
+# Contributing
 
-Welcome! We follow a strict DevOps workflow to ensure scientific integrity across Apple Silicon, Intel, and Windows architectures.
+Thank you for your interest in contributing!
 
-## 1. The Golden Rule
-**Main is protected.** Never push directly to main. Always use a feature branch.
+## Branching Model
 
-## 2. Workflow
-1.  **Sync:** `git checkout main && git pull origin main`
-2.  **Branch:** `git checkout -b feature/description`
-3.  **Test:** Run `make report` before every commit.
-    - *Must pass on your local machine (Mac or WSL).*
-4.  **Commit:** Use [Conventional Commits](https://www.conventionalcommits.org/) (e.g., `feat:`, `fix:`, `docs:`).
-5.  **Merge:** Open a Pull Request (PR).
+- **`main`** — stable releases only
+- **`develop`** — active development (submit PRs here)
 
-## 3. Environment Setup
-- Run `make setup` to initialize the Python environment.
-- Data is not stored in the repo. You must fetch `.bin` files from the sensors or `sensor- west / north/ east`.
-- **Vault Password:** Ask the maintainer for the vault password, then store it securely:
-  ```bash
-  read -rs VAULT_PASS && echo "$VAULT_PASS" > .vault_pass
-  ```
-  *(Using `read -rs` avoids storing the password in shell history.)*
+## How to Contribute
+
+1. Fork the repository
+2. Create a feature branch from `develop` (`git checkout -b feature/your-feature develop`)
+3. Commit using [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`)
+4. Push to your fork and open a Pull Request targeting `develop`
+
+## Development Setup
+
+See the README for setup instructions.
+
+## Code of Conduct
+
+Be respectful and constructive. We follow standard open-source etiquette.
+
+## License
+
+By contributing, you agree that your contributions will be licensed under the MIT License.
+
