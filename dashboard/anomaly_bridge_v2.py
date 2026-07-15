@@ -90,7 +90,10 @@ if not MQTT_PASS and MQTT_PASS_FILE and os.path.isfile(MQTT_PASS_FILE):
             "Could not read MQTT password from %s: %s", MQTT_PASS_FILE, exc
         )
 if not MQTT_PASS:
-    MQTT_PASS = "ResearchView2026!"
+    raise RuntimeError(
+        f"No MQTT password: set MQTT_PASS or point MQTT_PASS_FILE at a readable "
+        f"secret file (tried {MQTT_PASS_FILE})"
+    )
 
 
 INFERENCE_INTERVAL = int(os.getenv("INFERENCE_INTERVAL", "30"))
